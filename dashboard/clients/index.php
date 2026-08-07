@@ -32,6 +32,34 @@ fixCol($conn, 'clients', 'legal_docs',         'LONGTEXT');
 fixCol($conn, 'clients', 'services_data',      'LONGTEXT');
 fixCol($conn, 'clients', 'credentials_data',   'LONGTEXT');
 
+// Auto-migrate old contract data to services_data JSON if empty
+$q_mig = mysqli_query($conn, "SELECT client_id, contract_type, contract_start, contract_end FROM clients WHERE contract_type != '' AND (services_data IS NULL OR services_data = '' OR services_data = '[]')");
+if($q_mig && mysqli_num_rows($q_mig) > 0){
+    while($row = mysqli_fetch_assoc($q_mig)){
+        $types = explode(',', $row['contract_type']);
+        $svc_arr = [];
+        foreach($types as $t){
+            $t = trim($t);
+            if(empty($t)) continue;
+            $svc_arr[] = [
+                'id'       => uniqid('svc_'),
+                'type'     => $t,
+                'start'    => $row['contract_start'] ?? '',
+                'end'      => $row['contract_end'] ?? '',
+                'status'   => 'Active',
+                'price'    => '',
+                'keywords' => '',
+                'notes'    => ''
+            ];
+        }
+        if(!empty($svc_arr)){
+            $json = mysqli_real_escape_string($conn, json_encode($svc_arr, JSON_UNESCAPED_UNICODE));
+            $cid = $row['client_id'];
+            mysqli_query($conn, "UPDATE clients SET services_data='$json' WHERE client_id='$cid'");
+        }
+    }
+}
+
 // Upload dirs
 $upload_dir  = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_logos/';
 $docs_dir    = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_docs/';
