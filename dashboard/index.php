@@ -497,7 +497,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 }
         /* --- PLANNER / CALENDAR STYLES --- */
         .zenith-grid-layout { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 0px; margin-top: 0px; }
-        .planner-deck { min-height: 350px; padding: 15px !important; position: relative; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .planner-deck { padding: 15px !important; position: relative; width: 100%; display: flex; flex-direction: column; gap: 10px; }
         .panel-header-v30 { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .ph-left h2 { font-size: 1.8rem; font-weight: 900; margin: 0; }
         .ph-nav-group { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
@@ -508,7 +508,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .mode-switch-v30 { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 15px; display: flex; }
         .mode-switch-v30 button { background: none; border: none; color: #888; padding: 8px 15px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
         .mode-switch-v30 button.active { background: #fff; color: #000; }
-        .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px; border: 1px solid var(--card-border); position: relative; min-height: 250px; max-height: 400px; }
+        .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 0px; border: 1px solid var(--card-border); position: relative; max-height: none; }
         .add-event-fab { position: absolute; bottom: 15px; right: 15px; width: 45px; height: 45px; border-radius: 50%; background: var(--neon-main); color: #000; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 20px var(--neon-main); transition: 0.3s; z-index: 10; border: none; }
         .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 40px var(--neon-main); }
         /* --- CALENDAR GRIDS --- */
@@ -985,9 +985,42 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             try {
                 const res = await fetch(`/dashboard/workspace/planner_logic_v28.php?date=${dStr}&mode=${curMode}`);
                 vp.innerHTML = await res.text();
+                if (curMode === 'month') {
+                    fetchHolidays(currentDate.getFullYear(), currentDate.getMonth() + 1);
+                }
             } catch(e) {
                 vp.innerHTML = "Error loading calendar.";
             }
+        }
+
+        let holidayCache = {};
+        async function fetchHolidays(year, month) {
+            if (!holidayCache[year]) {
+                try {
+                    const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/ID`);
+                    if (res.ok) {
+                        holidayCache[year] = await res.json();
+                    } else { holidayCache[year] = []; }
+                } catch(e) { holidayCache[year] = []; }
+            }
+            
+            const hols = holidayCache[year];
+            if (!hols || hols.length === 0) return;
+            
+            // Loop thru all days in calendar
+            document.querySelectorAll('.cal-day-cell').forEach(cell => {
+                const d = cell.getAttribute('data-date');
+                if (d) {
+                    const found = hols.find(h => h.date === d);
+                    if (found) {
+                        const lbl = cell.querySelector('.holiday-label-container');
+                        if(lbl) lbl.innerText = found.localName || found.name;
+                        cell.style.borderColor = 'rgba(255, 90, 90, 0.4)';
+                        const num = cell.querySelector('.cal-day-num');
+                        if(num) num.style.color = 'var(--neon-red)';
+                    }
+                }
+            });
         }
 
         function setMode(m, btn) { curMode = m; document.querySelectorAll('.mode-switch-v30 button').forEach(el => el.classList.remove('active')); btn.classList.add('active'); refreshPlanner(); }

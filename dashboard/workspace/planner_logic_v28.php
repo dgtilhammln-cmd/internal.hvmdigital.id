@@ -80,8 +80,9 @@ if($mode == 'month') {
         }
 
         // CLICK CELL (ADD)
-        echo "<div class='cal-day-cell $isToday $isSunday' onclick=\"openEventModal('$currentDate')\">
+        echo "<div class='cal-day-cell $isToday $isSunday' data-date='$currentDate' onclick=\"openEventModal('$currentDate')\">
                 <div class='cal-day-num'>$d</div>
+                <div class='holiday-label-container' style='font-size:0.6rem; color:var(--neon-red); font-weight:700; margin-bottom:2px; line-height:1; min-height:0px;'></div>
                 $eventHtml
               </div>";
     }
