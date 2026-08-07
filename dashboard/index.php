@@ -133,11 +133,11 @@ $q_dead = mysqli_query($conn, "SELECT company_name, DATEDIFF(contract_end, NOW()
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HVM Dashboard</title>
     <link rel="shortcut icon" href="/uploads/icon.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= time() ?>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* --- PLANNER / CALENDAR STYLES --- */
-        .zenith-grid-layout { display: grid; grid-template-columns: 1fr; gap: 25px; margin-bottom: 25px; }
+        .zenith-grid-layout { display: grid; grid-template-columns: 1fr; gap: 25px; margin-bottom: 0px; }
         .planner-deck { min-height: 400px; padding: 25px; position: relative; width: 100%; display: flex; flex-direction: column; gap: 15px; }
         .panel-header-v30 { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
         .ph-left h2 { font-size: 1.8rem; font-weight: 900; margin: 0; }
@@ -366,7 +366,7 @@ $q_dead = mysqli_query($conn, "SELECT company_name, DATEDIFF(contract_end, NOW()
             </div>
 
             <!-- ══ PLANNER / CALENDAR ══ -->
-            <div class="zenith-grid-layout" style="margin-top: 25px;">
+            <div class="zenith-grid-layout" style="margin-top: 5px;">
                 <!-- PANEL 1: PLANNER -->
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 30px; padding: 30px; position: relative;">
                     <div class="panel-header-v30">
