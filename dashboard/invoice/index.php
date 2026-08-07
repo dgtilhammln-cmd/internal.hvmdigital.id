@@ -1024,6 +1024,7 @@ function buildInvoiceHTML(inv) {
                 </div>
             </div>
             <div class="dark-inv-bottom" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:40px;">
+                <!-- LEFT COLUMN: Payment, Notes, QR, Signature -->
                 <div style="flex:1;padding-right:40px;">
                     <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
                     <div class="dark-inv-payment-line">Payment Method: Bank Transfer</div>
@@ -1032,17 +1033,30 @@ function buildInvoiceHTML(inv) {
                     <div class="dark-inv-payment-line">A/N: ${esc(inv.atasNama)}</div>
                     
                     ${inv.note?`<div style="margin-top:30px;"><div class="dark-inv-note-label">NOTES</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
-                </div>
-                <div style="width:200px;text-align:center;">
-                    <!-- Barcode Box Placeholder (Kotak Merah di Ref) -->
-                    <div style="width:140px;height:140px;margin:0 auto 20px auto;border:1px solid #333;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#111;">
-                        <div style="font-size:0.7rem;color:#555;">[ QR Code ]</div>
+                    
+                    <!-- QR Code & Signature Section -->
+                    <div style="margin-top:30px;display:flex;flex-direction:column;align-items:flex-start;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('https://wa.me/6285179982373?text=Halo%20HVM%20Digital,%20saya%20ingin%20konfirmasi%20pembayaran%20untuk%20Invoice%20HVM-' + esc(inv.no))}" style="width:100px;height:100px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:#fff;padding:4px;margin-bottom:15px;" alt="QR Code Konfirmasi">
+                        <div class="dark-inv-sig-box" style="margin:0;width:150px;text-align:center;">
+                            <div class="dark-inv-sig-line"></div>
+                            <div class="dark-inv-sig-name" style="font-weight:700;">${esc(inv.sigName||'')}</div>
+                            <div class="dark-inv-sig-role">${esc(inv.sigRole||'')}</div>
+                        </div>
                     </div>
-                    <!-- Signature Box (Kotak Hijau di Ref) -->
-                    <div class="dark-inv-sig-box" style="margin:0 auto;width:100%;">
-                        <div class="dark-inv-sig-line"></div>
-                        <div class="dark-inv-sig-name" style="font-weight:700;">${esc(inv.sigName||'')}</div>
-                        <div class="dark-inv-sig-role">${esc(inv.sigRole||'')}</div>
+                </div>
+                
+                <!-- RIGHT COLUMN: Company Formal Data -->
+                <div style="width:250px;">
+                    <div style="border:1px solid rgba(161,255,90,0.3);border-radius:10px;padding:20px;background:rgba(161,255,90,0.02);">
+                        <div style="font-size:0.7rem;color:#a1ff5a;font-weight:700;letter-spacing:1px;margin-bottom:10px;">COMPANY INFO</div>
+                        <div style="font-size:0.75rem;color:#ccc;line-height:1.6;">
+                            <strong style="color:#fff;">HVM Digital</strong><br>
+                            Digital &amp; IT Solution<br>
+                            NPWP: 76.543.210.9-123.000<br>
+                            Email: bisnis@hvmdigital.id<br>
+                            Telp: 0851-6261-2373<br>
+                            Jakarta, Indonesia
+                        </div>
                     </div>
                 </div>
             </div>
