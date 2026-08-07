@@ -231,9 +231,9 @@ if(isset($_POST['save_client'])){
         $name       = mysqli_real_escape_string($conn, $_POST['company_name']);
         $city       = mysqli_real_escape_string($conn, $_POST['city']);
         $sector     = mysqli_real_escape_string($conn, $_POST['sector']);
-        $start      = $_POST['contract_start'];
-        $end        = $_POST['contract_end'];
-        $services   = isset($_POST['contract_type']) ? implode(', ', $_POST['contract_type']) : '';
+        $start      = $_POST['contract_start'] ?? '';
+        $end        = $_POST['contract_end'] ?? '';
+        $services   = $_POST['contract_type'] ?? '';
         $pic_name   = mysqli_real_escape_string($conn, $_POST['pic_name']);
         $pic_pos    = mysqli_real_escape_string($conn, $_POST['pic_position']);
         $wa         = mysqli_real_escape_string($conn, $_POST['whatsapp']);
@@ -416,6 +416,33 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .nav-links a { display:flex; align-items:center; padding:12px 15px; color:var(--text-muted); text-decoration:none; margin-bottom:5px; border-radius:10px; transition:0.3s; font-weight:600; font-size:0.9rem; }
 .nav-links a:hover { color:#fff; background:rgba(255,255,255,0.05); }
 .nav-links a.active { background:var(--grad-main); color:#000; box-shadow:0 0 15px rgba(161,255,90,0.3); }
+.btn-doc-save { transition:0.3s; }
+.btn-doc-save:hover { background:var(--neon-main); color:#000; box-shadow:0 0 15px rgba(161,255,90,0.4); }
+
+/* MULTI-SERVICE CARDS (VIEW MODE) */
+.ms-card {
+    background: rgba(25, 25, 25, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--neon-main);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: 0.3s;
+}
+.ms-card:hover { background: rgba(30, 30, 30, 0.8); }
+.ms-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.ms-title { font-size: 1.1rem; font-weight: 800; }
+.ms-status { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.ms-status.active { background: rgba(161, 255, 90, 0.1); color: var(--neon-main); border: 1px solid rgba(161, 255, 90, 0.2); }
+.ms-status.inactive { background: rgba(255, 90, 90, 0.1); color: var(--neon-red); border: 1px solid rgba(255, 90, 90, 0.2); }
+.ms-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; }
+.ms-keywords { font-size: 0.8rem; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+
+/* SCORE RING */
+.score-card { display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.03); border-radius:15px; padding:20px; margin-bottom:20px; border:1px solid rgba(255,255,255,0.05); }
 .logout-area { margin-top:auto; }
 .btn-logout { color:var(--neon-red) !important; text-decoration:none; display:flex; align-items:center; gap:10px; font-weight:600; }
 
