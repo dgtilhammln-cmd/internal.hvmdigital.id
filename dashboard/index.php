@@ -754,10 +754,8 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
                     <div class="panel-header-v30">
                         <div class="ph-left">
-                            <label style="cursor:pointer; position:relative; display:inline-block; margin:0;" title="Klik untuk pilih bulan">
-                                <h2 id="plannerTitle" style="margin:0;">...</h2>
-                                <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0;">
-                            </label>
+                            <h2 id="plannerTitle" style="cursor:pointer; margin:0; display:inline-block;" onclick="openMonthPicker()" title="Klik untuk pilih bulan">...</h2>
+                            <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;">
                             <div class="ph-nav-group">
                                 <button class="btn-today-v30" onclick="goToday()">TODAY</button>
                                 <div class="arrow-nav-v30">
@@ -1072,6 +1070,16 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             if(parts.length === 2) {
                 currentDate = new Date(parts[0], parseInt(parts[1])-1, 1);
                 refreshPlanner();
+            }
+        }
+
+        function openMonthPicker() {
+            const picker = document.getElementById('monthPicker');
+            if(picker) {
+                try {
+                    if(typeof picker.showPicker === 'function') picker.showPicker();
+                    else picker.focus();
+                } catch(e) { picker.click(); }
             }
         }
 
