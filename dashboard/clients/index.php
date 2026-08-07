@@ -226,19 +226,32 @@ if(isset($_POST['save_client'])){
 
         // Handle Services JSON
         $svc_arr = [];
+        $svc_types_for_old = [];
         if(isset($_POST['svc_type']) && is_array($_POST['svc_type'])){
             for($i=0; $i<count($_POST['svc_type']); $i++){
+                $svc_t = $_POST['svc_type'][$i];
                 $svc_arr[] = [
-                    'id' => uniqid('svc_'),
-                    'type' => $_POST['svc_type'][$i],
-                    'start' => $_POST['svc_start'][$i] ?? '',
-                    'end' => $_POST['svc_end'][$i] ?? '',
-                    'status' => $_POST['svc_status'][$i] ?? 'Active',
-                    'price' => $_POST['svc_price'][$i] ?? '',
-                    'keywords' => $_POST['svc_keywords'][$i] ?? ''
+                    'id'       => uniqid('svc_'),
+                    'type'     => $svc_t,
+                    'start'    => $_POST['svc_start'][$i] ?? '',
+                    'end'      => $_POST['svc_end'][$i] ?? '',
+                    'status'   => $_POST['svc_status'][$i] ?? 'Active',
+                    'price'    => $_POST['svc_price'][$i] ?? '',
+                    'keywords' => $_POST['svc_keywords'][$i] ?? '',
+                    'notes'    => $_POST['svc_notes'][$i] ?? ''
                 ];
+                if(!in_array($svc_t, $svc_types_for_old)) $svc_types_for_old[] = $svc_t;
             }
         }
+        // Auto-update contract_type from services for backward compat
+        $services = mysqli_real_escape_string($conn, implode(', ', $svc_types_for_old));
+        // Auto-update contract_start/end from earliest/latest service dates
+        $start_dates = array_filter(array_column($svc_arr, 'start'));
+        $end_dates   = array_filter(array_column($svc_arr, 'end'));
+        if($start_dates) $start = min($start_dates); 
+        if($end_dates)   $end   = max($end_dates);
+        // Handle client status
+        $cli_status = in_array($_POST['client_status'] ?? 'Active', ['Active','Inactive']) ? $_POST['client_status'] : 'Active';
         $services_json = mysqli_real_escape_string($conn, json_encode($svc_arr, JSON_UNESCAPED_UNICODE));
 
         // Handle Vault JSON
@@ -274,7 +287,7 @@ if(isset($_POST['save_client'])){
 
         if($is_edit=="1"){
             mysqli_query($conn,"UPDATE clients SET
-                company_name='$name',city='$city',sector='$sector',
+                company_name='$name',city='$city',sector='$sector',status='$cli_status',
                 contract_start='$start',contract_end='$end',contract_type='$services',
                 pic_name='$pic_name',pic_position='$pic_pos',
                 whatsapp='$wa',email='$email',phone='$phone',
@@ -295,7 +308,7 @@ if(isset($_POST['save_client'])){
                 ('$id','$name','$city','$sector','$start','$end','$services',
                  '$pic_name','$pic_pos','$wa','$email','$phone','$l_soc','$l_drive','$l_dvt',
                  '$l_plan','$l_design','$l_artikel','$l_thumb','$l_other',
-                 '$c_ig','$c_tt','$c_yt','$notes',$logo_ins,'Active','$services_json','$creds_json')");
+                 '$c_ig','$c_tt','$c_yt','$notes',$logo_ins,'$cli_status','$services_json','$creds_json')");
             $msg = "New Client Added!";
         }
         $_SESSION['popup']=['type'=>'success','msg'=>$msg];
@@ -1148,19 +1161,17 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                     <div class="form-grid">
                         <div class="form-group"><label>Client ID</label><input type="text" name="client_id" id="f_id" class="form-input" readonly></div>
                         <div class="form-group"><label>Company Name</label><input type="text" name="company_name" id="f_name" class="form-input" required></div>
-                        <div class="form-group"><label>Sector</label><input type="text" name="sector" id="f_sector" class="form-input" required></div>
+                        <div class="form-group"><label>Sector / Industri</label><input type="text" name="sector" id="f_sector" class="form-input" required></div>
                         <div class="form-group"><label>City / Address</label><input type="text" name="city" id="f_city" class="form-input" required></div>
-                        <div class="form-group full"><label>Services</label>
-                            <div class="service-options">
-                                <input type="checkbox" name="contract_type[]" value="Branding" id="s1" class="service-check"><label for="s1" class="service-label">Branding</label>
-                                <input type="checkbox" name="contract_type[]" value="Social Media" id="s2" class="service-check"><label for="s2" class="service-label">Social Media</label>
-                                <input type="checkbox" name="contract_type[]" value="SEO" id="s3" class="service-check"><label for="s3" class="service-label">SEO</label>
-                                <input type="checkbox" name="contract_type[]" value="Web Dev" id="s4" class="service-check"><label for="s4" class="service-label">Web Dev</label>
-                                <input type="checkbox" name="contract_type[]" value="Content Creator" id="s5" class="service-check"><label for="s5" class="service-label">Content Creator</label>
-                            </div>
+                        <div class="form-group"><label><i class="fas fa-circle" style="color:var(--neon-main);margin-right:5px;"></i>Status Klien</label>
+                            <select name="client_status" id="f_status" class="form-input" style="cursor:pointer;">
+                                <option value="Active">✅ Aktif</option>
+                                <option value="Inactive">❌ Non-Aktif</option>
+                            </select>
                         </div>
-                        <div class="form-group"><label>Contract Start</label><input type="date" name="contract_start" id="f_start" class="form-input" required></div>
-                        <div class="form-group"><label>Contract End</label><input type="date" name="contract_end" id="f_end" class="form-input" required></div>
+                        <input type="hidden" name="contract_type" id="f_contract_type" value="">
+                        <input type="hidden" name="contract_start" id="f_start" value="">
+                        <input type="hidden" name="contract_end" id="f_end" value="">
                         <div class="form-group"><label>PIC Name</label><input type="text" name="pic_name" id="f_pic" class="form-input" required></div>
                         <div class="form-group"><label>PIC Position</label><input type="text" name="pic_position" id="f_pos" class="form-input"></div>
                         <div class="form-group"><label>WhatsApp</label><input type="text" name="whatsapp" id="f_wa" class="form-input" required></div>
@@ -1548,6 +1559,9 @@ function fetchData(id, mode){
         renderServicesView(res.services_data || []);
         if(mode === 'edit') {
             populateServicesEdit(res.services_data || []);
+            // Set status dropdown
+            const statusEl = document.getElementById('f_status');
+            if(statusEl) statusEl.value = d.status || 'Active';
         } else {
             document.getElementById('servicesEditContainer').style.display = 'none';
             document.getElementById('servicesViewContainer').style.display = 'block';
@@ -1867,6 +1881,10 @@ function renderServicesView(svcs) {
         const statusLabel = isActive ? 'Active' : 'Inactive';
         const color = svcColors[s.type] || '#888';
         const kwHtml = s.keywords ? `<div class="ms-keywords"><i class="fas fa-search" style="margin-right:5px;opacity:0.6;"></i><strong>Keywords:</strong><br>${s.keywords.split(',').map(k=>`<span style="display:inline-block;background:rgba(78,253,196,0.08);border:1px solid rgba(78,253,196,0.15);border-radius:4px;padding:2px 8px;margin:3px 4px 0 0;font-size:0.75rem;">${k.trim()}</span>`).join('')}</div>` : '';
+        const notesHtml = s.notes ? `<div style="margin-top:10px;padding:10px;background:rgba(255,159,67,0.04);border-radius:8px;border:1px solid rgba(255,159,67,0.1);"><span style="font-size:0.65rem;color:var(--neon-orange);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-sticky-note"></i> Catatan</span><p style="font-size:0.8rem;color:#aaa;margin-top:5px;line-height:1.5;">${s.notes}</p></div>` : '';
+        const daysLeft = s.end ? Math.ceil((new Date(s.end) - today) / 86400000) : null;
+        const daysHtml = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30
+            ? `<span style="font-size:0.7rem;padding:2px 8px;background:${daysLeft<=7?'rgba(255,90,90,0.15)':daysLeft<=14?'rgba(255,159,67,0.15)':'rgba(245,197,24,0.1)'};color:${daysLeft<=7?'#ff5a5a':daysLeft<=14?'#ff9f43':'#f5c518'};border-radius:6px;font-weight:700;margin-left:8px;">⚠ H-${daysLeft}</span>` : '';
         const card = document.createElement('div');
         card.className = 'ms-card';
         card.style.borderLeftColor = color;
@@ -1874,7 +1892,7 @@ function renderServicesView(svcs) {
             <div class="ms-header">
                 <div>
                     <div style="font-size:0.7rem;color:#666;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px;">${s.type}</div>
-                    <div class="ms-title" style="color:${color};">${s.type} Service</div>
+                    <div class="ms-title" style="color:${color};">${s.type} Service${daysHtml}</div>
                 </div>
                 <span class="ms-status ${statusClass}">${statusLabel}</span>
             </div>
@@ -1884,6 +1902,7 @@ function renderServicesView(svcs) {
                 ${s.price ? `<div style="grid-column:span 2;"><span style="color:#555;">Deal Price:</span> <strong style="color:var(--neon-main);">${s.price}</strong></div>` : ''}
             </div>
             ${kwHtml}
+            ${notesHtml}
         `;
         container.appendChild(card);
     });
@@ -1900,6 +1919,16 @@ function populateServicesEdit(svcs) {
     }
 }
 
+const SVC_META = {
+    'Web Dev':        {icon:'fa-code',            color:'#a1ff5a', bg:'rgba(161,255,90,0.06)'},
+    'SEO':            {icon:'fa-search',          color:'#4efdc4', bg:'rgba(78,253,196,0.06)'},
+    'Social Media':   {icon:'fa-instagram',       color:'#ff9f43', bg:'rgba(255,159,67,0.06)'},
+    'Branding':       {icon:'fa-paint-brush',     color:'#c084fc', bg:'rgba(192,132,252,0.06)'},
+    'Content Creator':{icon:'fa-video',           color:'#f87171', bg:'rgba(248,113,113,0.06)'},
+    'Ads':            {icon:'fa-bullhorn',        color:'#60a5fa', bg:'rgba(96,165,250,0.06)'},
+    'Other':          {icon:'fa-cog',             color:'#6b7280', bg:'rgba(107,114,128,0.06)'},
+};
+
 let _svcRowCount = 0;
 function addServiceRow(data) {
     _svcRowCount++;
@@ -1908,45 +1937,79 @@ function addServiceRow(data) {
     if(!rowsEl) return;
 
     const svcTypes = ['Web Dev','SEO','Social Media','Branding','Content Creator','Ads','Other'];
-    const opts = svcTypes.map(t => `<option value="${t}" ${data && data.type===t?'selected':''}>${t}</option>`).join('');
+    // Premium icon dropdown options
+    const opts = svcTypes.map(t => {
+        const m = SVC_META[t] || SVC_META['Other'];
+        return `<option value="${t}" ${data && data.type===t?'selected':''}>${t}</option>`;
+    }).join('');
 
     const row = document.createElement('div');
     row.className = 'svc-row';
     row.id = `svc-row-${i}`;
-    row.style.gridTemplateColumns = '1fr 1fr 1fr 1fr auto';
-    row.style.marginBottom = '12px';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;margin-bottom:12px;position:relative;';
+
+    const curType = (data && data.type) ? data.type : 'Web Dev';
+    const curMeta = SVC_META[curType] || SVC_META['Other'];
+
     row.innerHTML = `
+        <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div class="svc-icon-badge" style="width:32px;height:32px;border-radius:8px;background:${curMeta.bg};border:1px solid ${curMeta.color}44;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas ${curMeta.icon}" style="color:${curMeta.color};font-size:0.82rem;"></i>
+                </div>
+                <span class="svc-type-label" style="font-size:0.82rem;font-weight:800;color:${curMeta.color};">${curType}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <select name="svc_status[]" class="form-input" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;">
+                    <option value="Active" ${!data||data.status==='Active'?'selected':''}>✅ Active</option>
+                    <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>❌ Inactive</option>
+                </select>
+                <button type="button" class="btn-remove-svc" onclick="this.closest('.svc-row').remove()" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
         <div class="form-group" style="margin:0;">
-            <label>Tipe Layanan</label>
-            <select name="svc_type[]" class="form-input" style="height:38px;">
+            <label><i class="fas fa-layer-group" style="color:#888;margin-right:4px;"></i>Tipe Layanan</label>
+            <select name="svc_type[]" class="form-input svc-type-select" style="height:38px;" onchange="updateSvcRowStyle(this)">
                 ${opts}
             </select>
         </div>
         <div class="form-group" style="margin:0;">
-            <label>Tanggal Mulai</label>
+            <label><i class="fas fa-calendar-plus" style="color:var(--neon-sec);margin-right:4px;"></i>Tanggal Mulai</label>
             <input type="date" name="svc_start[]" class="form-input" value="${data&&data.start?data.start:''}">
         </div>
         <div class="form-group" style="margin:0;">
-            <label>Tanggal Selesai</label>
+            <label><i class="fas fa-calendar-check" style="color:var(--neon-red);margin-right:4px;"></i>Tanggal Selesai</label>
             <input type="date" name="svc_end[]" class="form-input" value="${data&&data.end?data.end:''}">
         </div>
         <div class="form-group" style="margin:0;">
-            <label>Harga Deal</label>
+            <label><i class="fas fa-tag" style="color:var(--neon-main);margin-right:4px;"></i>Harga Deal</label>
             <input type="text" name="svc_price[]" class="form-input" placeholder="Rp 5.000.000/bln" value="${data&&data.price?data.price:''}">
         </div>
-        <button type="button" class="btn-remove-svc" onclick="this.closest('.svc-row').remove()" title="Hapus baris ini"><i class="fas fa-trash"></i></button>
-        <div class="form-group" style="margin:0; grid-column: 1 / -1;">
-            <label><i class="fas fa-search" style="color:var(--neon-sec);margin-right:4px;"></i>Top Keywords (pisah koma untuk SEO — opsional)</label>
+        <div class="form-group" style="margin:0;grid-column:span 2;">
+            <label><i class="fas fa-search" style="color:var(--neon-sec);margin-right:4px;"></i>Top Keywords SEO (pisah koma, opsional)</label>
             <input type="text" name="svc_keywords[]" class="form-input" placeholder="keyword 1, keyword 2, keyword 3..." value="${data&&data.keywords?data.keywords:''}">
         </div>
-        <div style="grid-column: 1 / -1; border-top: 1px dashed rgba(255,255,255,0.05); margin: 2px 0 0; padding-top: 4px;">
-            <select name="svc_status[]" class="form-input" style="background:transparent;border:none;color:#888;font-size:0.75rem;padding:4px 0;width:auto;cursor:pointer;">
-                <option value="Active" ${!data||data.status==='Active'?'selected':''}>✅ Status: Active</option>
-                <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>❌ Status: Inactive</option>
-            </select>
+        <div class="form-group" style="margin:0;grid-column:1/-1;">
+            <label><i class="fas fa-sticky-note" style="color:var(--neon-orange);margin-right:4px;"></i>Catatan Internal Layanan ini</label>
+            <textarea name="svc_notes[]" class="form-input" rows="2" style="resize:vertical;min-height:58px;" placeholder="Brief, instruksi khusus, reminder untuk layanan ini...">${data&&data.notes?data.notes.replace(/</g,'&lt;'):''}</textarea>
         </div>
     `;
     rowsEl.appendChild(row);
+}
+
+function updateSvcRowStyle(selectEl) {
+    const row = selectEl.closest('.svc-row');
+    if(!row) return;
+    const t = selectEl.value;
+    const m = SVC_META[t] || SVC_META['Other'];
+    row.querySelector('.svc-icon-badge').style.background = m.bg;
+    row.querySelector('.svc-icon-badge').style.borderColor = m.color+'44';
+    row.querySelector('.svc-icon-badge i').className = `fas ${m.icon}`;
+    row.querySelector('.svc-icon-badge i').style.color = m.color;
+    row.querySelector('.svc-type-label').textContent = t;
+    row.querySelector('.svc-type-label').style.color = m.color;
 }
 
 window.onclick=e=>{ if(e.target===modal) closeModal(); };

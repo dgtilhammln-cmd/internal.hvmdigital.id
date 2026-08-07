@@ -42,6 +42,28 @@ if(mysqli_num_rows($check) > 0) {
     }
 }
 
+// --- INJECT CLIENT SERVICE DEADLINES ---
+$q_clients_deadlines = mysqli_query($conn, "SELECT company_name, services_data FROM clients WHERE status='Active' AND services_data IS NOT NULL AND services_data != '' AND services_data != '[]'");
+if ($q_clients_deadlines) {
+    while ($cl = mysqli_fetch_assoc($q_clients_deadlines)) {
+        $svcs = json_decode($cl['services_data'], true);
+        if (!is_array($svcs)) continue;
+        foreach ($svcs as $svc) {
+            if (empty($svc['end']) || ($svc['status'] ?? 'Active') !== 'Active') continue;
+            $endDate = $svc['end'];
+            // Cek apakah tanggal berakhir ada di rentang kalender saat ini
+            if ($endDate >= $start_q && $endDate <= $end_q) {
+                $events[$endDate][] = [
+                    'title'      => 'DEADLINE: ' . $cl['company_name'] . ' (' . ($svc['type'] ?? 'Layanan') . ')',
+                    'color'      => 'red',
+                    'detail'     => "Layanan " . ($svc['type'] ?? 'Layanan') . " untuk klien " . $cl['company_name'] . " berakhir hari ini.\nHarga: " . ($svc['price'] ?? '-') . "\nCatatan: " . ($svc['notes'] ?? '-'),
+                    'time_start' => '00:00'
+                ];
+            }
+        }
+    }
+}
+
 // 4. RENDER VIEWS
 
 // --- VIEW: MONTH ---

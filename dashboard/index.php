@@ -122,8 +122,27 @@ $soc  = getSvc($conn, 'Social'); $soc_clients  = getClientList($conn, 'Social');
 $seo  = getSvc($conn, 'SEO');   $seo_clients  = getClientList($conn, 'SEO');
 $cont = getSvc($conn, 'Content'); $cont_clients = getClientList($conn, 'Content');
 
-// --- 4. UPCOMING DEADLINE ---
-$q_dead = mysqli_query($conn, "SELECT company_name, DATEDIFF(contract_end, NOW()) as sisa FROM clients WHERE status='Active' HAVING sisa BETWEEN 0 AND 14 ORDER BY sisa ASC LIMIT 5");
+// --- 4. UPCOMING DEADLINE (from services_data JSON) ---
+$q_clients_all = mysqli_query($conn, "SELECT client_id, company_name, services_data FROM clients WHERE status='Active' AND services_data IS NOT NULL AND services_data != '' AND services_data != '[]'");
+$upcoming_deadlines = [];
+while($cl = mysqli_fetch_assoc($q_clients_all)){
+    $svcs = json_decode($cl['services_data'], true);
+    if(!is_array($svcs)) continue;
+    foreach($svcs as $svc){
+        if(empty($svc['end']) || ($svc['status'] ?? 'Active') !== 'Active') continue;
+        $sisa = (int)floor((strtotime($svc['end']) - time()) / 86400);
+        if($sisa >= 0 && $sisa <= 30){
+            $upcoming_deadlines[] = [
+                'company' => $cl['company_name'],
+                'type'    => $svc['type'] ?? 'Service',
+                'sisa'    => $sisa,
+                'end'     => $svc['end'],
+            ];
+        }
+    }
+}
+usort($upcoming_deadlines, fn($a,$b) => $a['sisa'] <=> $b['sisa']);
+$upcoming_deadlines = array_slice($upcoming_deadlines, 0, 6);
 
 ?>
 <!DOCTYPE html>
@@ -629,16 +648,22 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     </div>
                 </div>
                 <div class="upcoming-card">
-                    <div class="uc-header">UPCOMING DEADLINE</div>
-                    <?php if(mysqli_num_rows($q_dead) > 0): ?>
-                        <?php while($d = mysqli_fetch_assoc($q_dead)): ?>
+                    <div class="uc-header">⚡ UPCOMING DEADLINE</div>
+                    <?php if(count($upcoming_deadlines) > 0): ?>
+                        <?php foreach($upcoming_deadlines as $ud): ?>
+                        <?php
+                            $urgency_color = $ud['sisa'] <= 7 ? '#ff5a5a' : ($ud['sisa'] <= 14 ? '#ff9f43' : '#f5c518');
+                        ?>
                         <div class="uc-item">
-                            <span class="uc-name"><?php echo htmlspecialchars($d['company_name']); ?></span>
-                            <span class="uc-days">H-<?php echo $d['sisa']; ?></span>
+                            <div style="flex:1;min-width:0;">
+                                <div class="uc-name"><?php echo htmlspecialchars($ud['company']); ?></div>
+                                <div style="font-size:0.65rem;color:#555;margin-top:2px;"><?php echo htmlspecialchars($ud['type']); ?> · Berakhir <?php echo date('d M Y', strtotime($ud['end'])); ?></div>
+                            </div>
+                            <span class="uc-days" style="background:<?php echo $urgency_color; ?>22;color:<?php echo $urgency_color; ?>;border:1px solid <?php echo $urgency_color; ?>44;">H-<?php echo $ud['sisa']; ?></span>
                         </div>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
-                        <p style="color:#666;font-size:0.85rem;text-align:center;padding:15px 0;">No urgent deadlines.</p>
+                        <div style="color:#333;font-size:0.82rem;text-align:center;padding:20px 0;"><i class="fas fa-check-circle" style="color:#2a2a2a;font-size:1.5rem;display:block;margin-bottom:8px;"></i>Semua aman. Tidak ada layanan yang hampir habis.</div>
                     <?php endif; ?>
                 </div>
             </div>
