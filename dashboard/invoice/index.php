@@ -30,7 +30,10 @@ header("Pragma: no-cache");
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
 body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; overflow-x:hidden; }
 
-.ambient-glow { display: none; }
+.ambient-glow { position:fixed; border-radius:50%; filter:blur(150px); opacity:0.06; z-index:-1; animation:floatGlow 15s infinite alternate; pointer-events:none; }
+.glow-1 { top:-100px; left:-100px; width:600px; height:600px; background:#a1ff5a; }
+.glow-2 { bottom:-100px; right:-100px; width:600px; height:600px; background:#4efdc4; }
+@keyframes floatGlow { from{transform:scale(1);}to{transform:scale(1.1);} }
 
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background:#0a0a0a; }
