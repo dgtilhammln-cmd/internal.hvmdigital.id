@@ -965,15 +965,11 @@ function buildInvoiceHTML(inv) {
         Lunas: 'lunas', DP: 'dp', Pending: 'pending', Overdue: 'overdue'
     };
     const statusCls = statusColors[inv.status] || 'pending';
-    const logoSvg = `<svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="20" cy="20" r="20" fill="white"/>
-        <path d="M10 13H16V20H24V13H30V27H24V22H16V27H10V13Z" fill="black"/>
-    </svg>`;
     return `<div class="invoice-paper-dark">
         ${headerHtml}
         <div class="dark-inv-body">
             <div class="dark-inv-logo-row">
-                <div class="dark-inv-logo">${logoSvg}</div>
+                <img src="/uploads/icon.png" style="width:44px;height:44px;object-fit:contain;border-radius:50%;" alt="HVM Digital">
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
