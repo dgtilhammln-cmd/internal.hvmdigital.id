@@ -553,19 +553,19 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         /* MODALS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
-        .modal-content { background: #0a0a0a; border: 1px solid var(--neon-main); width: 500px; max-width: 95%; padding: 30px; border-radius: 24px; box-shadow: 0 0 60px rgba(161, 255, 90, 0.15); max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-content { background: #0c0c0e; border: 1px solid rgba(255,255,255,0.07); width: 500px; max-width: 95%; padding: 30px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 0.8rem; }
         .form-input { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: #fff; border-radius: 8px; outline: none; font-size: 0.9rem; }
         .modal-top-actions { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; }
         .btn-close-x { background: none; border: none; color: #555; font-size: 1.5rem; cursor: pointer; transition: 0.3s; }
-        .btn-close-x:hover { color: var(--neon-red); transform: rotate(90deg); }
+        .btn-close-x:hover { color: #fff; }
         .btn-save-center { width: 60px; height: 60px; border-radius: 50%; background: var(--grad-main); color: #000; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; margin: 20px auto 0 auto; box-shadow: 0 0 20px var(--neon-main); transition: 0.3s; }
         .btn-save-center:hover { transform: scale(1.1); box-shadow: 0 0 40px var(--neon-main); }
-        .detail-row { margin-bottom: 15px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; }
-        .detail-label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
-        .detail-val { font-size: 1.1rem; color: #fff; font-weight: 700; }
-        .detail-desc { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; color: #ccc; font-size: 0.9rem; line-height: 1.6; white-space: pre-line; border-left: 3px solid var(--neon-sec); }
+        .detail-row { margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
+        .detail-label { font-size: 0.65rem; color: #777; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 6px; font-weight: 700; }
+        .detail-val { font-size: 1rem; color: #eaeaea; font-weight: 600; line-height: 1.4; }
+        .detail-desc { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
     </style>
 </head>
@@ -1001,13 +1001,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         </div>
     </div>
 
-    <!-- MODAL VIEW DETAIL -->
     <div class="modal-overlay" id="detailModal">
-        <div class="modal-content" style="border-color: var(--neon-sec);">
+        <div class="modal-content">
             <div class="modal-top-actions">
                 <button class="btn-close-x" onclick="closeModal('detailModal')">&times;</button>
             </div>
-            <h2 class="modal-title" style="color:var(--neon-sec); margin-bottom:20px;">Project Detail</h2>
+            <h2 class="modal-title" style="color:#fff; margin-bottom:20px; font-size:1.3rem; font-weight:700;"><i class="fas fa-file-alt" style="margin-right:8px; color:#888;"></i>Project Detail</h2>
             <div id="detailContent"></div>
         </div>
     </div>
@@ -1211,9 +1210,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             
             container.innerHTML = `
-                <div class="detail-row"><span class="detail-label">NAMA PROJECT</span><div class="detail-val" style="color:var(--${color=='blue'?'neon-sec':'neon-main'})">${title}</div></div>
-                <div class="detail-row"><span class="detail-label">WAKTU</span><div class="detail-val">${dateNice} • ${time || 'Seharian'}</div></div>
-                <div class="detail-row"><span class="detail-label">DETAIL LOG</span><div class="detail-desc">${desc}</div></div>
+                <div class="detail-row"><span class="detail-label">NAMA PROJECT</span><div class="detail-val">${title}</div></div>
+                <div class="detail-row"><span class="detail-label">WAKTU</span><div class="detail-val">${dateNice} &bull; ${time || 'Seharian'}</div></div>
+                <div class="detail-row" style="border:none; margin-bottom:0; padding-bottom:0;"><span class="detail-label">DETAIL LOG</span><div class="detail-desc">${desc}</div></div>
             `;
             document.getElementById('detailModal').classList.add('active');
         }

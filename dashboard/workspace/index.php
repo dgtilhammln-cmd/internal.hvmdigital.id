@@ -331,11 +331,11 @@ if(isset($_POST['save_event'])){
 
     <!-- MODAL VIEW DETAIL (NEW) -->
     <div class="modal-overlay" id="detailModal">
-        <div class="modal-content" style="border-color: var(--cyan);">
+        <div class="modal-content" style="background:#0c0c0e; border:1px solid rgba(255,255,255,0.07); width:500px; max-width:95%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative;">
             <div class="modal-top-actions">
                 <button class="btn-close-x" onclick="closeModal('detailModal')">&times;</button>
             </div>
-            <h2 class="modal-title" style="color:var(--cyan); margin-bottom:20px;">Project Detail</h2>
+            <h2 class="modal-title" style="color:#fff; margin-bottom:20px; font-size:1.3rem; font-weight:700;"><i class="fas fa-file-alt" style="margin-right:8px; color:#888;"></i>Project Detail</h2>
             <div id="detailContent"></div>
         </div>
     </div>
@@ -463,9 +463,9 @@ if(isset($_POST['save_event'])){
             const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             
             container.innerHTML = `
-                <div class="detail-row"><span class="detail-label">NAMA PROJECT</span><div class="detail-val" style="color:var(--${color=='blue'?'cyan':'neon'})">${title}</div></div>
-                <div class="detail-row"><span class="detail-label">WAKTU</span><div class="detail-val">${dateNice} • ${time || 'Seharian'}</div></div>
-                <div class="detail-row"><span class="detail-label">DETAIL LOG</span><div class="detail-desc">${desc}</div></div>
+                <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">NAMA PROJECT</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600; line-height:1.4;">${title}</div></div>
+                <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">WAKTU</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600; line-height:1.4;">${dateNice} &bull; ${time || 'Seharian'}</div></div>
+                <div class="detail-row" style="border:none;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">DETAIL LOG</span><div class="detail-desc" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:12px; color:#aaa; font-size:0.85rem; line-height:1.5;">${desc}</div></div>
             `;
             document.getElementById('detailModal').classList.add('active');
         }
