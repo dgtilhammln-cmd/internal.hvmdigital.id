@@ -416,7 +416,6 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                 </select>
             </div>
             <div style="display:flex;gap:10px;">
-                <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleInvTheme()" title="Toggle Dark Invoice"><i class="fas fa-moon"></i> Dark Theme</button>
                 <button class="btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
                 <button class="btn-neon" onclick="openCreateModal()"><i class="fas fa-plus"></i> Buat Invoice</button>
             </div>
@@ -614,8 +613,6 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div style="display:flex;align-items:center;gap:8px;">
                 <button class="btn-ghost" onclick="closeModal()"><i class="fas fa-times"></i> Batal</button>
                 <button class="btn-ghost" onclick="resetForm()"><i class="fas fa-undo"></i> Reset</button>
-                <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);margin:0 4px;"></div>
-                <button id="themeToggleBtnModal" onclick="toggleInvTheme()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#ccc;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s;" title="Ganti tema invoice"><i class="fas fa-moon"></i> <span id="themeToggleLabelModal">Dark Theme</span></button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-preview" onclick="previewInvoice()"><i class="fas fa-eye"></i> Preview</button>
@@ -650,7 +647,6 @@ let invoices = [
 ];
 let editingId = null;
 let payType = 'Lunas';
-let invTheme = localStorage.getItem('invTheme') || 'dark'; // 'light' or 'dark', default dark now
 let headerImgDataUrl = localStorage.getItem('invHeaderImg') || null;
 
 // Init header img preview on load
@@ -663,25 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function toggleInvTheme() {
-    invTheme = invTheme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('invTheme', invTheme);
-    updateThemeBtn();
-}
-function updateThemeBtn() {
-    const btn = document.getElementById('themeToggleBtn');
-    const btnModal = document.getElementById('themeToggleBtnModal');
-    const labelModal = document.getElementById('themeToggleLabelModal');
-    if (invTheme === 'dark') {
-        if(btn){ btn.innerHTML = '<i class="fas fa-sun"></i> Light Theme'; btn.classList.add('dark-active'); }
-        if(btnModal){ btnModal.style.borderColor='rgba(161,255,90,0.3)'; btnModal.style.color='var(--neon-main)'; }
-        if(labelModal){ labelModal.textContent = 'Light Theme'; btnModal.querySelector('i').className='fas fa-sun'; }
-    } else {
-        if(btn){ btn.innerHTML = '<i class="fas fa-moon"></i> Dark Theme'; btn.classList.remove('dark-active'); }
-        if(btnModal){ btnModal.style.borderColor='rgba(255,255,255,0.12)'; btnModal.style.color='#ccc'; }
-        if(labelModal){ labelModal.textContent = 'Dark Theme'; btnModal.querySelector('i').className='fas fa-moon'; }
-    }
-}
 function handleHeaderImg(input) {
     if (!input.files[0]) return;
     const reader = new FileReader();
@@ -918,67 +895,6 @@ function deleteInvoice(id){
 }
 
 function buildInvoiceHTML(inv) {
-    if (invTheme === 'dark') return buildDarkInvoiceHTML(inv);
-    const ppnVal = inv.subtotal*(inv.ppn/100);
-    let itemsHtml = inv.items.map(item => {
-        const subsHtml = item.subs ? item.subs.split('\n').filter(Boolean).map(s=>`<div>${s}</div>`).join('') : '';
-        return `<tr>
-            <td><div class="inv-item-name">${esc(item.name)}</div>${subsHtml?`<div class="inv-item-subs">${subsHtml}</div>`:''}</td>
-            <td>${item.qty}</td><td>${fmtRp(item.price)}</td><td>${fmtRp(item.qty*item.price)}</td>
-        </tr>`;
-    }).join('');
-    let dpNoteHtml = '';
-    if(inv.payType==='DP'){
-        dpNoteHtml = `<div style="font-size:0.78rem;color:#888;margin-top:8px;">Harga Khusus: ${fmtRp(inv.total)} Inc PPN<br>Pembayaran 2x (DP ${inv.dp1Pct}% &amp; ${100-inv.dp1Pct}% Lunas)</div>`;
-    }
-    return `
-        <div class="inv-paper-header">
-            <div>
-                <div class="inv-paper-logo">HVM<span style="color:#000;background:#a1ff5a;padding:2px 6px;border-radius:4px;">Digital</span></div>
-                <div style="font-size:0.72rem;color:#aaa;margin-top:6px;">${esc(inv.contact)} | ${esc(inv.email)}</div>
-            </div>
-            <div class="inv-paper-meta">
-                <div class="inv-paper-title">Invoice</div>
-                <div class="inv-paper-num">No: ${esc(inv.no)}</div>
-                <div class="inv-paper-date">Date: ${fmtDateShort(inv.date)}</div>
-            </div>
-        </div>
-        <div class="inv-paper-to">
-            <div class="inv-paper-to-label">To:</div>
-            <div class="inv-paper-to-name">${esc(inv.client)}</div>
-        </div>
-        <table class="inv-paper-table">
-            <thead><tr><th>Item Description</th><th>QTY</th><th>Price</th><th>Subtotal</th></tr></thead>
-            <tbody>${itemsHtml}</tbody>
-        </table>
-        ${dpNoteHtml}
-        <div class="inv-paper-totals">
-            <div class="inv-paper-totals-box">
-                <div class="inv-paper-totals-line"><span>SUB-TOTAL</span><span>${fmtRp(inv.subtotal)}</span></div>
-                ${inv.ppn?`<div class="inv-paper-totals-line"><span>PPN (${inv.ppn}%)</span><span>${fmtRp(ppnVal)}</span></div>`:''}
-                <hr class="inv-paper-totals-div">
-                <div class="inv-paper-totals-grand"><span>TOTAL</span><span>${fmtRp(inv.total)}</span></div>
-            </div>
-        </div>
-        <div class="inv-paper-payment">
-            <div class="inv-paper-payment-title">Pembayaran :</div>
-            <div style="font-size:0.85rem;color:#555;margin-bottom:8px;">Silahkan melakukan pembayaran</div>
-            <div class="inv-paper-bank">-${esc(inv.bank)}</div>
-            <div class="inv-paper-bank">NO : <span>${esc(inv.rekening)}</span></div>
-            <div class="inv-paper-bank">A/N : <span>${esc(inv.atasNama)}</span></div>
-        </div>
-        ${inv.note?`<div class="inv-paper-note"><b>Catatan :</b><br>${esc(inv.note)}</div>`:''}
-        <div class="inv-paper-footer">
-            <div class="inv-paper-thanks"><i>TerimaKasih</i></div>
-            <div class="inv-paper-sign">
-                <div class="inv-paper-sign-name">${esc(inv.sigName)}</div>
-                <div class="inv-paper-sign-role">${esc(inv.sigRole)}</div>
-            </div>
-        </div>
-        <div class="inv-paper-contact"><b>Terima Kasih</b><br>${esc(inv.contact)} | ${esc(inv.email)}</div>`;
-}
-
-function buildDarkInvoiceHTML(inv) {
     const ppnVal = inv.subtotal*(inv.ppn/100);
     const headerHtml = headerImgDataUrl
         ? `<img class="dark-header-img" src="${headerImgDataUrl}" alt="Header">`
@@ -1078,10 +994,9 @@ function previewInvoice(doPrint){
 
 function doPrintClean() {
     const content = document.getElementById('invoicePaper').innerHTML;
-    const isDark = invTheme === 'dark';
     const pa = document.getElementById('printArea');
     pa.innerHTML = content;
-    pa.className = isDark ? 'dark-print' : '';
+    pa.className = 'dark-print';
     pa.style.display = 'block';
     setTimeout(() => {
         window.print();
