@@ -421,37 +421,33 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 
 /* MULTI-SERVICE CARDS (VIEW MODE) */
 .ms-card {
-    background: linear-gradient(145deg, rgba(30,30,30,0.8) 0%, rgba(15,15,15,0.95) 100%);
+    background: rgba(20, 20, 20, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 16px;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 8px;
+    transition: 0.2s ease;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6);
 }
 .ms-card::before {
     content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
     background: var(--card-color, var(--neon-main));
-    box-shadow: 0 0 15px var(--card-color, var(--neon-main));
 }
-.ms-card:hover {
-    transform: translateY(-3px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.1);
-}
+.ms-card:hover { background: rgba(30, 30, 30, 1); border-color: rgba(255,255,255,0.1); }
 .ms-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.ms-title { font-size: 1.25rem; font-weight: 800; color: var(--neon-main); letter-spacing: -0.5px; }
-.ms-status { padding: 6px 14px; border-radius: 30px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; backdrop-filter: blur(10px); }
-.ms-status.active { background: rgba(161, 255, 90, 0.1); color: var(--neon-main); border: 1px solid rgba(161, 255, 90, 0.2); box-shadow: 0 0 15px rgba(161, 255, 90, 0.1); }
+.ms-title { font-size: 1.1rem; font-weight: 700; color: var(--neon-main); margin-top:2px; }
+.ms-status { padding: 4px 10px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.ms-status.active { background: rgba(161, 255, 90, 0.1); color: var(--neon-main); border: 1px solid rgba(161, 255, 90, 0.2); }
 .ms-status.inactive { background: rgba(255, 90, 90, 0.1); color: var(--neon-red); border: 1px solid rgba(255, 90, 90, 0.2); }
-.ms-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.02); }
-.ms-detail div { display: flex; flex-direction: column; gap: 4px; }
-.ms-detail-label { font-size: 0.65rem; color: #777; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
-.ms-detail-val { font-size: 0.95rem; color: #fff; font-weight: 700; }
-.ms-keywords { font-size: 0.8rem; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px; }
+.ms-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.85rem; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.03); margin-top: 4px; }
+.ms-detail div { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+.ms-detail-label { font-size: 0.75rem; color: #777; font-weight: 500; }
+.ms-detail-val { font-size: 0.8rem; color: #ddd; font-weight: 600; }
+.ms-keywords { font-size: 0.75rem; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); margin-top: 4px; }
 
 /* SCORE RING */
 .score-card { display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.03); border-radius:15px; padding:20px; margin-bottom:20px; border:1px solid rgba(255,255,255,0.05); }
@@ -1957,7 +1953,7 @@ function renderServicesView(svcs) {
         card.innerHTML = `
             <div class="ms-header">
                 <div>
-                    <div style="font-size:0.7rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${s.type}</div>
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;">${s.type}</div>
                     <div class="ms-title">${s.type} Service${daysHtml}</div>
                 </div>
                 <span class="ms-status ${statusClass}">${statusLabel}</span>
