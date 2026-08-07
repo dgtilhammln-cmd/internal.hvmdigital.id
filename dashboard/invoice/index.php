@@ -299,66 +299,47 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     .item-row { grid-template-columns:1fr; }
 }
 
-/* ====== DARK INVOICE PAPER ====== */
+/* ====== DARK INVOICE PAPER (1:1 Reference) ====== */
 .invoice-paper-dark {
-    background: #0a0a0a;
-    color: #fff;
-    width: 720px;
+    background: #000000;
+    color: #ffffff;
+    width: 760px;
     max-width: 100%;
     font-family: 'Montserrat', sans-serif;
-    border-radius: 12px;
+    border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.9);
 }
-.dark-header-img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
-}
-.dark-header-placeholder {
-    width: 100%;
-    height: 200px;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: rgba(255,255,255,0.1);
-    letter-spacing: 8px;
-    font-weight: 900;
-}
-.dark-inv-body { padding: 36px 44px; }
-.dark-inv-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-.dark-inv-logo { width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.dark-inv-logo svg { width: 22px; height: 22px; fill: #fff; }
-.dark-inv-number { font-size: 0.85rem; font-weight: 700; color: #888; letter-spacing: 1px; }
-.dark-inv-title { font-size: 3.2rem; font-weight: 900; color: #fff; letter-spacing: -2px; line-height: 1; margin-bottom: 32px; }
-.dark-inv-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 32px; }
-.dark-inv-party-label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 6px; }
-.dark-inv-party-name { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 3px; }
-.dark-inv-party-info { font-size: 0.75rem; color: #777; line-height: 1.6; }
-.dark-inv-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-.dark-inv-table thead tr { border-bottom: 1px solid #333; }
-.dark-inv-table th { padding: 10px 0; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #555; text-align: left; }
+.dark-header-img { width: 100%; height: 240px; object-fit: cover; display: block; }
+.dark-header-placeholder { width: 100%; height: 240px; background: linear-gradient(135deg, #111, #222); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #333; font-weight: 900; }
+.dark-inv-body { padding: 48px; }
+.dark-inv-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.dark-inv-logo { width: 44px; height: 44px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 1.4rem; font-weight: 900; }
+.dark-inv-number { font-size: 0.9rem; font-weight: 700; color: #fff; margin-top: 10px; }
+.dark-inv-title { font-size: 4rem; font-weight: 800; color: #fff; letter-spacing: -2px; margin-bottom: 48px; line-height: 1; }
+.dark-inv-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 48px; }
+.dark-inv-party-label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 12px; }
+.dark-inv-party-name { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.dark-inv-party-info { font-size: 0.8rem; color: #888; line-height: 1.5; }
+.dark-inv-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+.dark-inv-table thead tr { border-bottom: 1px solid #222; }
+.dark-inv-table th { padding: 12px 0; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; text-align: left; }
 .dark-inv-table th:not(:first-child) { text-align: right; }
 .dark-inv-table tbody tr { border-bottom: 1px solid #1a1a1a; }
-.dark-inv-table tbody tr:last-child { border-bottom: none; }
-.dark-inv-table td { padding: 16px 0; font-size: 0.88rem; color: #ccc; vertical-align: top; }
+.dark-inv-table tbody tr:last-child { border-bottom: 1px solid #222; }
+.dark-inv-table td { padding: 20px 0; font-size: 0.9rem; color: #ccc; vertical-align: top; }
 .dark-inv-table td:not(:first-child) { text-align: right; }
 .dark-inv-table td strong { color: #fff; font-weight: 700; }
-.dark-inv-totals { display: flex; justify-content: flex-end; margin-bottom: 32px; }
-.dark-inv-totals-box { width: 260px; }
-.dark-inv-totals-line { display: flex; justify-content: space-between; font-size: 0.82rem; color: #888; margin-bottom: 8px; }
-.dark-inv-totals-div { border: none; border-top: 1px solid #333; margin: 12px 0; }
-.dark-inv-totals-grand { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; color: #fff; }
-.dark-inv-totals-grand span:last-child { font-size: 1.1rem; }
-.dark-inv-payment { margin-bottom: 24px; }
-.dark-inv-payment-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1.5px; color: #555; font-weight: 700; margin-bottom: 8px; }
-.dark-inv-payment-line { font-size: 0.82rem; color: #888; margin-bottom: 4px; }
-.dark-inv-payment-line b { color: #bbb; }
-.dark-inv-note { font-size: 0.78rem; color: #777; margin-bottom: 28px; }
-.dark-inv-note strong { color: #555; display: block; margin-bottom: 4px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
+.dark-inv-totals { display: flex; justify-content: flex-end; margin-bottom: 48px; }
+.dark-inv-totals-box { width: 280px; }
+.dark-inv-totals-line { display: flex; justify-content: space-between; font-size: 0.85rem; color: #888; margin-bottom: 12px; }
+.dark-inv-totals-div { border: none; border-top: 1px solid #333; margin: 16px 0; }
+.dark-inv-totals-grand { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 800; color: #fff; }
+.dark-inv-bottom { display: flex; flex-direction: column; gap: 32px; }
+.dark-inv-payment-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 12px; }
+.dark-inv-payment-line { font-size: 0.8rem; color: #888; margin-bottom: 6px; }
+.dark-inv-note-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 12px; }
+.dark-inv-note-text { font-size: 0.8rem; color: #888; line-height: 1.5; max-width: 400px; }
 
 /* theme toggle button */
 .btn-theme-toggle {
@@ -669,7 +650,7 @@ let invoices = [
 ];
 let editingId = null;
 let payType = 'Lunas';
-let invTheme = localStorage.getItem('invTheme') || 'light'; // 'light' or 'dark'
+let invTheme = localStorage.getItem('invTheme') || 'dark'; // 'light' or 'dark', default dark now
 let headerImgDataUrl = localStorage.getItem('invHeaderImg') || null;
 
 // Init header img preview on load
@@ -1001,10 +982,10 @@ function buildDarkInvoiceHTML(inv) {
     const ppnVal = inv.subtotal*(inv.ppn/100);
     const headerHtml = headerImgDataUrl
         ? `<img class="dark-header-img" src="${headerImgDataUrl}" alt="Header">`
-        : `<div class="dark-header-placeholder">HVM</div>`;
+        : `<div class="dark-header-placeholder">HVM DIGITAL</div>`;
     let itemsHtml = inv.items.map(item => {
         return `<tr>
-            <td><strong>${esc(item.name)}</strong></td>
+            <td style="color:#fff;">${esc(item.name)}</td>
             <td>${item.qty}</td>
             <td>${fmtRp(item.price)}</td>
             <td><strong>${fmtRp(item.qty*item.price)}</strong></td>
@@ -1016,9 +997,7 @@ function buildDarkInvoiceHTML(inv) {
         ${headerHtml}
         <div class="dark-inv-body">
             <div class="dark-inv-logo-row">
-                <div class="dark-inv-logo">
-                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                </div>
+                <div class="dark-inv-logo">H</div>
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
@@ -1026,18 +1005,18 @@ function buildDarkInvoiceHTML(inv) {
                 <div>
                     <div class="dark-inv-party-label">From</div>
                     <div class="dark-inv-party-name">HVM Digital</div>
-                    <div class="dark-inv-party-info">${esc(inv.email)}<br>${esc(inv.contact)}<br>${esc(inv.atasNama)}</div>
+                    <div class="dark-inv-party-info">${esc(inv.email)}<br>${esc(inv.contact)}</div>
                 </div>
                 <div>
                     <div class="dark-inv-party-label">Bill To</div>
                     <div class="dark-inv-party-name">${esc(inv.client)}</div>
-                    <div class="dark-inv-party-info">${esc(inv.bank)}<br>No. Rek: ${esc(inv.rekening)}</div>
+                    <div class="dark-inv-party-info">No. Rek: ${esc(inv.rekening)}<br>A/N: ${esc(inv.atasNama)}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="dark-inv-party-label">Issued</div>
-                    <div class="dark-inv-party-name" style="font-size:0.9rem;">${fmtDate(inv.date)}</div>
-                    <div class="dark-inv-party-label" style="margin-top:12px;">Due</div>
-                    <div class="dark-inv-party-name" style="font-size:0.9rem;">${fmtDate(due.toISOString().split('T')[0])}</div>
+                    <div class="dark-inv-party-name">${fmtDate(inv.date)}</div>
+                    <div class="dark-inv-party-label" style="margin-top:16px;">Due</div>
+                    <div class="dark-inv-party-name">${fmtDate(due.toISOString().split('T')[0])}</div>
                 </div>
             </div>
             <table class="dark-inv-table">
@@ -1057,14 +1036,16 @@ function buildDarkInvoiceHTML(inv) {
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
             </div>
-            <div class="dark-inv-payment">
-                <div class="dark-inv-payment-label">Payment Details</div>
-                <div class="dark-inv-payment-line">Payment Method: <b>Bank Transfer</b></div>
-                <div class="dark-inv-payment-line">Bank: <b>${esc(inv.bank)}</b></div>
-                <div class="dark-inv-payment-line">Account: <b>${esc(inv.rekening)}</b></div>
-                <div class="dark-inv-payment-line">A/N: <b>${esc(inv.atasNama)}</b></div>
+            <div class="dark-inv-bottom">
+                <div>
+                    <div class="dark-inv-payment-label">Payment Details</div>
+                    <div class="dark-inv-payment-line">Payment Method: Bank Transfer</div>
+                    <div class="dark-inv-payment-line">Bank: ${esc(inv.bank)}</div>
+                    <div class="dark-inv-payment-line">Account: ${esc(inv.rekening)}</div>
+                    <div class="dark-inv-payment-line">A/N: ${esc(inv.atasNama)}</div>
+                </div>
+                ${inv.note?`<div><div class="dark-inv-note-label">Notes</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
             </div>
-            ${inv.note?`<div class="dark-inv-note"><strong>Notes</strong>${esc(inv.note)}</div>`:''}
         </div>
     </div>`;
 }
