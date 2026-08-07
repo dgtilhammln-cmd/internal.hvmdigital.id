@@ -1029,7 +1029,7 @@ function buildInvoiceHTML(inv) {
                 </tr></thead>
                 <tbody>${itemsHtml}</tbody>
             </table>
-            <div class="dark-inv-totals">
+            <div class="dark-inv-totals" style="margin-bottom: 24px;">
                 <div class="dark-inv-totals-box">
                     <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(inv.subtotal)}</span></div>
                     ${inv.ppn?`<div class="dark-inv-totals-line"><span>Tax (${inv.ppn}%)</span><span>${fmtRp(ppnVal)}</span></div>`:''}
@@ -1037,7 +1037,7 @@ function buildInvoiceHTML(inv) {
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
             </div>
-            <div class="dark-inv-bottom" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:40px;">
+            <div class="dark-inv-bottom" style="display:flex;justify-content:space-between;align-items:flex-start;">
                 <!-- LEFT COLUMN: Payment, Notes -->
                 <div style="flex:1;padding-right:40px;">
                     <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
