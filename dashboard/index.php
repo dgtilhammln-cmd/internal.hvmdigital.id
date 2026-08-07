@@ -74,31 +74,25 @@ $sisa_target = max(0, $target_bulanan - $achieved);
 
 // 3 Level Target
 if ($achieved < 10000000) {
-    $level_label = 'MALES';
-    $level_emoji = '😴';
-    $level_color = '#ff5a5a';
-    $level_glow  = 'rgba(255,90,90,0.4)';
-    $level_bg    = 'rgba(255,90,90,0.08)';
-    $level_icon  = 'fa-moon';
-    $level_msg   = 'PEMALAS!';
+    $level_label = 'BELOW TARGET';
+    $level_color = '#ff9f43';
+    $level_bg    = 'rgba(255,159,67,0.08)';
+    $level_icon  = 'fa-arrow-down';
+    $level_msg   = 'Membutuhkan lebih banyak usaha untuk mencapai target bulan ini.';
     $tier        = 'males';
 } elseif ($achieved < 40000000) {
-    $level_label = 'BIASA AJA';
-    $level_emoji = '😐';
-    $level_color = '#f5c518';
-    $level_glow  = 'rgba(245,197,24,0.4)';
-    $level_bg    = 'rgba(245,197,24,0.08)';
-    $level_icon  = 'fa-bolt';
-    $level_msg   = 'Mulai panas. Tapi kalau cuma segini mah kurang. Gas terus!';
+    $level_label = 'ON PROGRESS';
+    $level_color = '#60a5fa';
+    $level_bg    = 'rgba(96,165,250,0.08)';
+    $level_icon  = 'fa-chart-line';
+    $level_msg   = 'Sedang dalam proses (On Track). Pertahankan kinerjanya.';
     $tier        = 'biasa';
 } else {
-    $level_label = 'GACOR';
-    $level_emoji = '🔥';
+    $level_label = 'TARGET REACHED';
     $level_color = '#a1ff5a';
-    $level_glow  = 'rgba(161,255,90,0.45)';
     $level_bg    = 'rgba(161,255,90,0.08)';
-    $level_icon  = 'fa-fire';
-    $level_msg   = 'Ilham Kamu Berbahaya🔥';
+    $level_icon  = 'fa-check-circle';
+    $level_msg   = 'Luar biasa. Target bulanan berhasil dicapai dengan baik.';
     $tier        = 'gacor';
 }
 
@@ -283,9 +277,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
     margin-bottom: 15px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 0 30px var(--tier-glow, rgba(161,255,90,0.15)),
-                0 10px 40px rgba(0,0,0,0.3);
-    animation: fadeIn 0.9s ease;
     transition: box-shadow 0.4s ease;
 }
 .target-premium-card::before {
@@ -311,7 +302,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
 /* Amount */
 .tp-amount-row { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
-.tp-achieved { font-size:1.8rem; font-weight:900; color:var(--tier-color, var(--neon-main)); line-height:1; text-shadow:0 0 20px var(--tier-glow); }
+.tp-achieved { font-size:1.8rem; font-weight:900; color:var(--tier-color, var(--neon-main)); line-height:1; }
 .tp-separator { font-size:1.2rem; font-weight:300; color:#444; }
 .tp-goal { font-size:1.1rem; font-weight:700; color:#666; }
 .tp-unit { font-size:0.8rem; font-weight:600; margin-left:2px; }
@@ -346,7 +337,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
     width: 22px; height: 22px; border-radius: 50%;
     background: #fff;
     border: 3px solid var(--tier-color, var(--neon-main));
-    box-shadow: 0 0 12px var(--tier-glow);
     z-index: 2;
     display: flex; align-items: center; justify-content: center;
 }
@@ -368,9 +358,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 .ms-dot.ms-start { background:#555; border-color:#777; }
 .ms-dot.ms-end   { width:13px; height:13px; border-color:#a1ff5a; }
 .ms-dot.ms-done  { background:var(--neon-main); border-color:var(--neon-main); box-shadow:0 0 8px var(--neon-main); }
-.ms-dot.ms-red-empty   { border-color:#ff5a5a; }
-.ms-dot.ms-yellow-empty { border-color:#f5c518; }
-.ms-dot.ms-gacor { background:#a1ff5a; border-color:#a1ff5a; box-shadow:0 0 15px rgba(161,255,90,0.8); }
+.ms-dot.ms-red-empty   { border-color:#ff9f43; }
+.ms-dot.ms-yellow-empty { border-color:#60a5fa; }
+.ms-dot.ms-gacor { background:#a1ff5a; border-color:#a1ff5a; box-shadow:0 0 15px rgba(161,255,90,0.4); }
 
 .ms-info { display:flex; flex-direction:column; align-items:center; }
 .ms-label { font-size:0.68rem; color:#888; font-weight:700; }
@@ -670,12 +660,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             <!-- ══ MONTHLY TARGET PREMIUM CARD ══ -->
             <div class="target-premium-card tier-<?php echo $tier; ?>"
-                 style="--tier-color:<?php echo $level_color;?>;--tier-glow:<?php echo $level_glow;?>;--tier-bg:<?php echo $level_bg;?>;">
+                 style="--tier-color:<?php echo $level_color;?>;">
 
                 <div class="tp-header">
                     <div class="tp-label">MONTHLY TARGET</div>
-                    <div class="tp-badge" style="background:<?php echo $level_bg;?>;border-color:<?php echo $level_color;?>;color:<?php echo $level_color;?>;">
-                        <i class="fas <?php echo $level_icon;?>"></i>&nbsp;<?php echo $level_emoji; ?> <?php echo $level_label;?>
+                    <div class="tp-badge" style="background:<?php echo $level_bg;?>; color:<?php echo $level_color;?>; border-color:<?php echo $level_color;?>44;">
+                        <i class="fas <?php echo $level_icon; ?>"></i>
+                        <span><?php echo $level_label; ?></span>
                     </div>
                 </div>
 
@@ -709,23 +700,22 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             <div class="ms-dot <?php echo ($achieved>=10000000)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
                             <div class="ms-info">
                                 <span class="ms-label">10jt</span>
-                                <span class="ms-tag" style="color:#ff5a5a;">Males</span>
+                                <span class="ms-tag" style="color:#ff9f43;">Target 1</span>
                             </div>
                         </div>
                         <div class="tp-milestone" style="left:50%">
                             <div class="ms-dot <?php echo ($achieved>=20000000)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
                             <div class="ms-info">
                                 <span class="ms-label">20jt</span>
-                                <span class="ms-tag" style="color:#f5c518;">Biasa</span>
+                                <span class="ms-tag" style="color:#60a5fa;">Target 2</span>
                             </div>
                         </div>
                         <div class="tp-milestone" style="left:100%">
                             <div class="ms-dot ms-end <?php echo ($achieved>=40000000)?'ms-done ms-gacor':''; ?>">
-                                <?php if($achieved>=40000000): ?><i class="fas fa-fire" style="font-size:0.55rem;color:#000;"></i><?php endif; ?>
                             </div>
                             <div class="ms-info">
                                 <span class="ms-label">40jt</span>
-                                <span class="ms-tag" style="color:#a1ff5a;">GACOR</span>
+                                <span class="ms-tag" style="color:#a1ff5a;">Reached</span>
                             </div>
                         </div>
                     </div>
