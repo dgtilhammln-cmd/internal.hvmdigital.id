@@ -627,10 +627,12 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             </div>
         </div>
 
-        <div class="modal-footer">
-            <div class="modal-footer-left">
+        <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
                 <button class="btn-ghost" onclick="closeModal()"><i class="fas fa-times"></i> Batal</button>
                 <button class="btn-ghost" onclick="resetForm()"><i class="fas fa-undo"></i> Reset</button>
+                <div style="width:1px;height:24px;background:rgba(255,255,255,0.08);margin:0 4px;"></div>
+                <button id="themeToggleBtnModal" onclick="toggleInvTheme()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#ccc;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s;" title="Ganti tema invoice"><i class="fas fa-moon"></i> <span id="themeToggleLabelModal">Dark Theme</span></button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-preview" onclick="previewInvoice()"><i class="fas fa-eye"></i> Preview</button>
@@ -685,12 +687,16 @@ function toggleInvTheme() {
 }
 function updateThemeBtn() {
     const btn = document.getElementById('themeToggleBtn');
+    const btnModal = document.getElementById('themeToggleBtnModal');
+    const labelModal = document.getElementById('themeToggleLabelModal');
     if (invTheme === 'dark') {
-        btn.innerHTML = '<i class="fas fa-sun"></i> Light Theme';
-        btn.classList.add('dark-active');
+        if(btn){ btn.innerHTML = '<i class="fas fa-sun"></i> Light Theme'; btn.classList.add('dark-active'); }
+        if(btnModal){ btnModal.style.borderColor='rgba(161,255,90,0.3)'; btnModal.style.color='var(--neon-main)'; }
+        if(labelModal){ labelModal.textContent = 'Light Theme'; btnModal.querySelector('i').className='fas fa-sun'; }
     } else {
-        btn.innerHTML = '<i class="fas fa-moon"></i> Dark Theme';
-        btn.classList.remove('dark-active');
+        if(btn){ btn.innerHTML = '<i class="fas fa-moon"></i> Dark Theme'; btn.classList.remove('dark-active'); }
+        if(btnModal){ btnModal.style.borderColor='rgba(255,255,255,0.12)'; btnModal.style.color='#ccc'; }
+        if(labelModal){ labelModal.textContent = 'Dark Theme'; btnModal.querySelector('i').className='fas fa-moon'; }
     }
 }
 function handleHeaderImg(input) {
