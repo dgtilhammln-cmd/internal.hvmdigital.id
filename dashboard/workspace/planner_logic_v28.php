@@ -53,10 +53,15 @@ if ($q_clients_deadlines) {
             $endDate = $svc['end'];
             // Cek apakah tanggal berakhir ada di rentang kalender saat ini
             if ($endDate >= $start_q && $endDate <= $end_q) {
+                $type = $svc['type'] ?? 'Layanan';
+                $notes = htmlspecialchars($svc['notes'] ?? '-', ENT_QUOTES);
+                // Hapus newline agar tidak merusak JS function onClick
+                $notes = str_replace(["\r", "\n"], ' ', $notes);
+                
                 $events[$endDate][] = [
-                    'title'      => 'DEADLINE: ' . $cl['company_name'] . ' (' . ($svc['type'] ?? 'Layanan') . ')',
+                    'title'      => 'Exp: ' . $type . ' - ' . $cl['company_name'],
                     'color'      => 'red',
-                    'detail'     => "Layanan " . ($svc['type'] ?? 'Layanan') . " untuk klien " . $cl['company_name'] . " berakhir hari ini.\nHarga: " . ($svc['price'] ?? '-') . "\nCatatan: " . ($svc['notes'] ?? '-'),
+                    'detail'     => "Layanan $type untuk klien " . $cl['company_name'] . " berakhir hari ini.<br>Harga: " . ($svc['price'] ?? '-') . "<br>Catatan: " . $notes,
                     'time_start' => '00:00'
                 ];
             }
@@ -89,7 +94,8 @@ if($mode == 'month') {
         if(isset($events[$currentDate])) {
             foreach($events[$currentDate] as $ev) {
                 $color = $ev['color'] ?? 'blue';
-                $title = (strlen($ev['title']) > 15) ? substr($ev['title'],0,12).'..' : $ev['title'];
+                // Ubah limit agar tidak gampang terpotong "PT.."
+                $title = (strlen($ev['title']) > 28) ? substr($ev['title'],0,25).'..' : $ev['title'];
                 
                 // Encode data for JS
                 $safeTitle = htmlspecialchars($ev['title'], ENT_QUOTES);
