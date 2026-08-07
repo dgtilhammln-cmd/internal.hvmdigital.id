@@ -226,19 +226,19 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
         </div>
         <div class="stat-card s-hot <?= $status_filter=='Hot'?'active':'' ?>" onclick="filterStatus('Hot')">
             <div class="val"><?= $counts['Hot'] ?></div>
-            <div class="lbl">🔥 Hot</div>
+            <div class="lbl"><i class="fas fa-fire"></i> Hot</div>
         </div>
         <div class="stat-card s-warm <?= $status_filter=='Warm'?'active':'' ?>" onclick="filterStatus('Warm')">
             <div class="val"><?= $counts['Warm'] ?></div>
-            <div class="lbl">☀️ Warm</div>
+            <div class="lbl"><i class="fas fa-sun"></i> Warm</div>
         </div>
         <div class="stat-card s-cold <?= $status_filter=='Cold'?'active':'' ?>" onclick="filterStatus('Cold')">
             <div class="val"><?= $counts['Cold'] ?></div>
-            <div class="lbl">🧊 Cold</div>
+            <div class="lbl"><i class="fas fa-snowflake"></i> Cold</div>
         </div>
         <div class="stat-card s-closed <?= $status_filter=='Closed'?'active':'' ?>" onclick="filterStatus('Closed')">
             <div class="val"><?= $counts['Closed'] ?></div>
-            <div class="lbl">✅ Closed</div>
+            <div class="lbl"><i class="fas fa-check-circle"></i> Closed</div>
         </div>
     </div>
 
@@ -337,10 +337,10 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                 <div class="form-grp">
                     <label>Status Pipeline</label>
                     <select id="f_status">
-                        <option value="Cold">🧊 Cold</option>
-                        <option value="Warm">☀️ Warm</option>
-                        <option value="Hot">🔥 Hot</option>
-                        <option value="Closed">✅ Closed</option>
+                        <option value="Cold"><i class="fas fa-snowflake"></i> Cold</option>
+                        <option value="Warm"><i class="fas fa-sun"></i> Warm</option>
+                        <option value="Hot"><i class="fas fa-fire"></i> Hot</option>
+                        <option value="Closed"><i class="fas fa-check-circle"></i> Closed</option>
                     </select>
                 </div>
             </div>
