@@ -29,6 +29,11 @@ $current_page = $_SERVER['REQUEST_URI'];
             <span class="nav-text">Clients</span>
         </a>
 
+        <a href="/dashboard/prospects/" class="nav-item <?= (strpos($current_page, 'prospects')) ? 'active' : '' ?>" title="Prospects">
+            <i class="fas fa-binoculars"></i>
+            <span class="nav-text">Prospects</span>
+        </a>
+
         <a href="/dashboard/payment/" class="nav-item <?= (strpos($current_page, 'payment')) ? 'active' : '' ?>" title="Payment">
             <i class="fas fa-wallet"></i>
             <span class="nav-text">Payment</span>

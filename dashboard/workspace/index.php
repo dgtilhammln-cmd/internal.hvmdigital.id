@@ -14,12 +14,38 @@ $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'
 
 // EVENT SAVE
 if(isset($_POST['save_event'])){
-    $title = mysqli_real_escape_string($conn, $_POST['event_title']);
-    $desc = mysqli_real_escape_string($conn, $_POST['event_desc']);
-    $date = $_POST['event_date'];
-    $start = $_POST['time_start'];
-    $color = $_POST['event_color'];
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color) VALUES ('$title', '$desc', '$date', '$start', '$color')");
+    // Auto-add columns if missing
+    $cols = [
+        'meeting_type'   => "VARCHAR(100) DEFAULT NULL",
+        'meeting_mode'   => "VARCHAR(20) DEFAULT NULL",
+        'target_type'    => "VARCHAR(20) DEFAULT NULL",
+        'target_name'    => "VARCHAR(255) DEFAULT NULL",
+        'location'       => "TEXT DEFAULT NULL"
+    ];
+    foreach($cols as $col => $def){
+        $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
+        if(mysqli_num_rows($chk) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `$col` $def");
+    }
+
+    $title       = mysqli_real_escape_string($conn, $_POST['event_title'] ?? '');
+    $date        = $_POST['event_date'] ?? date('Y-m-d');
+    $start       = $_POST['time_start'] ?? '00:00';
+    $color       = mysqli_real_escape_string($conn, $_POST['event_color'] ?? 'blue');
+    $meet_type   = mysqli_real_escape_string($conn, $_POST['meeting_type'] ?? '');
+    $meet_mode   = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
+    $target_type = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
+    $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
+    $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+
+    // Auto-generate label: e.g. "Meeting Prospek PT XX"
+    if($meet_type && $target_name) {
+        $title = "Meeting $meet_type $target_name";
+    }
+
+    $desc = "[$meet_mode] $title";
+    if($location) $desc .= " | Lokasi: $location";
+
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location')");
     header("Location: index.php"); exit;
 }
 ?>
@@ -35,6 +61,32 @@ if(isset($_POST['save_event'])){
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+    /* Meeting Modal Chips */
+    .meet-type-chip {
+        display:inline-flex; align-items:center; padding:6px 14px;
+        border-radius:20px; font-size:0.75rem; font-weight:700;
+        background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12);
+        color:#888; cursor:pointer; transition:all 0.2s; user-select:none;
+    }
+    input[type=radio]:checked + .meet-type-chip {
+        background:rgba(161,255,90,0.12); border-color:rgba(161,255,90,0.4); color:#a1ff5a;
+    }
+    .meet-mode-chip {
+        display:inline-flex; align-items:center; gap:6px; padding:8px 18px;
+        border-radius:10px; font-size:0.8rem; font-weight:700;
+        background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+        color:#888; cursor:pointer; transition:all 0.2s;
+    }
+    .meet-mode-chip.active { background:rgba(78,253,196,0.1); border-color:rgba(78,253,196,0.3); color:#4efdc4; }
+    .target-type-btn {
+        padding:7px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);
+        background:rgba(255,255,255,0.04); color:#888; font-family:'Montserrat',sans-serif;
+        font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;
+        display:flex; align-items:center; gap:6px;
+    }
+    .target-type-btn.active { background:rgba(161,255,90,0.1); border-color:rgba(161,255,90,0.3); color:#a1ff5a; }
+    </style>
 </head>
 <body class="custom-scrollbar-page">
     <div class="cyber-overlay"></div>
@@ -183,35 +235,96 @@ if(isset($_POST['save_event'])){
         </div>
     </div>
 
-    <!-- MODAL ADD EVENT -->
+    <!-- MODAL ADD EVENT / MEETING -->
     <div class="modal-overlay" id="eventModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:580px;">
             <div class="modal-top-actions">
                 <button class="btn-close-x" onclick="document.getElementById('eventModal').classList.remove('active')">&times;</button>
             </div>
-            <h3 style="color:#fff; margin-bottom:20px; font-weight:800; font-size:1.5rem;">Add Event</h3>
+            <h3 style="color:#fff; margin-bottom:20px; font-weight:800; font-size:1.3rem;"><i class="fas fa-calendar-plus" style="color:#a1ff5a;margin-right:8px;"></i>Buat Meeting</h3>
             
-            <form method="POST">
+            <form method="POST" id="eventForm">
                 <input type="hidden" name="save_event" value="1">
-                <div class="form-group"><label>Event Title</label><input type="text" name="event_title" class="form-input" required></div>
-                
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                    <div class="form-group"><label>Date</label><input type="date" name="event_date" id="formDate" class="form-input" required></div>
-                    <div class="form-group"><label>Time</label><input type="time" name="time_start" class="form-input"></div>
+
+                <!-- KATEGORI MEETING -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Jenis Meeting</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <?php foreach(['Prospek','Maintenance','After Sales','Internal','Presentasi'] as $mt): ?>
+                        <label style="cursor:pointer;">
+                            <input type="radio" name="meeting_type" value="<?= $mt ?>" style="display:none;" onchange="updateMeetingTitle()">
+                            <span class="meet-type-chip"><?= $mt ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-                
-                <div class="form-group"><label>Description</label><textarea name="event_desc" class="form-input" rows="3" style="resize:none;"></textarea></div>
-                
-                <div class="form-group"><label>Color Label</label>
-                    <select name="event_color" class="form-input" style="background:#000;">
-                        <option value="blue">Cyan (Work)</option>
-                        <option value="purple">Purple (Urgent)</option>
-                        <option value="green">Neon Green (Meeting)</option>
-                        <option value="red">Red (Deadline)</option>
+
+                <!-- MODE: ONLINE / OFFLINE -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Mode Meeting</label>
+                    <div style="display:flex; gap:8px;">
+                        <label style="cursor:pointer;">
+                            <input type="radio" name="meeting_mode" value="Online" checked style="display:none;" onchange="toggleLocationField(this.value)">
+                            <span class="meet-mode-chip active" id="chip-online"><i class="fas fa-video"></i> Online</span>
+                        </label>
+                        <label style="cursor:pointer;">
+                            <input type="radio" name="meeting_mode" value="Offline" style="display:none;" onchange="toggleLocationField(this.value)">
+                            <span class="meet-mode-chip" id="chip-offline"><i class="fas fa-map-marker-alt"></i> Offline</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- TARGET: CLIENT / PROSPECT -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Perusahaan</label>
+                    <div style="display:flex; gap:8px; margin-bottom:8px;">
+                        <button type="button" class="target-type-btn active" id="btn-client" onclick="switchTargetType('Client')"><i class="fas fa-users"></i> Clients</button>
+                        <button type="button" class="target-type-btn" id="btn-prospect" onclick="switchTargetType('Prospect')"><i class="fas fa-binoculars"></i> Prospects</button>
+                    </div>
+                    <input type="hidden" name="target_type" id="target_type_val" value="Client">
+                    <select name="target_name" id="companySelect" class="form-input" style="background:#111;" onchange="updateMeetingTitle()">
+                        <option value="">-- Pilih Perusahaan --</option>
+                        <?php
+                        $qc = mysqli_query($conn, "SELECT company_name FROM clients ORDER BY company_name ASC");
+                        while($r = mysqli_fetch_assoc($qc)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Client'>".htmlspecialchars($r['company_name'])."</option>";
+                        // Prospects
+                        $qp_chk = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
+                        if(mysqli_num_rows($qp_chk) > 0){
+                            $qp = mysqli_query($conn, "SELECT company_name FROM prospects ORDER BY company_name ASC");
+                            while($r = mysqli_fetch_assoc($qp)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Prospect' class='opt-prospect' style='display:none'>".htmlspecialchars($r['company_name'])."</option>";
+                        }
+                        ?>
                     </select>
                 </div>
-                
-                <button type="submit" class="btn-save-center"><i class="fas fa-check"></i></button>
+
+                <!-- TANGGAL & JAM -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Tanggal</label>
+                        <input type="date" name="event_date" id="formDate" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Jam</label>
+                        <input type="time" name="time_start" class="form-input">
+                    </div>
+                </div>
+
+                <!-- LOKASI -->
+                <div class="form-group" id="locationField" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;" id="locationLabel">Link Meeting (Google Meet / Zoom)</label>
+                    <input type="text" name="location" class="form-input" id="locationInput" placeholder="https://meet.google.com/...">
+                </div>
+
+                <!-- PREVIEW JUDUL -->
+                <div id="titlePreview" style="display:none; background:rgba(161,255,90,0.06); border:1px solid rgba(161,255,90,0.2); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:0.85rem; color:#a1ff5a;"></div>
+
+                <!-- COLOR (hidden, auto based on type) -->
+                <input type="hidden" name="event_color" value="green">
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px;">
+                    <button type="button" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;cursor:pointer;" onclick="document.getElementById('eventModal').classList.remove('active')">Batal</button>
+                    <button type="submit" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:9px 22px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-check" style="margin-right:6px;"></i>Simpan Meeting</button>
+                </div>
             </form>
         </div>
     </div>
@@ -298,6 +411,47 @@ if(isset($_POST['save_event'])){
             document.getElementById('eventModal').classList.add('active');
             if(dateStr) document.getElementById('formDate').value = dateStr;
             else document.getElementById('formDate').value = currentDate.toISOString().split('T')[0];
+        }
+
+        // Meeting Modal JS
+        function toggleLocationField(mode) {
+            document.getElementById('chip-online').classList.toggle('active', mode === 'Online');
+            document.getElementById('chip-offline').classList.toggle('active', mode === 'Offline');
+            const lbl = document.getElementById('locationLabel');
+            const inp = document.getElementById('locationInput');
+            if(mode === 'Offline') {
+                lbl.textContent = 'Lokasi / Alamat Meeting';
+                inp.placeholder = 'Jl. Contoh No. 1, Kota...';
+            } else {
+                lbl.textContent = 'Link Meeting (Google Meet / Zoom)';
+                inp.placeholder = 'https://meet.google.com/...';
+            }
+        }
+
+        function switchTargetType(type) {
+            document.getElementById('target_type_val').value = type;
+            document.getElementById('btn-client').classList.toggle('active', type === 'Client');
+            document.getElementById('btn-prospect').classList.toggle('active', type === 'Prospect');
+            const sel = document.getElementById('companySelect');
+            Array.from(sel.options).forEach(opt => {
+                if(!opt.value) { opt.style.display = ''; return; }
+                const optType = opt.dataset.type;
+                opt.style.display = (optType === type) ? '' : 'none';
+            });
+            sel.value = '';
+            updateMeetingTitle();
+        }
+
+        function updateMeetingTitle() {
+            const typeEl = document.querySelector('input[name=meeting_type]:checked');
+            const company = document.getElementById('companySelect').value;
+            const preview = document.getElementById('titlePreview');
+            if(typeEl && company) {
+                preview.style.display = 'block';
+                preview.innerHTML = '<i class="fas fa-eye" style="margin-right:6px;"></i>Judul: <strong>Meeting ' + typeEl.value + ' ' + company + '</strong>';
+            } else {
+                preview.style.display = 'none';
+            }
         }
 
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
