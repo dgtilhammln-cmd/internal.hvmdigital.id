@@ -208,8 +208,10 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 /* FOOTER BTNS */
 .btn-ghost { background:transparent;border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s; }
 .btn-ghost:hover { border-color:rgba(255,255,255,0.25);color:#fff; }
-.btn-preview { background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.3);color:var(--neon-purple);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px; }
-.btn-save-inv { background:rgba(78,253,196,0.1);border:1px solid rgba(78,253,196,0.3);color:var(--neon-sec);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px; }
+.btn-preview { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#bbb;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s; }
+.btn-preview:hover { border-color:rgba(255,255,255,0.2);color:#fff; }
+.btn-save-inv { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#bbb;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s; }
+.btn-save-inv:hover { border-color:rgba(255,255,255,0.2);color:#fff; }
 .btn-print-inv { background:var(--grad-main);border:none;color:#000;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px; }
 
 /* ===================== PREVIEW MODAL ===================== */
