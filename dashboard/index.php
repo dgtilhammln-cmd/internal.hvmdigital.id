@@ -721,7 +721,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         </span>
                     </div>
                 </div>
-                </div>
             </div>
 
             <!-- ══ PLANNER / CALENDAR ══ -->
