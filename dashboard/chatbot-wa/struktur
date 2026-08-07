@@ -1,0 +1,14 @@
+### Struktur Folder Baru (`chatbot-WA`)
+
+Mari kita buat struktur yang sangat rapi di dalam `public_html/chatbot-WA/`:
+
+```text
+/public_html/chatbot-WA/
+├── config/
+│   └── database.php      (Koneksi ke MySQL)
+├── core/
+│   ├── ai_brain.php      (Logic manggil OpenAI/Gemini)
+│   ├── memory.php        (Simpan/Ambil histori chat di MySQL)
+│   └── system_prompt.php (Isi kepribadian bot)
+├── webhook.php           (Pintu masuk pesan dari WA)
+└── send_message.php      (Fungsi untuk membalas pesan)

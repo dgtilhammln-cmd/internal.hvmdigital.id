@@ -1,0 +1,11 @@
+uploads/
+*.log
+*.sql
+.htpasswd
+nebula_config.php
+dashboard/chatbot-wa/webhook.php
+dashboard/chatbot-wa/webhook_wa.php
+dashboard/workspace(jadi)/ai-handler.php
+dashboard/workspace/ai-handler(1).php
+dashboard/workspace/ai-handler.php
+dashboard/workspace/nebula_config.json

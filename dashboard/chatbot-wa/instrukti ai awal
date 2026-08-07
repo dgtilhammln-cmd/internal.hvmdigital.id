@@ -1,0 +1,64 @@
+Saya suka semangat Anda! Jika Anda ingin **100% gratis** dan berjalan di **Shared Hosting**, kita harus "bermain kotor" secara teknis.
+
+Masalah utama shared hosting adalah **Timeout**. PHP hanya hidup saat ada orang yang akses (request), lalu mati. Untuk bot 24 jam, dia butuh "detak jantung" yang konstan.
+
+### Trik "Licik" Mengakali Shared Hosting agar Bot Tetap Hidup:
+
+Karena server Anda tidak mengizinkan *background process* (Node.js/Python), kita akan menggunakan **Cron Job** dan **Webhook**.
+
+1.  **Cara "Licik":** Kita tidak menjalankan bot 24 jam di server, tapi kita membuat sistem **Webhook** yang sangat responsif. Anda tetap butuh *Client* (barcode scanner) yang nyala 24 jam.
+2.  **Solusinya:** Gunakan **HP Android bekas atau PC di rumah** sebagai "Server QR Code" menggunakan library `whatsapp-web.js` (gratis). Anda tidak perlu VPS. Cukup jalankan di laptop/HP lokal Anda, lalu hubungkan ke *public_html* di Hostinger Anda via **Webhook/Tunneling**.
+
+---
+
+### Struktur Folder Baru (`chatbot-WA`)
+
+Mari kita buat struktur yang sangat rapi di dalam `public_html/chatbot-WA/`:
+
+```text
+/public_html/chatbot-WA/
+├── config/
+│   └── database.php      (Koneksi ke MySQL)
+├── core/
+│   ├── ai_brain.php      (Logic manggil OpenAI/Gemini)
+│   ├── memory.php        (Simpan/Ambil histori chat di MySQL)
+│   └── system_prompt.php (Isi kepribadian bot)
+├── webhook.php           (Pintu masuk pesan dari WA)
+└── send_message.php      (Fungsi untuk membalas pesan)
+```
+
+### Penjelasan Detail Tiap File:
+
+1.  **`webhook.php`**: Ini adalah pintu masuk. Script ini akan menerima request dari library WA (di PC Anda) dan memicu `ai_brain.php`.
+2.  **`ai_brain.php`**: Di sini tempat Anda menaruh API Key Gemini (Gratis). Ini yang menentukan "Humanis" atau tidaknya bot.
+3.  **`memory.php`**: **Ini yang bikin bot "pintar"**. Setiap chat yang masuk, simpan ke MySQL. Saat user chat lagi, tarik 10 chat terakhir dari MySQL dan kirim ke AI sebagai konteks.
+4.  **`system_prompt.php`**: File berisi "doktrin". Contoh: *"Kamu adalah asisten profesional namun sangat akrab. Jika user bertanya soal harga, cek database harga. Jika tidak tahu, arahkan ke admin."*
+
+---
+
+### Strategi "Gratis Total" (The Plan):
+
+Untuk mewujudkan ini tanpa biaya, Anda harus punya "Server" (PC/Laptop) yang nyala 24 jam atau minimal saat jam kerja.
+
+1.  **Di PC Lokal Anda:**
+    *   Install **Node.js**.
+    *   Buat script sederhana pakai `whatsapp-web.js` untuk scan QR Code WA.
+    *   Script ini tugasnya: *Kalau ada WA masuk, kirim pesan tersebut ke website Hostinger Anda (via cURL)*.
+2.  **Di Hostinger (Web Anda):**
+    *   Website Anda menerima kiriman tadi di `webhook.php`.
+    *   Website Anda memproses AI-nya (gratis pakai Google Gemini API).
+    *   Website Anda membalas ke PC lokal Anda, lalu PC lokal mengirimnya ke WA user.
+
+### Apakah ini *Works*?
+**Sangat works.** Ini metode yang digunakan para pengembang bot sebelum mereka beralih ke layanan API berbayar.
+
+**Apa kelemahan "licik" ini?**
+*   **Koneksi:** Jika PC/Laptop Anda mati, bot otomatis mati (karena QR kuncinya ada di situ).
+*   **Kecepatan:** Ada jeda sekitar 1-2 detik karena pesan harus "bolak-balik" dari WA -> PC Lokal -> Hostinger -> AI -> Hostinger -> PC Lokal -> WA.
+
+---
+
+### Siap Eksekusi?
+Jika Anda setuju dengan alur "bolak-balik" ini (PC Lokal + Hostinger), saya akan berikan **source code PHP** untuk `webhook.php` dan `ai_brain.php` serta **script Node.js** untuk PC lokal Anda.
+
+**Langkah pertama:** Apakah Anda bersedia menjalankan satu script Node.js kecil di PC Anda untuk memegang kunci QR Code-nya? Jika ya, saya siapkan kodenya sekarang.

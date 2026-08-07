@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
+
+:root {
+    --bg-color: #050505;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --neon-1: #a1ff5a;
+    --neon-2: #4efdc4;
+    --text-white: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+
+body { background-color: var(--bg-color); color: var(--text-white); min-height: 100vh; display: flex; }
+
+/* Layout Grid Utama */
+.wrapper { display: flex; width: 100%; }
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    background: rgba(0,0,0,0.9);
+    border-right: 1px solid var(--glass-border);
+    padding: 30px 20px;
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 100;
+}
+.main-content {
+    margin-left: 260px;
+    padding: 40px;
+    width: calc(100% - 260px);
+    min-height: 100vh;
+}
+
+/* Komponen Global */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+h1, h2, h3 {
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.btn-neon {
+    display: inline-block;
+    padding: 10px 25px;
+    background: transparent;
+    border: 1px solid var(--neon-1);
+    color: var(--neon-1);
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.3s;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-neon:hover {
+    background: var(--neon-1);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-1);
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: #fff;
+    margin-bottom: 15px;
+    font-family: 'Montserrat', sans-serif;
+}
+input:focus { border-color: var(--neon-2); outline: none; }
+
+/* Menu Link Styles */
+.sidebar a {
+    display: block;
+    padding: 12px 15px;
+    color: #888;
+    text-decoration: none;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    transition: 0.3s;
+    font-weight: 500;
+}
+.sidebar a:hover, .sidebar a.active {
+    background: linear-gradient(90deg, rgba(161, 255, 90, 0.1), transparent);
+    color: var(--neon-1);
+    border-left: 3px solid var(--neon-1);
+}
+/* Efek Blur & Disable Klik */
+.restricted-blur {
+    filter: blur(8px);
+    pointer-events: none; /* Tidak bisa diklik */
+    user-select: none;    /* Tidak bisa diblok teksnya */
+    opacity: 0.6;
+    background: #fff;     /* Agar blur terlihat */
+    cursor: not-allowed;
+}

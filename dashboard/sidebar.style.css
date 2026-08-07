@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+
+:root {
+    --bg-glass: rgba(0, 0, 0, 0.85); 
+    --border-glass: rgba(255, 255, 255, 0.12);
+    --primary-green: #00ff88;
+    --text-gray: #a0a0a0;
+    --active-bg: rgba(255, 255, 255, 0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background-color: #000;
+}
+
+.sidebar {
+    position: fixed;
+    z-index: 9999;
+    background: var(--bg-glass);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--border-glass);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+/* --- TAMPILAN DESKTOP (SIDEBAR) --- */
+@media (min-width: 769px) {
+    .sidebar {
+        left: 20px;
+        top: 20px;
+        bottom: 20px;
+        width: 85px;
+        border-radius: 30px;
+        display: flex;
+        flex-direction: column;
+        padding: 25px 0;
+    }
+
+    .sidebar:hover { width: 250px; }
+
+    .logo-container {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+
+    .logo-min { height: 35px; width: auto; transition: 0.3s; }
+    .logo-full { display: none; height: 38px; width: auto; }
+    .sidebar:hover .logo-min { display: none; }
+    .sidebar:hover .logo-full { display: block; }
+
+    .nav-list { list-style: none; width: 100%; flex-grow: 1; overflow: hidden; }
+    
+    .nav-item {
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        height: 55px;
+        margin: 5px 15px;
+        border-radius: 18px;
+        color: var(--text-gray);
+        transition: 0.3s;
+        white-space: nowrap;
+    }
+
+    .nav-item i {
+        min-width: 55px; 
+        display: flex;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .nav-text { opacity: 0; font-weight: 500; font-size: 14px; transition: 0.3s; }
+    .sidebar:hover .nav-text { opacity: 1; }
+    .nav-item:hover, .nav-item.active { background: var(--active-bg); color: #fff; }
+    .nav-item.active i { color: var(--primary-green); }
+    .logout-item { margin-top: auto; color: #ff4d4d !important; }
+}
+
+/* --- REVISI TAMPILAN MOBILE (BOTTOM NAVIGATION) --- */
+@media (max-width: 768px) {
+    .sidebar {
+        bottom: 15px; /* Margin bawah dari layar */
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 40px); /* Margin kiri-kanan simetris */
+        max-width: 450px; /* Batas lebar maksimal agar tidak terlalu panjang di tablet */
+        height: 65px; /* Tinggi proporsional */
+        border-radius: 25px; /* Efek pill shape */
+        display: flex;
+        flex-direction: row;
+        justify-content: space-evenly; /* Distribusi ikon sangat rapi */
+        align-items: center;
+        padding: 0 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* Logo & Teks disembunyikan untuk fokus pada navigasi utama */
+    .logo-container, .nav-text { display: none; }
+
+    .nav-list {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .nav-item {
+        text-decoration: none;
+        color: var(--text-gray);
+        font-size: 1.3rem; /* Ukuran ikon pas untuk jari */
+        width: 50px;
+        height: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 15px;
+        transition: 0.3s ease;
+    }
+
+    /* Efek saat aktif di mobile (Lebih User Friendly) */
+    .nav-item.active {
+        color: var(--primary-green);
+        background: rgba(0, 255, 136, 0.1); /* Background hijau tipis */
+        transform: translateY(-3px); /* Sedikit naik untuk tanda aktif */
+    }
+
+    /* Khusus Logout di mobile diberi warna merah agar jelas */
+    .logout-item {
+        color: rgba(255, 77, 77, 0.8) !important;
+    }
+
+    /* Mencegah konten tertutup nav bar */
+    .main-content {
+        padding-bottom: 100px !important;
+    }
+}

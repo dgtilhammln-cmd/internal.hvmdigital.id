@@ -1,0 +1,29 @@
+/public_html/email-marketing/
+│
+├── 📄 index.php                <-- (Main Frame Dashboard)
+├── 📄 sidebar-email.php        <-- (Navigasi Kiri & Mobile)
+├── 📄 open.php                 <-- (Pelacak Buka Email - Pixel)
+├── 📄 track.php                <-- (Pelacak Klik Tombol - Redirect)
+│
+├── 📂 config/
+│   ├── 📄 database.php         <-- (Koneksi Database HVM)
+│   └── 📄 smtp_config.php      <-- (Setting Email ilhammm@hvmdigital.id)
+│
+├── 📂 core/
+│   ├── 📄 mailer_engine.php    <-- (Mesin Pengirim + Injeksi Tracker)
+│   ├── 📄 queue_manager.php    <-- (Jantung Automasi - Dijalankan Cron Job)
+│   └── 📂 PHPMailer/           <-- (Folder Library PHPMailer)
+│       ├── 📂 src/             <-- (Exception.php, PHPMailer.php, SMTP.php)
+│       └── 📂 language/        <-- (File bahasa pendukung)
+│
+├── 📂 templates/
+│   └── 📄 layout.php           <-- (Desain Email Executive V3 - JANGAN DIEDIT)
+│
+├── 📂 pages/
+│   ├── 📄 campaign.php         <-- (Halaman Input & Execute Blast)
+│   ├── 📄 queue_logs.php       <-- (Halaman Pantau Antrean & Status)
+│   ├── 📄 tracking.php         <-- (Halaman Laporan Klik/Hot Leads)
+│   └── 📄 preview_render.php   <-- (Halaman Jembatan Live Preview)
+│
+└── 📂 assets/                  <-- (Folder Simpan Gambar/Logo)
+    └── 📄 logohvm.png

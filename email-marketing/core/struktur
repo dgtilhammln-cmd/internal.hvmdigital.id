@@ -1,0 +1,5 @@
+/core/PHPMailer/
+├── Exception.php
+├── PHPMailer.php
+├── SMTP.php
+├── (file lainnya dari folder src...)

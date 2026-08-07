@@ -1,0 +1,89 @@
+-- ==========================================================
+-- TITAN EMAIL MARKETING ENGINE - FULL DATABASE SCHEMA
+-- Designed for HVM Digital Corporate Sentinel
+-- ==========================================================
+
+-- 1. Tabel Kontak: Menyimpan list target email klien
+CREATE TABLE IF NOT EXISTS `email_contacts` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(150) NOT NULL, -- Nama untuk sapaan "Pak/Ibu [Name]"
+    `email` VARCHAR(150) NOT NULL,
+    `company` VARCHAR(150) DEFAULT NULL,
+    `status` ENUM('active', 'unsubscribed', 'bounced') DEFAULT 'active',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `email_unique` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. Tabel Kampanye: Menyimpan draft isi email dan lampiran link
+CREATE TABLE IF NOT EXISTS `email_campaigns` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `subject` VARCHAR(255) NOT NULL,
+    `body_content` TEXT NOT NULL, -- Isi email utama (HTML)
+    `attachment_link` VARCHAR(255) DEFAULT NULL, -- Link ke file Compro di server
+    `status` ENUM('draft', 'running', 'paused', 'completed') DEFAULT 'draft',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Tabel Antrean (THE ENGINE): Kunci pengiriman "Licik" (Drip-feeding)
+-- Di sinilah sistem mengatur pengiriman satu per satu setiap X menit
+CREATE TABLE IF NOT EXISTS `email_queue` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `campaign_id` INT(11) NOT NULL,
+    `contact_id` INT(11) NOT NULL,
+    `status` ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+    `scheduled_at` DATETIME DEFAULT NULL, -- Waktu giliran kirim
+    `sent_at` DATETIME DEFAULT NULL,
+    `attempts` INT(2) DEFAULT 0, -- Hitung berapa kali coba kirim jika gagal
+    `error_msg` TEXT DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_status_schedule` (`status`, `scheduled_at`),
+    FOREIGN KEY (`campaign_id`) REFERENCES `email_campaigns`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`contact_id`) REFERENCES `email_contacts`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. Tabel Tracking: Mencatat siapa yang membuka email atau klik link Compro
+CREATE TABLE IF NOT EXISTS `email_tracking` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `queue_id` INT(11) NOT NULL,
+    `event_type` ENUM('open', 'click') NOT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `clicked_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`queue_id`) REFERENCES `email_queue`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 5. Tabel Global Settings: Pengaturan teknis engine
+CREATE TABLE IF NOT EXISTS `email_settings` (
+    `key_name` VARCHAR(50) NOT NULL,
+    `key_value` VARCHAR(255) NOT NULL,
+    PRIMARY KEY (`key_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Tambahkan Pengaturan Awal (Default)
+INSERT IGNORE INTO `email_settings` (`key_name`, `key_value`) VALUES 
+('drip_interval_minutes', '5'), -- Kirim tiap 5 menit
+('max_retries', '3'),           -- Maksimal 3x coba jika gagal
+('tracking_enabled', '1');      -- Aktifkan tracking klik link
+
+ALTER TABLE email_queue ADD opened_at DATETIME DEFAULT NULL, ADD clicked_at DATETIME DEFAULT NULL;
+
+INSERT IGNORE INTO `email_settings` (`key_name`, `key_value`) VALUES 
+('system_status', 'ON'),       -- Status Utama (ON/OFF)
+('work_hour_start', '08:00'),  -- Jam mulai kirim
+('work_hour_end', '17:00'),    -- Jam berhenti kirim
+('send_on_weekend', 'no');     -- Kirim sabtu-minggu? (yes/no)
+
+CREATE TABLE IF NOT EXISTS `email_presets` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `preset_name` VARCHAR(100) NOT NULL,
+    `config_data` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tambahkan setting default jika belum ada
+INSERT IGNORE INTO `email_settings` (`key_name`, `key_value`) VALUES 
+('default_subject', 'Undangan Kemitraan Strategis - HVM Digital'),
+('drip_interval', '5');

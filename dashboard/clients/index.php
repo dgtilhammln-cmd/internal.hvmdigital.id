@@ -1,0 +1,1062 @@
+<?php
+// 1. INIT
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+session_start();
+include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
+
+if(!isset($_SESSION['admin'])){ echo "<script>window.location='/index.php';</script>"; exit; }
+
+$allowed  = (isset($_SESSION['role']) && ($_SESSION['role'] === 'super_admin' || $_SESSION['role'] === 'admin'));
+$is_super = (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin');
+
+// 2. HELPERS
+function formatWA($no){ $no = preg_replace('/[^0-9]/','',$no); if(substr($no,0,1)=='0') $no='62'.substr($no,1); return $no; }
+function checkUrl($url){ if($url && !preg_match("~^(?:f|ht)tps?://~i", $url)) return "https://".$url; return $url; }
+
+// 3. AUTO-FIX DATABASE
+function fixCol($conn, $t, $c, $d){
+    $q = mysqli_query($conn, "SHOW COLUMNS FROM `$t` LIKE '$c'");
+    if(mysqli_num_rows($q) == 0) mysqli_query($conn, "ALTER TABLE `$t` ADD COLUMN `$c` $d");
+}
+fixCol($conn, 'clients', 'link_planner',       'TEXT');
+fixCol($conn, 'clients', 'link_design',        'TEXT');
+fixCol($conn, 'clients', 'cred_instagram',     'TEXT');
+fixCol($conn, 'clients', 'cred_tiktok',        'TEXT');
+fixCol($conn, 'clients', 'cred_youtube',       'TEXT');
+fixCol($conn, 'clients', 'logo_path',          "VARCHAR(255) DEFAULT NULL");
+fixCol($conn, 'clients', 'notes',              'TEXT');
+fixCol($conn, 'clients', 'link_artikel',       'TEXT');
+fixCol($conn, 'clients', 'link_thumbnail',     'TEXT');
+fixCol($conn, 'clients', 'link_other',         'TEXT');
+fixCol($conn, 'clients', 'legal_docs',         'LONGTEXT');
+
+// Upload dirs
+$upload_dir  = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_logos/';
+$docs_dir    = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_docs/';
+if(!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+if(!is_dir($docs_dir))   mkdir($docs_dir,   0755, true);
+
+// 4. AJAX: GET CLIENT DATA
+if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
+    if(!$allowed) exit;
+    $id     = mysqli_real_escape_string($conn, $_POST['id']);
+    $q_cli  = mysqli_query($conn, "SELECT * FROM clients WHERE client_id = '$id'");
+    $client = mysqli_fetch_assoc($q_cli);
+
+    $email   = mysqli_real_escape_string($conn, $client['email'] ?? '');
+    $company = mysqli_real_escape_string($conn, $client['company_name'] ?? '');
+    $q_pay   = mysqli_query($conn, "SELECT * FROM payments WHERE email='$email' OR company_name='$company' ORDER BY payment_date DESC LIMIT 20");
+
+    $history=[]; $last_pay_date=null; $total_all=0; $total_in_period=0; $totals_by_service=[];
+    $cs = $client['contract_start'] ?? ''; $ce = $client['contract_end'] ?? '';
+
+    while($r = mysqli_fetch_assoc($q_pay)){
+        if(!$last_pay_date) $last_pay_date = $r['payment_date'];
+        $total_all += (float)$r['amount'];
+        if($cs && $ce && $r['payment_date'] >= $cs && $r['payment_date'] <= $ce)
+            $total_in_period += (float)$r['amount'];
+        $svc = trim($r['service_type'] ?: 'General');
+        if(!isset($totals_by_service[$svc])) $totals_by_service[$svc] = 0;
+        $totals_by_service[$svc] += (float)$r['amount'];
+        $history[] = [
+            'date'   => date('d M Y', strtotime($r['payment_date'])),
+            'amount' => number_format($r['amount']),
+            'desc'   => $r['payment_id'] ? "#".$r['payment_id'] : "Manual",
+            'service'=> $svc,
+            'type'   => $r['payment_type'] ?? 'Tunai'
+        ];
+    }
+    arsort($totals_by_service);
+
+    $score=0; $color='red'; $status='Belum Ada Transaksi';
+    if(count($history)>0 && $last_pay_date){
+        $d = (time()-strtotime($last_pay_date))/(60*60*24);
+        if($d<=30){$score=95;$color='green';$status='Excellent (Aktif)';}
+        elseif($d<=60){$score=70;$color='yellow';$status='Fair (Perlu Follow-up)';}
+        else{$score=40;$color='red';$status='Poor (Jarang Transaksi)';}
+    }
+
+    // Parse legal_docs
+    $legal_raw  = $client['legal_docs'] ?? '';
+    $legal_docs = [];
+    if($legal_raw){ $parsed = json_decode($legal_raw, true); if(is_array($parsed)) $legal_docs = $parsed; }
+
+    echo json_encode([
+        'data'             => $client,
+        'history'          => $is_super ? $history : [],
+        'score'            => $is_super ? $score : 0,
+        'score_color'      => $is_super ? $color : 'gray',
+        'score_status'     => $is_super ? $status : 'Restricted',
+        'total_all'        => $is_super ? $total_all : 0,
+        'total_in_period'  => $is_super ? $total_in_period : 0,
+        'totals_by_service'=> $is_super ? $totals_by_service : [],
+        'contract_start'   => $cs,
+        'contract_end'     => $ce,
+        'legal_docs'       => $legal_docs,
+    ]);
+    exit;
+}
+
+// 4b. AJAX: ADD LEGAL DOC
+if(isset($_POST['action']) && $_POST['action'] == 'add_legal_doc'){
+    if(!$allowed){ echo json_encode(['ok'=>false,'msg'=>'Access Denied']); exit; }
+    $id      = mysqli_real_escape_string($conn, $_POST['client_id'] ?? '');
+    $dtype   = mysqli_real_escape_string($conn, $_POST['doc_type'] ?? 'Other');
+    $dname   = mysqli_real_escape_string($conn, $_POST['doc_name'] ?? '');
+    $dlink   = trim($_POST['doc_link'] ?? '');
+
+    // Fetch existing
+    $q_cur   = mysqli_query($conn, "SELECT legal_docs FROM clients WHERE client_id='$id'");
+    $r_cur   = mysqli_fetch_assoc($q_cur);
+    $docs    = [];
+    if(!empty($r_cur['legal_docs'])){ $p = json_decode($r_cur['legal_docs'],true); if(is_array($p)) $docs=$p; }
+
+    $doc = [
+        'id'    => uniqid('doc_'),
+        'type'  => $dtype,
+        'name'  => $dname ?: $dtype.' '.date('d/m/Y'),
+        'date'  => date('Y-m-d'),
+        'link'  => '',
+        'file'  => '',
+    ];
+
+    // Handle file upload
+    if(isset($_FILES['doc_file']) && $_FILES['doc_file']['error'] === UPLOAD_ERR_OK){
+        $docs_dir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_docs/';
+        if(!is_dir($docs_dir)) mkdir($docs_dir, 0755, true);
+        $ext  = strtolower(pathinfo($_FILES['doc_file']['name'], PATHINFO_EXTENSION));
+        $allowed_ext = ['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','zip'];
+        if(!in_array($ext, $allowed_ext)){ echo json_encode(['ok'=>false,'msg'=>'Format tidak didukung!']); exit; }
+        if($_FILES['doc_file']['size'] > 10*1024*1024){ echo json_encode(['ok'=>false,'msg'=>'Max ukuran file 10MB!']); exit; }
+        $fname    = 'doc_'.$id.'_'.uniqid().'.'.$ext;
+        move_uploaded_file($_FILES['doc_file']['tmp_name'], $docs_dir.$fname);
+        $doc['file'] = '/uploads/client_docs/'.$fname;
+        $doc['name'] = $doc['name'] ?: $_FILES['doc_file']['name'];
+    } elseif($dlink !== '') {
+        if(!preg_match("~^(?:f|ht)tps?://~i", $dlink)) $dlink = 'https://'.$dlink;
+        $doc['link'] = $dlink;
+    } else {
+        echo json_encode(['ok'=>false,'msg'=>'Upload file atau masukkan link!']); exit;
+    }
+
+    $docs[] = $doc;
+    $json   = mysqli_real_escape_string($conn, json_encode($docs, JSON_UNESCAPED_UNICODE));
+    mysqli_query($conn, "UPDATE clients SET legal_docs='$json' WHERE client_id='$id'");
+    echo json_encode(['ok'=>true,'doc'=>$doc]);
+    exit;
+}
+
+// 4c. AJAX: DELETE LEGAL DOC
+if(isset($_POST['action']) && $_POST['action'] == 'delete_legal_doc'){
+    if(!$allowed){ echo json_encode(['ok'=>false,'msg'=>'Access Denied']); exit; }
+    $id     = mysqli_real_escape_string($conn, $_POST['client_id'] ?? '');
+    $doc_id = $_POST['doc_id'] ?? '';
+
+    $q_cur  = mysqli_query($conn, "SELECT legal_docs FROM clients WHERE client_id='$id'");
+    $r_cur  = mysqli_fetch_assoc($q_cur);
+    $docs   = [];
+    if(!empty($r_cur['legal_docs'])){ $p = json_decode($r_cur['legal_docs'],true); if(is_array($p)) $docs=$p; }
+
+    foreach($docs as $i => $d){
+        if($d['id'] === $doc_id){
+            // Delete physical file if exists
+            if(!empty($d['file'])){
+                $fp = $_SERVER['DOCUMENT_ROOT'].$d['file'];
+                if(file_exists($fp)) unlink($fp);
+            }
+            array_splice($docs, $i, 1);
+            break;
+        }
+    }
+    $json = mysqli_real_escape_string($conn, json_encode($docs, JSON_UNESCAPED_UNICODE));
+    mysqli_query($conn, "UPDATE clients SET legal_docs='$json' WHERE client_id='$id'");
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
+// 5. SAVE CLIENT
+if(isset($_POST['save_client'])){
+    if(!$allowed){ $_SESSION['popup']=['type'=>'error','msg'=>'Access Denied!']; header("Location: index.php"); exit; }
+    try {
+        $is_edit    = $_POST['is_edit_mode'];
+        $id         = mysqli_real_escape_string($conn, $_POST['client_id']);
+        $name       = mysqli_real_escape_string($conn, $_POST['company_name']);
+        $city       = mysqli_real_escape_string($conn, $_POST['city']);
+        $sector     = mysqli_real_escape_string($conn, $_POST['sector']);
+        $start      = $_POST['contract_start'];
+        $end        = $_POST['contract_end'];
+        $services   = isset($_POST['contract_type']) ? implode(', ', $_POST['contract_type']) : '';
+        $pic_name   = mysqli_real_escape_string($conn, $_POST['pic_name']);
+        $pic_pos    = mysqli_real_escape_string($conn, $_POST['pic_position']);
+        $wa         = mysqli_real_escape_string($conn, $_POST['whatsapp']);
+        $email      = mysqli_real_escape_string($conn, $_POST['email']);
+        $phone      = mysqli_real_escape_string($conn, $_POST['phone'] ?? '');
+        $l_soc      = mysqli_real_escape_string($conn, $_POST['links']);
+        $l_drive    = mysqli_real_escape_string($conn, $_POST['drive_link']);
+        $l_dvt      = mysqli_real_escape_string($conn, $_POST['drive_text']);
+        $l_plan     = mysqli_real_escape_string($conn, $_POST['link_planner']);
+        $l_design   = mysqli_real_escape_string($conn, $_POST['link_design']);
+        $l_artikel  = mysqli_real_escape_string($conn, $_POST['link_artikel'] ?? '');
+        $l_thumb    = mysqli_real_escape_string($conn, $_POST['link_thumbnail'] ?? '');
+        $l_other    = mysqli_real_escape_string($conn, $_POST['link_other'] ?? '');
+        $c_ig       = mysqli_real_escape_string($conn, $_POST['cred_instagram']);
+        $c_tt       = mysqli_real_escape_string($conn, $_POST['cred_tiktok']);
+        $c_yt       = mysqli_real_escape_string($conn, $_POST['cred_youtube']);
+        $notes      = mysqli_real_escape_string($conn, $_POST['notes'] ?? '');
+
+        $logo_sql_upd = "";
+        $logo_ins     = "NULL";
+        if(isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK){
+            $ext = strtolower(pathinfo($_FILES['logo_file']['name'], PATHINFO_EXTENSION));
+            if(!in_array($ext,['jpg','jpeg','png','gif','webp','svg'])) throw new Exception("Format logo tidak didukung!");
+            if($_FILES['logo_file']['size'] > 2*1024*1024) throw new Exception("Ukuran logo max 2MB!");
+            if($is_edit=="1"){
+                $q_old = mysqli_query($conn,"SELECT logo_path FROM clients WHERE client_id='$id'");
+                $r_old = mysqli_fetch_assoc($q_old);
+                if(!empty($r_old['logo_path'])){
+                    $old_fp = $_SERVER['DOCUMENT_ROOT'].$r_old['logo_path'];
+                    if(file_exists($old_fp)) unlink($old_fp);
+                }
+            }
+            $fname = 'logo_'.$id.'_'.time().'.'.$ext;
+            move_uploaded_file($_FILES['logo_file']['tmp_name'], $upload_dir.$fname);
+            $lp           = mysqli_real_escape_string($conn, '/uploads/client_logos/'.$fname);
+            $logo_sql_upd = ", logo_path='$lp'";
+            $logo_ins     = "'$lp'";
+        }
+
+        if($is_edit=="1"){
+            mysqli_query($conn,"UPDATE clients SET
+                company_name='$name',city='$city',sector='$sector',
+                contract_start='$start',contract_end='$end',contract_type='$services',
+                pic_name='$pic_name',pic_position='$pic_pos',
+                whatsapp='$wa',email='$email',phone='$phone',
+                link_social='$l_soc',link_drive='$l_drive',address='$l_dvt',
+                link_planner='$l_plan',link_design='$l_design',
+                link_artikel='$l_artikel',link_thumbnail='$l_thumb',link_other='$l_other',
+                cred_instagram='$c_ig',cred_tiktok='$c_tt',cred_youtube='$c_yt',
+                notes='$notes' $logo_sql_upd
+                WHERE client_id='$id'");
+            $msg = "Client Updated!";
+        } else {
+            mysqli_query($conn,"INSERT INTO clients
+                (client_id,company_name,city,sector,contract_start,contract_end,contract_type,
+                 pic_name,pic_position,whatsapp,email,phone,link_social,link_drive,address,
+                 link_planner,link_design,link_artikel,link_thumbnail,link_other,
+                 cred_instagram,cred_tiktok,cred_youtube,notes,logo_path,status)
+                VALUES
+                ('$id','$name','$city','$sector','$start','$end','$services',
+                 '$pic_name','$pic_pos','$wa','$email','$phone','$l_soc','$l_drive','$l_dvt',
+                 '$l_plan','$l_design','$l_artikel','$l_thumb','$l_other',
+                 '$c_ig','$c_tt','$c_yt','$notes',$logo_ins,'Active')");
+            $msg = "New Client Added!";
+        }
+        $_SESSION['popup']=['type'=>'success','msg'=>$msg];
+        header("Location: index.php"); exit;
+    } catch(Exception $e){
+        $err = ($e->getCode()==1062) ? "ID/Email Already Exists!" : $e->getMessage();
+        $_SESSION['popup']=['type'=>'error','msg'=>$err];
+        header("Location: index.php"); exit;
+    }
+}
+
+// 6. VIEW DATA
+if($allowed){
+    $q_id    = mysqli_query($conn,"SELECT MAX(client_id) as max_id FROM clients");
+    $r_id    = mysqli_fetch_assoc($q_id);
+    $auto_id = str_pad((int)$r_id['max_id']+1,4,"0",STR_PAD_LEFT);
+
+    $search     = $_GET['q'] ?? '';
+    $se         = mysqli_real_escape_string($conn, $search);
+    $result     = mysqli_query($conn,"SELECT * FROM clients WHERE company_name LIKE '%$se%' OR client_id LIKE '%$se%' ORDER BY client_id DESC");
+
+    $stat_total   = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients"))['n'];
+    $stat_year    = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW())"))['n'];
+    $stat_lastmon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(DATE_SUB(NOW(),INTERVAL 1 MONTH)) AND MONTH(created_at)=MONTH(DATE_SUB(NOW(),INTERVAL 1 MONTH))"))['n'];
+    $stat_thismon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW()) AND MONTH(created_at)=MONTH(NOW())"))['n'];
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clients - HVM</title>
+    <link rel="shortcut icon" href="/uploads/icon.png" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="ambient-glow glow-1"></div>
+<div class="ambient-glow glow-2"></div>
+
+<div class="dashboard-wrapper">
+    <?php include '../sidebar.php'; ?>
+
+    <main class="main-content">
+        <div class="page-headline">
+            <h1>Clients Database</h1>
+            <p>Manage partnership, contracts, and payment history.</p>
+        </div>
+
+        <?php if(!$allowed): ?>
+        <div class="forbidden-box">
+            <div class="forbidden-icon"><i class="fas fa-lock"></i></div>
+            <div class="forbidden-text">ACCESS DENIED</div>
+            <div class="forbidden-sub">Halaman ini hanya untuk Admin.</div>
+            <a href="/dashboard/" class="btn-neon" style="text-decoration:none;">KEMBALI KE DASHBOARD</a>
+        </div>
+        <?php else: ?>
+
+        <!-- STAT CARDS -->
+        <div class="stat-cards-row">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(161,255,90,0.08);color:var(--neon-main);"><i class="fas fa-users"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?php echo $stat_total; ?></div>
+                    <div class="stat-label">Total Client</div>
+                </div>
+                <div class="stat-deco">ALL</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(78,253,196,0.08);color:var(--neon-sec);"><i class="fas fa-calendar-alt"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num" style="color:var(--neon-sec);"><?php echo $stat_year; ?></div>
+                    <div class="stat-label">Tahun <?php echo date('Y'); ?></div>
+                </div>
+                <div class="stat-deco"><?php echo date('Y'); ?></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(255,159,67,0.08);color:var(--neon-orange);"><i class="fas fa-history"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num" style="color:var(--neon-orange);"><?php echo $stat_lastmon; ?></div>
+                    <div class="stat-label">Bulan Lalu &middot; <?php echo date('M', strtotime('first day of last month')); ?></div>
+                </div>
+                <div class="stat-deco"><?php echo strtoupper(date('M', strtotime('first day of last month'))); ?></div>
+            </div>
+            <div class="stat-card stat-card-active">
+                <div class="stat-icon" style="background:rgba(192,132,252,0.1);color:var(--neon-purple);"><i class="fas fa-bolt"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num" style="color:var(--neon-purple);"><?php echo $stat_thismon; ?></div>
+                    <div class="stat-label">Bulan Ini &middot; <?php echo date('M'); ?></div>
+                </div>
+                <div class="stat-deco" style="color:rgba(192,132,252,0.12);"><?php echo strtoupper(date('M')); ?></div>
+            </div>
+        </div>
+
+        <!-- ACTION BAR -->
+        <div class="action-area">
+            <form method="GET" style="flex:1;display:flex;">
+                <input type="text" name="q" class="search-glass" placeholder="Search ID / Company name..." value="<?php echo htmlspecialchars($search); ?>">
+            </form>
+            <button class="btn-neon" onclick="openModal()"><i class="fas fa-plus"></i> New Client</button>
+        </div>
+
+        <!-- CLIENT GRID -->
+        <div class="client-grid">
+            <?php while($row = mysqli_fetch_assoc($result)): ?>
+            <div class="glass-card">
+                <div class="card-logo-wrap">
+                    <?php if(!empty($row['logo_path'])): ?>
+                        <img src="<?php echo htmlspecialchars($row['logo_path']); ?>" class="card-logo" alt="logo">
+                    <?php else: ?>
+                        <div class="card-logo-placeholder"><?php echo strtoupper(substr($row['company_name'],0,2)); ?></div>
+                    <?php endif; ?>
+                    <div class="card-logo-info">
+                        <div class="client-id">ID: #<?php echo $row['client_id']; ?></div>
+                        <h2 class="client-name"><?php echo htmlspecialchars($row['company_name']); ?></h2>
+                    </div>
+                </div>
+                <div class="badge-container">
+                    <?php if(!empty($row['contract_type'])): foreach(explode(',',$row['contract_type']) as $srv) echo "<span class='service-badge'>".htmlspecialchars(trim($srv))."</span>"; endif; ?>
+                </div>
+                <?php if(!empty($row['city'])): ?>
+                <div class="card-city"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($row['city']); ?></div>
+                <?php endif; ?>
+                <div class="social-row">
+                    <?php if(!empty($row['whatsapp'])): ?><a href="https://wa.me/<?php echo formatWA($row['whatsapp']); ?>" target="_blank" class="social-btn wa" title="WhatsApp"><i class="fab fa-whatsapp"></i></a><?php endif; ?>
+                    <?php if(!empty($row['email'])): ?><a href="mailto:<?php echo htmlspecialchars($row['email']); ?>" class="social-btn" title="Email"><i class="fas fa-envelope"></i></a><?php endif; ?>
+                    <?php if(!empty($row['link_drive'])): ?><a href="<?php echo checkUrl($row['link_drive']); ?>" target="_blank" class="social-btn" title="Drive"><i class="fab fa-google-drive"></i></a><?php endif; ?>
+                    <?php if(!empty($row['link_social'])): ?><a href="<?php echo checkUrl($row['link_social']); ?>" target="_blank" class="social-btn" title="Social"><i class="fas fa-globe"></i></a><?php endif; ?>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-view" onclick='viewDetail("<?php echo $row['client_id']; ?>")'><i class="fas fa-chart-pie"></i> View</button>
+                    <button class="btn-edit" onclick='editDetail("<?php echo $row['client_id']; ?>")'><i class="fas fa-edit"></i> Edit</button>
+                </div>
+            </div>
+            <?php endwhile; ?>
+        </div>
+        <?php endif; ?>
+    </main>
+</div>
+
+<!-- MODAL -->
+<?php if($allowed): ?>
+<div class="modal-overlay" id="clientModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <div class="modal-logo-wrap">
+                    <div id="modalLogoPlaceholder" class="modal-logo-placeholder">??</div>
+                    <img id="modalLogoImg" class="modal-logo-img" src="" alt="logo" style="display:none;">
+                </div>
+                <h2 class="modal-title" id="modalTitle">Client Data</h2>
+            </div>
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-tabs" id="modalTabs" style="display:none;">
+            <div class="tab-link active" onclick="switchTab('info')"><i class="fas fa-user"></i> Profile</div>
+            <div class="tab-link" onclick="switchTab('creds')"><i class="fas fa-link"></i> Resources</div>
+            <div class="tab-link" onclick="switchTab('legal')"><i class="fas fa-file-contract"></i> Dokumen</div>
+            <?php if($is_super): ?><div class="tab-link" onclick="switchTab('history')"><i class="fas fa-history"></i> History</div><?php endif; ?>
+        </div>
+
+        <div class="modal-body-scroll">
+            <form method="POST" id="clientForm" enctype="multipart/form-data">
+                <input type="hidden" name="is_edit_mode" id="is_edit_mode" value="0">
+
+                <!-- TAB INFO -->
+                <div id="tab_info" class="tab-pane active">
+                    <!-- LOGO UPLOAD -->
+                    <div id="logoUploadSection" class="logo-upload-section" style="display:none;">
+                        <div class="logo-upload-title"><i class="fas fa-image"></i> Logo Perusahaan</div>
+                        <div id="currentLogoWrap" class="current-logo-wrap" style="display:none;">
+                            <img id="currentLogoPreview" src="" alt="current" class="current-logo-img">
+                            <div class="current-logo-label">Logo saat ini — upload baru untuk mengganti</div>
+                        </div>
+                        <div class="logo-upload-area" id="logoDropArea">
+                            <div id="logoPreviewWrap" class="logo-preview-wrap" style="display:none;">
+                                <img id="logoPreview" src="" alt="preview" class="logo-preview-img">
+                                <button type="button" class="logo-remove-btn" onclick="removeLogo(event)"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div id="logoUploadPrompt" class="logo-upload-prompt">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span id="logoPromptText">Klik atau drag logo di sini</span>
+                                <small>PNG, JPG, SVG, WebP &bull; Max 2MB</small>
+                            </div>
+                            <input type="file" name="logo_file" id="logoInput" accept="image/*" style="display:none;" onchange="previewLogo(this)">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label>Client ID</label><input type="text" name="client_id" id="f_id" class="form-input" readonly></div>
+                        <div class="form-group"><label>Company Name</label><input type="text" name="company_name" id="f_name" class="form-input" required></div>
+                        <div class="form-group"><label>Sector</label><input type="text" name="sector" id="f_sector" class="form-input" required></div>
+                        <div class="form-group"><label>City / Address</label><input type="text" name="city" id="f_city" class="form-input" required></div>
+                        <div class="form-group full"><label>Services</label>
+                            <div class="service-options">
+                                <input type="checkbox" name="contract_type[]" value="Branding" id="s1" class="service-check"><label for="s1" class="service-label">Branding</label>
+                                <input type="checkbox" name="contract_type[]" value="Social Media" id="s2" class="service-check"><label for="s2" class="service-label">Social Media</label>
+                                <input type="checkbox" name="contract_type[]" value="SEO" id="s3" class="service-check"><label for="s3" class="service-label">SEO</label>
+                                <input type="checkbox" name="contract_type[]" value="Web Dev" id="s4" class="service-check"><label for="s4" class="service-label">Web Dev</label>
+                                <input type="checkbox" name="contract_type[]" value="Content Creator" id="s5" class="service-check"><label for="s5" class="service-label">Content Creator</label>
+                            </div>
+                        </div>
+                        <div class="form-group"><label>Contract Start</label><input type="date" name="contract_start" id="f_start" class="form-input" required></div>
+                        <div class="form-group"><label>Contract End</label><input type="date" name="contract_end" id="f_end" class="form-input" required></div>
+                        <div class="form-group"><label>PIC Name</label><input type="text" name="pic_name" id="f_pic" class="form-input" required></div>
+                        <div class="form-group"><label>PIC Position</label><input type="text" name="pic_position" id="f_pos" class="form-input"></div>
+                        <div class="form-group"><label>WhatsApp</label><input type="text" name="whatsapp" id="f_wa" class="form-input" required></div>
+                        <div class="form-group"><label>Email</label><input type="email" name="email" id="f_email" class="form-input"></div>
+                        <div class="form-group"><label>Phone</label><input type="text" name="phone" id="f_phone" class="form-input"></div>
+                    </div>
+                </div>
+
+                <!-- TAB RESOURCES -->
+                <div id="tab_creds" class="tab-pane">
+
+                    <div class="detail-section-title">PROJECT LINKS</div>
+                    <div class="form-group"><label>Planner (Spreadsheet)</label><input type="text" name="link_planner" id="f_plan" class="form-input"><a href="#" target="_blank" class="input-link-btn" id="btn_plan"><i class="fas fa-external-link-alt"></i></a></div>
+                    <div class="form-group"><label>Design (Canva / Figma)</label><input type="text" name="link_design" id="f_design" class="form-input"><a href="#" target="_blank" class="input-link-btn" id="btn_design"><i class="fas fa-external-link-alt"></i></a></div>
+                    <div class="form-group"><label>Website / Socmed Link</label><input type="text" name="links" id="f_links" class="form-input"><a href="#" target="_blank" class="input-link-btn" id="btn_links"><i class="fas fa-external-link-alt"></i></a></div>
+                    <div class="form-group"><label>Drive Link</label><input type="text" name="drive_link" id="f_drive" class="form-input"><a href="#" target="_blank" class="input-link-btn" id="btn_drive"><i class="fas fa-external-link-alt"></i></a></div>
+                    <input type="hidden" name="drive_text" id="f_drive_text">
+
+                    <div class="detail-section-title" style="margin-top:22px;">SEO &amp; CONTENT MONITORING</div>
+                    <div class="form-group">
+                        <label><i class="fas fa-chart-line" style="color:var(--neon-main);margin-right:5px;"></i>Artikel Monitoring (SEO)</label>
+                        <input type="text" name="link_artikel" id="f_artikel" class="form-input" placeholder="Link spreadsheet / dashboard monitoring artikel">
+                        <a href="#" target="_blank" class="input-link-btn" id="btn_artikel"><i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-images" style="color:var(--neon-orange);margin-right:5px;"></i>Thumbnail Artikel</label>
+                        <input type="text" name="link_thumbnail" id="f_thumbnail" class="form-input" placeholder="Link folder thumbnail (Drive / Canva / Figma)">
+                        <a href="#" target="_blank" class="input-link-btn" id="btn_thumbnail"><i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-link" style="color:var(--neon-purple);margin-right:5px;"></i>Other Link</label>
+                        <input type="text" name="link_other" id="f_other" class="form-input" placeholder="Link lainnya (opsional)">
+                        <a href="#" target="_blank" class="input-link-btn" id="btn_other"><i class="fas fa-external-link-alt"></i></a>
+                    </div>
+
+                    <div class="detail-section-title" style="margin-top:22px;">CREDENTIALS (Optional)</div>
+                    <div class="form-group"><label>Instagram Creds</label><input type="text" name="cred_instagram" id="f_ig" class="form-input" placeholder="Username | Password"></div>
+                    <div class="form-group"><label>TikTok Creds</label><input type="text" name="cred_tiktok" id="f_tt" class="form-input" placeholder="Username | Password"></div>
+                    <div class="form-group"><label>YouTube Creds</label><input type="text" name="cred_youtube" id="f_yt" class="form-input" placeholder="Username | Password"></div>
+
+                    <div class="detail-section-title" style="margin-top:22px;">CATATAN / NOTES</div>
+                    <div class="form-group">
+                        <label>Internal Notes</label>
+                        <textarea name="notes" id="f_notes" class="form-input form-textarea" placeholder="Catatan internal, brief, instruksi khusus, reminder..."></textarea>
+                    </div>
+                </div>
+
+                <!-- TAB LEGAL DOCS -->
+                <div id="tab_legal" class="tab-pane">
+                    <div class="legal-header">
+                        <div class="detail-section-title" style="margin-bottom:0;">DOKUMEN LEGAL</div>
+                        <button type="button" class="btn-add-doc" id="btnShowAddDoc" onclick="toggleAddDocForm()">
+                            <i class="fas fa-plus"></i> Tambah Dokumen
+                        </button>
+                    </div>
+
+                    <!-- Add doc form -->
+                    <div class="add-doc-form" id="addDocForm" style="display:none;">
+                        <div class="add-doc-form-inner">
+                            <div class="add-doc-row">
+                                <div class="form-group" style="margin-bottom:0;flex:1;">
+                                    <label>Tipe Dokumen</label>
+                                    <select id="ad_type" class="form-input">
+                                        <option value="MoU">MoU / Kontrak</option>
+                                        <option value="Proposal">Proposal</option>
+                                        <option value="Invoice">Invoice</option>
+                                        <option value="Addendum">Addendum</option>
+                                        <option value="Kwitansi">Kwitansi</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;flex:2;">
+                                    <label>Nama / Keterangan</label>
+                                    <input type="text" id="ad_name" class="form-input" placeholder="Contoh: MoU Q1 2025, Invoice Mei...">
+                                </div>
+                            </div>
+                            <div class="add-doc-or">
+                                <div class="add-doc-or-line"></div>
+                                <span>Upload File <em>atau</em> Paste Link</span>
+                                <div class="add-doc-or-line"></div>
+                            </div>
+                            <div class="add-doc-row">
+                                <div class="doc-upload-zone" id="docDropZone" onclick="document.getElementById('ad_file').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span id="docUploadLabel">Klik atau drag file di sini</span>
+                                    <small>PDF, DOC, XLS, JPG, ZIP &bull; Max 10MB</small>
+                                    <input type="file" id="ad_file" style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip" onchange="onDocFileChange(this)">
+                                </div>
+                                <div class="doc-or-divider"><span>atau</span></div>
+                                <div class="form-group" style="margin-bottom:0;flex:1;align-self:center;">
+                                    <label>Link Dokumen (Google Drive, dst)</label>
+                                    <input type="text" id="ad_link" class="form-input" placeholder="https://drive.google.com/...">
+                                </div>
+                            </div>
+                            <div class="add-doc-actions">
+                                <button type="button" class="btn-doc-cancel" onclick="toggleAddDocForm()">Batal</button>
+                                <button type="button" class="btn-doc-save" onclick="submitAddDoc()"><i class="fas fa-save"></i> Simpan Dokumen</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Docs list -->
+                    <div id="legalDocsList" class="legal-docs-list">
+                        <div class="legal-empty" id="legalEmpty">
+                            <i class="fas fa-folder-open"></i>
+                            <span>Belum ada dokumen legal tersimpan.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB HISTORY -->
+                <div id="tab_history" class="tab-pane">
+                    <?php if($is_super): ?>
+                    <div class="score-card">
+                        <div class="score-circle" id="scoreValue">0%</div>
+                        <div class="score-info">
+                            <h4>Reliability Score</h4>
+                            <p id="scoreStatus">Menganalisa...</p>
+                        </div>
+                    </div>
+                    <div class="payment-summary-grid">
+                        <div class="pay-sum-card total">
+                            <div class="pay-sum-label"><i class="fas fa-wallet"></i> Total Semua Pembayaran</div>
+                            <div class="pay-sum-val" id="sumTotalAll">Rp 0</div>
+                        </div>
+                        <div class="pay-sum-card period">
+                            <div class="pay-sum-label"><i class="fas fa-calendar-check"></i> Dalam Periode Kontrak</div>
+                            <div class="pay-sum-val" id="sumPeriod">Rp 0</div>
+                            <div class="pay-sum-sub" id="sumPeriodRange">-</div>
+                        </div>
+                    </div>
+                    <div class="breakdown-wrap">
+                        <div class="detail-section-title">BREAKDOWN PER LAYANAN</div>
+                        <div id="breakdownList" class="breakdown-list"></div>
+                    </div>
+                    <h4 style="color:#fff;margin:18px 0 10px;border-bottom:1px solid #1a1a1a;padding-bottom:8px;font-size:0.82rem;letter-spacing:1.5px;font-weight:800;">RIWAYAT TRANSAKSI</h4>
+                    <div class="history-list" id="historyList"></div>
+                    <?php else: ?>
+                    <div style="text-align:center;padding:50px 20px;color:#444;">
+                        <i class="fas fa-lock" style="font-size:2rem;display:block;margin-bottom:12px;color:#2a2a2a;"></i>
+                        Data history hanya untuk Super Admin.
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div id="btnContainer" style="margin-top:20px;">
+                    <button type="submit" name="save_client" class="btn-neon" style="width:100%;justify-content:center;"><i class="fas fa-save"></i> Save Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- POPUP -->
+<div id="popup" class="popup"><i class="fas fa-check-circle"></i> <span id="popupMsg">Success</span></div>
+
+<script>
+const modal = document.getElementById('clientModal');
+const form  = document.getElementById('clientForm');
+
+function closeModal(){ modal.classList.remove('active'); }
+
+function openModal(){
+    form.reset();
+    document.getElementById('modalTabs').style.display = 'none';
+    switchTab('info');
+    document.getElementById('modalTitle').innerText = 'Add New Client';
+    document.getElementById('btnContainer').style.display = 'block';
+    document.getElementById('is_edit_mode').value = '0';
+    document.getElementById('f_id').value = '<?php echo $auto_id; ?>';
+    enableForm(true);
+    toggleLinks(false);
+    setModalLogo(null, '??');
+    document.getElementById('logoUploadSection').style.display = 'block';
+    document.getElementById('currentLogoWrap').style.display = 'none';
+    document.getElementById('logoPromptText').innerText = 'Klik atau drag logo di sini';
+    resetLogoPreview();
+    modal.classList.add('active');
+}
+
+function fetchData(id, mode){
+    const fd = new FormData();
+    fd.append('action','get_client_data'); fd.append('id', id);
+    fetch('index.php',{method:'POST',body:fd})
+    .then(r => r.json())
+    .then(res => {
+        const d = res.data;
+        // Fill all fields
+        const set = (elId, val) => { const e=document.getElementById(elId); if(e) e.value=val||''; };
+        set('f_id',        d.client_id);
+        set('f_name',      d.company_name);
+        set('f_sector',    d.sector);
+        set('f_city',      d.city);
+        set('f_start',     d.contract_start);
+        set('f_end',       d.contract_end);
+        set('f_pic',       d.pic_name);
+        set('f_pos',       d.pic_position);
+        set('f_wa',        d.whatsapp);
+        set('f_email',     d.email);
+        set('f_phone',     d.phone);
+        set('f_links',     d.link_social);
+        set('f_drive',     d.link_drive);
+        set('f_plan',      d.link_planner);
+        set('f_design',    d.link_design);
+        set('f_artikel',   d.link_artikel);
+        set('f_thumbnail', d.link_thumbnail);
+        set('f_other',     d.link_other);
+        set('f_ig',        d.cred_instagram);
+        set('f_tt',        d.cred_tiktok);
+        set('f_yt',        d.cred_youtube);
+        set('f_notes',     d.notes);
+
+        // Link buttons
+        setupLinkBtn('btn_plan',      d.link_planner);
+        setupLinkBtn('btn_design',    d.link_design);
+        setupLinkBtn('btn_links',     d.link_social);
+        setupLinkBtn('btn_drive',     d.link_drive);
+        setupLinkBtn('btn_artikel',   d.link_artikel);
+        setupLinkBtn('btn_thumbnail', d.link_thumbnail);
+        setupLinkBtn('btn_other',     d.link_other);
+
+        // Services
+        document.querySelectorAll('.service-check').forEach(c => c.checked = false);
+        if(d.contract_type) d.contract_type.split(', ').forEach(s => {
+            const chk = document.querySelector(`input[value="${s.trim()}"]`);
+            if(chk) chk.checked = true;
+        });
+
+        // Modal logo (header)
+        setModalLogo(d.logo_path, d.company_name);
+
+        // Logo upload section
+        if(mode === 'edit'){
+            document.getElementById('logoUploadSection').style.display = 'block';
+            const clw = document.getElementById('currentLogoWrap');
+            const clp = document.getElementById('currentLogoPreview');
+            if(d.logo_path && d.logo_path.trim() !== ''){
+                clp.src = d.logo_path;
+                clw.style.display = 'flex';
+                document.getElementById('logoPromptText').innerText = 'Upload logo baru untuk mengganti';
+            } else {
+                clw.style.display = 'none';
+                document.getElementById('logoPromptText').innerText = 'Klik atau drag logo di sini';
+            }
+            resetLogoPreview();
+        } else {
+            document.getElementById('logoUploadSection').style.display = 'none';
+            document.getElementById('currentLogoWrap').style.display = 'none';
+        }
+
+        // History / score
+        const sc = document.getElementById('scoreValue');
+        if(sc){ sc.innerText = res.score+'%'; sc.className='score-circle '+res.score_color; }
+        const ss = document.getElementById('scoreStatus');
+        if(ss) ss.innerText = res.score_status;
+
+        const fmt = n => 'Rp '+Number(n||0).toLocaleString('id-ID');
+        const el  = i => document.getElementById(i);
+        if(el('sumTotalAll'))   el('sumTotalAll').innerText   = fmt(res.total_all);
+        if(el('sumPeriod'))     el('sumPeriod').innerText     = fmt(res.total_in_period);
+        if(el('sumPeriodRange') && res.contract_start && res.contract_end)
+            el('sumPeriodRange').innerText = fmtDate(res.contract_start)+' – '+fmtDate(res.contract_end);
+
+        // Breakdown
+        const bList = el('breakdownList');
+        if(bList){
+            const cols = {'Web Dev':'#a1ff5a','SEO':'#4efdc4','Social Media':'#ff9f43','Branding':'#c084fc','Content Creator':'#f87171','General':'#6b7280'};
+            const tot  = res.total_all||1;
+            let bHtml  = '';
+            for(const [svc,amt] of Object.entries(res.totals_by_service||{})){
+                const pct = Math.round((amt/tot)*100);
+                const col = cols[svc]||'#8888ff';
+                bHtml += `<div class="breakdown-item">
+                    <div class="breakdown-top">
+                        <span class="breakdown-svc" style="color:${col}">${svc}</span>
+                        <span class="breakdown-amt">${fmt(amt)} <small>(${pct}%)</small></span>
+                    </div>
+                    <div class="breakdown-bar-bg"><div class="breakdown-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+                </div>`;
+            }
+            bList.innerHTML = bHtml||'<div style="color:#444;font-size:0.82rem;padding:4px 0;">Belum ada data.</div>';
+        }
+
+        // History list
+        const hList = el('historyList');
+        if(hList){
+            if(!res.history||res.history.length===0){
+                hList.innerHTML='<div style="color:#555;text-align:center;padding:24px;">Belum ada riwayat transaksi.</div>';
+            } else {
+                hList.innerHTML = res.history.map(h=>`
+                <div class="history-item">
+                    <div class="hist-left">
+                        <span class="hist-desc">${h.desc} <span class="hist-svc">${h.service}</span></span>
+                        <span class="hist-date">${h.date}</span>
+                    </div>
+                    <div class="hist-right">
+                        <div class="hist-amount">+ Rp ${h.amount}</div>
+                        <div class="hist-type">${h.type}</div>
+                    </div>
+                </div>`).join('');
+            }
+        }
+
+        modal.classList.add('active');
+        if(mode==='view'){
+            document.getElementById('modalTitle').innerText = d.company_name||'Detail Client';
+            document.getElementById('btnContainer').style.display = 'none';
+            document.getElementById('modalTabs').style.display = 'flex';
+            switchTab('info');
+            enableForm(false);
+            toggleLinks(true);
+        } else {
+            document.getElementById('modalTitle').innerText = 'Edit: '+(d.company_name||'Client');
+            document.getElementById('btnContainer').style.display = 'block';
+            document.getElementById('modalTabs').style.display = 'flex';
+            document.getElementById('is_edit_mode').value = '1';
+            enableForm(true);
+            toggleLinks(false);
+        }
+
+        // Render legal docs
+        renderLegalDocs(res.legal_docs || []);
+        // Store current client id for doc actions
+        window._currentClientId = d.client_id;
+        // Reset add doc form
+        resetAddDocForm();
+    })
+    .catch(err=>{ console.error(err); showPopup('error','Gagal memuat data.'); });
+}
+
+function viewDetail(id){ fetchData(id,'view'); }
+function editDetail(id){ fetchData(id,'edit'); }
+
+// LOGO
+function setModalLogo(logoPath, name){
+    const ph=document.getElementById('modalLogoPlaceholder');
+    const img=document.getElementById('modalLogoImg');
+    if(logoPath&&logoPath.trim()!==''){
+        img.src=logoPath; img.style.display='block'; ph.style.display='none';
+    } else {
+        img.style.display='none'; ph.style.display='flex';
+        ph.innerText=(name||'??').substring(0,2).toUpperCase();
+    }
+}
+
+function previewLogo(input){
+    if(input.files&&input.files[0]){
+        const reader=new FileReader();
+        reader.onload=e=>{
+            document.getElementById('logoPreview').src=e.target.result;
+            document.getElementById('logoPreviewWrap').style.display='flex';
+            document.getElementById('logoUploadPrompt').style.display='none';
+            const img=document.getElementById('modalLogoImg');
+            img.src=e.target.result; img.style.display='block';
+            document.getElementById('modalLogoPlaceholder').style.display='none';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function removeLogo(e){
+    if(e) e.stopPropagation();
+    document.getElementById('logoInput').value='';
+    resetLogoPreview();
+}
+
+function resetLogoPreview(){
+    document.getElementById('logoPreviewWrap').style.display='none';
+    document.getElementById('logoUploadPrompt').style.display='flex';
+    document.getElementById('logoPreview').src='';
+}
+
+
+
+function setupLinkBtn(btnId,url){
+    const btn=document.getElementById(btnId); if(!btn) return;
+    if(url&&url.trim()!==''){ btn.classList.add('show'); btn.href=(!url.match(/^https?:\/\//i)?'https://':'')+url; }
+    else btn.classList.remove('show');
+}
+function toggleLinks(show){
+    if(!show) document.querySelectorAll('.input-link-btn').forEach(b=>b.classList.remove('show'));
+    else {
+        // Re-trigger setup for view mode so buttons show
+        ['f_plan','f_design','f_links','f_drive','f_artikel','f_thumbnail','f_other'].forEach(fid => {
+            const btnMap = {f_plan:'btn_plan',f_design:'btn_design',f_links:'btn_links',f_drive:'btn_drive',f_artikel:'btn_artikel',f_thumbnail:'btn_thumbnail',f_other:'btn_other'};
+            const inp = document.getElementById(fid);
+            if(inp) setupLinkBtn(btnMap[fid], inp.value);
+        });
+    }
+}
+
+// TABS
+function switchTab(tab){
+    document.querySelectorAll('.tab-link').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    const map={info:0,creds:1,legal:2,history:3};
+    const tabs=document.querySelectorAll('.tab-link');
+    if(tabs[map[tab]]!==undefined) tabs[map[tab]].classList.add('active');
+    const pane=document.getElementById('tab_'+tab);
+    if(pane) pane.classList.add('active');
+}
+
+// FORM ENABLE
+function enableForm(status){
+    form.querySelectorAll('input,textarea,select').forEach(i=>{
+        if(i.id==='f_id') return;
+        if(i.type==='checkbox'||i.type==='radio') i.disabled=!status;
+        else if(i.type==='file') i.disabled=!status;
+        else i.readOnly=!status;
+    });
+}
+
+// DATE FORMAT
+function fmtDate(d){ if(!d) return '-'; return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+
+// POPUP
+function showPopup(type,msg){
+    const p=document.getElementById('popup');
+    document.getElementById('popupMsg').innerText=msg;
+    p.className='popup '+type;
+    p.querySelector('i').className=type==='error'?'fas fa-exclamation-triangle':'fas fa-check-circle';
+    p.classList.add('show');
+    setTimeout(()=>p.classList.remove('show'),3500);
+}
+
+<?php if(isset($_SESSION['popup'])): ?>
+showPopup("<?php echo $_SESSION['popup']['type']; ?>","<?php echo addslashes($_SESSION['popup']['msg']); ?>");
+<?php unset($_SESSION['popup']); ?>
+<?php endif; ?>
+
+// =====================
+// LEGAL DOCS
+// =====================
+const docTypeIcon = {
+    'MoU':      {icon:'fa-handshake',      color:'var(--neon-main)'},
+    'Proposal': {icon:'fa-file-alt',       color:'var(--neon-sec)'},
+    'Invoice':  {icon:'fa-file-invoice',   color:'var(--neon-orange)'},
+    'Addendum': {icon:'fa-file-signature', color:'var(--neon-purple)'},
+    'Kwitansi': {icon:'fa-receipt',        color:'#f87171'},
+    'Other':    {icon:'fa-file',           color:'#6b7280'},
+};
+
+function renderLegalDocs(docs){
+    const list  = document.getElementById('legalDocsList');
+    const empty = document.getElementById('legalEmpty');
+    if(!list) return;
+    // Remove old items
+    list.querySelectorAll('.legal-doc-item').forEach(el=>el.remove());
+
+    if(!docs || docs.length === 0){
+        if(empty) empty.style.display = 'flex';
+        return;
+    }
+    if(empty) empty.style.display = 'none';
+
+    docs.forEach(doc => {
+        const ti = docTypeIcon[doc.type] || docTypeIcon['Other'];
+        const href = doc.file ? doc.file : (doc.link || '#');
+        const isLink = !!doc.link && !doc.file;
+        const dateStr = doc.date ? new Date(doc.date).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+        const item = document.createElement('div');
+        item.className = 'legal-doc-item';
+        item.dataset.id = doc.id;
+        item.innerHTML = `
+            <div class="doc-icon-wrap" style="color:${ti.color};border-color:${ti.color}20;background:${ti.color}0d;">
+                <i class="fas ${ti.icon}"></i>
+            </div>
+            <div class="doc-info">
+                <div class="doc-name">${escHtml(doc.name)}</div>
+                <div class="doc-meta">
+                    <span class="doc-type-badge" style="color:${ti.color};border-color:${ti.color}30;background:${ti.color}10;">${escHtml(doc.type)}</span>
+                    <span class="doc-date"><i class="fas fa-calendar-alt"></i> ${dateStr}</span>
+                    ${isLink ? '<span class="doc-source"><i class="fas fa-link"></i> Link</span>' : '<span class="doc-source"><i class="fas fa-paperclip"></i> File</span>'}
+                </div>
+            </div>
+            <div class="doc-actions">
+                <a href="${escHtml(href)}" target="_blank" class="doc-btn-open" title="Buka Dokumen"><i class="fas fa-external-link-alt"></i></a>
+                <button type="button" class="doc-btn-del" title="Hapus" onclick="deleteDoc('${escHtml(doc.id)}')"><i class="fas fa-trash-alt"></i></button>
+            </div>`;
+        list.appendChild(item);
+    });
+}
+
+function escHtml(s){ const d=document.createElement('div');d.appendChild(document.createTextNode(s||''));return d.innerHTML; }
+
+function toggleAddDocForm(){
+    const f = document.getElementById('addDocForm');
+    f.style.display = (f.style.display === 'none' || f.style.display === '') ? 'block' : 'none';
+    if(f.style.display === 'none') resetAddDocForm();
+}
+
+function resetAddDocForm(){
+    const ids = ['ad_type','ad_name','ad_link'];
+    ids.forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
+    const adType = document.getElementById('ad_type');
+    if(adType) adType.value = 'MoU';
+    const adFile = document.getElementById('ad_file');
+    if(adFile) adFile.value = '';
+    const lbl = document.getElementById('docUploadLabel');
+    if(lbl) lbl.innerText = 'Klik atau drag file di sini';
+    const dz = document.getElementById('docDropZone');
+    if(dz) dz.classList.remove('has-file');
+    const af = document.getElementById('addDocForm');
+    if(af) af.style.display = 'none';
+}
+
+function onDocFileChange(input){
+    const lbl = document.getElementById('docUploadLabel');
+    const dz  = document.getElementById('docDropZone');
+    if(input.files && input.files[0]){
+        lbl.innerText = input.files[0].name;
+        dz.classList.add('has-file');
+        document.getElementById('ad_link').value = '';
+    } else {
+        lbl.innerText = 'Klik atau drag file di sini';
+        dz.classList.remove('has-file');
+    }
+}
+
+// Drag & drop for doc zone
+document.addEventListener('DOMContentLoaded',()=>{
+    const da = document.getElementById('logoDropArea');
+    if(da){
+        ['dragenter','dragover'].forEach(e=>da.addEventListener(e,ev=>{ev.preventDefault();da.classList.add('drag-over');}));
+        ['dragleave','drop'].forEach(e=>da.addEventListener(e,ev=>{ev.preventDefault();da.classList.remove('drag-over');}));
+        da.addEventListener('click',()=>document.getElementById('logoInput').click());
+        da.addEventListener('drop',ev=>{
+            const f=ev.dataTransfer.files[0];
+            if(f){ const dt=new DataTransfer(); dt.items.add(f); document.getElementById('logoInput').files=dt.files; previewLogo(document.getElementById('logoInput')); }
+        });
+    }
+
+    const dz = document.getElementById('docDropZone');
+    if(dz){
+        ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag-over');}));
+        ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag-over');}));
+        dz.addEventListener('drop',ev=>{
+            ev.preventDefault(); dz.classList.remove('drag-over');
+            const f = ev.dataTransfer.files[0];
+            if(f){ const dt=new DataTransfer(); dt.items.add(f); const inp=document.getElementById('ad_file'); inp.files=dt.files; onDocFileChange(inp); }
+        });
+    }
+});
+
+function submitAddDoc(){
+    const cid  = window._currentClientId;
+    if(!cid){ showPopup('error','Client tidak terdeteksi.'); return; }
+    const fd   = new FormData();
+    fd.append('action',     'add_legal_doc');
+    fd.append('client_id',  cid);
+    fd.append('doc_type',   document.getElementById('ad_type').value);
+    fd.append('doc_name',   document.getElementById('ad_name').value);
+    fd.append('doc_link',   document.getElementById('ad_link').value);
+    const fileInp = document.getElementById('ad_file');
+    if(fileInp && fileInp.files[0]) fd.append('doc_file', fileInp.files[0]);
+
+    const btn = document.querySelector('.btn-doc-save');
+    if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+
+    fetch('index.php',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(res=>{
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Simpan Dokumen'; }
+        if(res.ok){
+            showPopup('success','Dokumen berhasil disimpan!');
+            resetAddDocForm();
+            // Re-fetch to refresh list
+            fetchData(cid, document.getElementById('is_edit_mode').value==='1'?'edit':'view');
+            // Stay on legal tab after refetch - override switchTab after fetch
+            setTimeout(()=>switchTab('legal'),300);
+        } else {
+            showPopup('error', res.msg || 'Gagal menyimpan dokumen.');
+        }
+    })
+    .catch(()=>{ if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Simpan Dokumen'; } showPopup('error','Koneksi error.'); });
+}
+
+function deleteDoc(docId){
+    if(!confirm('Hapus dokumen ini?')) return;
+    const cid = window._currentClientId;
+    if(!cid) return;
+    const fd = new FormData();
+    fd.append('action',    'delete_legal_doc');
+    fd.append('client_id', cid);
+    fd.append('doc_id',    docId);
+    fetch('index.php',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(res=>{
+        if(res.ok){
+            showPopup('success','Dokumen dihapus.');
+            fetchData(cid, document.getElementById('is_edit_mode').value==='1'?'edit':'view');
+            setTimeout(()=>switchTab('legal'),300);
+        } else {
+            showPopup('error', res.msg||'Gagal menghapus.');
+        }
+    })
+    .catch(()=>showPopup('error','Koneksi error.'));
+}
+
+window.onclick=e=>{ if(e.target===modal) closeModal(); };
+</script>
+<?php endif; ?>
+</body>
+</html>

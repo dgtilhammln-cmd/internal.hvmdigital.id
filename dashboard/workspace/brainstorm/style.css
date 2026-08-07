@@ -1,0 +1,266 @@
+/* =========================================
+   ZENITH BRAINSTORM - ULTRA MODERN THEME
+   ========================================= */
+
+:root {
+    --bg-deep: #050705;
+    --glass-dark: rgba(10, 12, 10, 0.85);
+    --glass-card: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --neon: #a1ff5a;
+    --cyan: #4efdc4;
+    --red: #ff5a5a;
+    --grad-main: linear-gradient(135deg, #a1ff5a, #4efdc4);
+    --grad-dark: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat', sans-serif; }
+
+body.brainstorm-page {
+    background: var(--bg-deep);
+    color: #fff;
+    overflow: hidden; /* Mencegah scroll body karena canvas bersifat infinite */
+    height: 100vh;
+    width: 100vw;
+}
+
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon); }
+
+/* --- AMBIENT GLOWS --- */
+.ambient-glow { position: fixed; border-radius: 50%; filter: blur(150px); opacity: 0.1; z-index: 1; pointer-events: none; }
+.glow-1 { top: -100px; left: -100px; width: 500px; height: 500px; background: var(--neon); }
+.glow-2 { bottom: -100px; right: -100px; width: 500px; height: 500px; background: var(--cyan); }
+
+/* --- LAYOUT WRAPPER --- */
+.dashboard-wrapper { display: flex; width: 100%; height: 100vh; }
+
+.main-content {
+    flex: 1;
+    margin-left: 260px; /* Offset sesuai lebar sidebar utama */
+    position: relative;
+    height: 100vh;
+    background: var(--bg-deep);
+}
+
+/* --- CANVAS AREA (Infinite Look) --- */
+/* Pastikan canvas wrapper tidak menghalangi event mouse */
+.canvas-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Di bawah sidebar dan nav */
+}
+
+.canvas-toolbar, .canvas-nav {
+    z-index: 100; /* Pastikan UI berada di atas kanvas */
+}
+
+/* Memastikan elemen Fabric.js center secara visual */
+.canvas-container {
+    margin: 0 auto;
+}
+
+canvas { outline: none; }
+
+/* --- FLOATING TOOLBAR (Left) --- */
+.canvas-toolbar {
+    position: absolute;
+    left: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--glass-dark);
+    backdrop-filter: blur(25px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 15px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    animation: slideRight 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tool-section { display: flex; flex-direction: column; gap: 8px; }
+.tool-divider { height: 1px; background: var(--border); margin: 5px 0; }
+
+.t-btn {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.03);
+    color: #666;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.t-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.t-btn.active { 
+    background: var(--grad-main); 
+    color: #000; 
+    box-shadow: 0 0 20px rgba(161, 255, 90, 0.3);
+}
+
+.nebula-trigger {
+    background: rgba(161, 255, 90, 0.1);
+    color: var(--neon);
+    border: 1px solid var(--neon);
+}
+.nebula-trigger:hover { background: var(--neon); color: #000; }
+
+/* --- TOP NAVIGATION BAR --- */
+.canvas-nav {
+    position: absolute;
+    top: 25px; left: 100px; right: 25px;
+    height: 70px;
+    background: var(--glass-dark);
+    backdrop-filter: blur(25px);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    z-index: 90;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+}
+
+.nav-left { display: flex; align-items: center; gap: 20px; }
+.back-btn { background: none; border: none; color: #555; font-size: 1.2rem; cursor: pointer; transition: 0.3s; }
+.back-btn:hover { color: var(--neon); transform: translateX(-3px); }
+
+.title-group h1 { 
+    font-size: 1.2rem; 
+    font-weight: 800; 
+    letter-spacing: -0.5px; 
+    outline: none; 
+    border-bottom: 1px dashed transparent;
+}
+.title-group h1:focus { border-color: var(--neon); }
+.title-group span { font-size: 0.65rem; color: var(--neon); font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
+
+.zoom-indicator {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 6px 18px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.zoom-indicator button { background: none; border: none; color: #fff; cursor: pointer; opacity: 0.5; }
+.zoom-indicator button:hover { opacity: 1; color: var(--neon); }
+
+.btn-export {
+    background: var(--grad-main);
+    color: #000;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 50px;
+    font-weight: 900;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 5px 15px rgba(161, 255, 90, 0.2);
+}
+.btn-export:hover { transform: scale(1.05); box-shadow: 0 8px 25px rgba(161, 255, 90, 0.4); }
+
+/* --- CONTEXT MENU --- */
+.context-menu {
+    position: fixed;
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 10px;
+    display: none;
+    z-index: 2000;
+    width: 220px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+}
+.cm-item {
+    padding: 12px 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #aaa;
+    cursor: pointer;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: 0.2s;
+}
+.cm-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.cm-item i { width: 18px; font-size: 1rem; color: var(--neon); }
+.cm-divider { height: 1px; background: var(--border); margin: 8px 0; }
+.cm-item.delete:hover { color: var(--red); background: rgba(255, 90, 90, 0.1); }
+.cm-item.delete i { color: var(--red); }
+
+/* --- MODAL TEMPLATES --- */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 3000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+
+.modal-content {
+    background: var(--bg-deep);
+    border: 1px solid var(--neon);
+    border-radius: 32px;
+    width: 650px;
+    max-width: 90%;
+    padding: 40px;
+    box-shadow: 0 0 60px rgba(161, 255, 90, 0.1);
+}
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.modal-header h3 { font-size: 1.5rem; font-weight: 900; }
+.close-btn { background: none; border: none; color: #444; font-size: 2rem; cursor: pointer; }
+.close-btn:hover { color: var(--red); }
+
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+.tpl-card {
+    background: var(--glass-card);
+    border: 1px solid var(--border);
+    padding: 25px;
+    border-radius: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.tpl-card:hover { border-color: var(--neon); background: rgba(161, 255, 90, 0.05); transform: translateY(-5px); }
+.tpl-icon { font-size: 2rem; color: var(--neon); margin-bottom: 15px; }
+.tpl-card h4 { font-weight: 800; font-size: 0.95rem; margin-bottom: 8px; }
+.tpl-card p { font-size: 0.75rem; color: #666; line-height: 1.4; }
+
+/* --- ANIMATIONS --- */
+@keyframes slideRight { from { opacity: 0; transform: translateY(-50%) translateX(-30px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- MOBILE RESPONSIVE --- */
+@media (max-width: 1024px) {
+    .main-content { margin-left: 0; }
+    .canvas-nav { left: 25px; }
+}
+
+@media (max-width: 768px) {
+    .canvas-toolbar { bottom: 20px; top: auto; left: 50%; transform: translateX(-50%); flex-direction: row; }
+    .canvas-nav { flex-direction: column; height: auto; padding: 20px; border-radius: 30px; }
+    .nav-right { margin-top: 15px; }
+}
