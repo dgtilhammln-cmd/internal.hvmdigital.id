@@ -137,9 +137,9 @@ $q_dead = mysqli_query($conn, "SELECT company_name, DATEDIFF(contract_end, NOW()
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* --- PLANNER / CALENDAR STYLES --- */
-        .zenith-grid-layout { display: grid; grid-template-columns: 1fr; gap: 25px; margin-bottom: 20px; }
-        .planner-deck { min-height: 600px; padding: 30px; position: relative; width: 100%; }
-        .panel-header-v30 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .zenith-grid-layout { display: grid; grid-template-columns: 1fr; gap: 25px; margin-bottom: 25px; }
+        .planner-deck { min-height: 400px; padding: 25px; position: relative; width: 100%; display: flex; flex-direction: column; gap: 15px; }
+        .panel-header-v30 { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
         .ph-left h2 { font-size: 1.8rem; font-weight: 900; margin: 0; }
         .ph-nav-group { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
         .btn-today-v30 { background: #fff; color: #000; padding: 8px 20px; border-radius: 50px; font-weight: 800; font-size: 0.7rem; cursor: pointer; border: none; }
@@ -149,13 +149,13 @@ $q_dead = mysqli_query($conn, "SELECT company_name, DATEDIFF(contract_end, NOW()
         .mode-switch-v30 { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 15px; display: flex; }
         .mode-switch-v30 button { background: none; border: none; color: #888; padding: 8px 15px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
         .mode-switch-v30 button.active { background: #fff; color: #000; }
-        .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 20px; padding: 20px; border: 1px solid var(--card-border); position: relative; min-height: 500px; }
-        .add-event-fab { position: absolute; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: var(--neon-main); color: #000; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 30px var(--neon-main); transition: 0.3s; z-index: 10; border: none; }
+        .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 16px; padding: 15px; border: 1px solid var(--card-border); position: relative; min-height: 400px; max-height: 600px; }
+        .add-event-fab { position: absolute; bottom: 25px; right: 25px; width: 55px; height: 55px; border-radius: 50%; background: var(--neon-main); color: #000; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 30px var(--neon-main); transition: 0.3s; z-index: 10; border: none; }
         .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 50px var(--neon-main); }
         /* --- CALENDAR GRIDS --- */
-        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; min-width: 800px; }
+        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; min-width: 800px; }
         .cal-day-header { text-align: center; font-weight: 700; color: #666; margin-bottom: 10px; font-size: 0.8rem; }
-        .cal-day-cell { min-height: 120px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--card-border); padding: 10px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 5px; }
+        .cal-day-cell { min-height: 90px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid var(--card-border); padding: 8px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 4px; }
         .cal-day-cell:hover { background: rgba(255,255,255,0.05); border-color: var(--neon-main); }
         .cal-day-num { font-weight: 800; font-size: 1rem; color: #aaa; margin-bottom: 5px; }
         .cal-day-cell.is-sunday .cal-day-num { color: var(--neon-red); }
