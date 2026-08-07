@@ -476,18 +476,22 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
         <div class="modal-body">
             <div class="inv-form-wrap">
                 <div class="form-section">
-                    <div class="form-section-title"><i class="fas fa-image"></i> Header Invoice (Dark Theme)</div>
+                    <div class="form-section-title"><i class="fas fa-image"></i> Center Logo (Watermark)</div>
                     <div style="display:flex;flex-direction:column;gap:12px;">
-                        <div id="headerPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);position:relative;">
-                            <img id="headerImgPreview" src="" style="width:100%;height:160px;object-fit:cover;display:block;">
-                            <button type="button" onclick="removeHeaderImg()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.8rem;" title="Hapus Gambar"><i class="fas fa-times"></i></button>
+                        <div id="centerLogoPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);position:relative;background:#111;text-align:center;padding:20px;">
+                            <img id="centerLogoPreview" src="" style="max-width:150px;max-height:150px;object-fit:contain;display:inline-block;">
+                            <button type="button" onclick="removeCenterLogo()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.8rem;" title="Hapus Gambar"><i class="fas fa-times"></i></button>
                         </div>
-                        <div id="headerUploadZone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:0.2s;" onclick="document.getElementById('f_headerImg').click()" ondragover="event.preventDefault();this.style.borderColor='var(--neon-main)'" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'" ondrop="handleHeaderDrop(event)">
+                        <div id="centerLogoUploadZone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:0.2s;" onclick="document.getElementById('f_centerLogo').click()" ondragover="event.preventDefault();this.style.borderColor='var(--neon-main)'" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'" ondrop="handleCenterLogoDrop(event)">
                             <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;color:#555;margin-bottom:8px;display:block;"></i>
-                            <div style="font-size:0.82rem;color:#666;">Klik atau drag untuk upload foto header</div>
-                            <div style="font-size:0.7rem;color:#444;margin-top:4px;">Akan otomatis disimpan dan digunakan di semua invoice dark theme</div>
+                            <div style="font-size:0.82rem;color:#666;">Klik atau drag untuk upload logo watermark (PNG)</div>
                         </div>
-                        <input type="file" id="f_headerImg" accept="image/*" style="display:none;" onchange="handleHeaderImg(this)">
+                        <input type="file" id="f_centerLogo" accept="image/*" style="display:none;" onchange="handleCenterLogo(this)">
+                        
+                        <div class="form-group" style="margin-top:10px;">
+                            <label>Opacity Watermark (<span id="opacityVal">10</span>%)</label>
+                            <input type="range" id="f_logoOpacity" min="5" max="100" value="10" style="width:100%;accent-color:var(--neon-main);" oninput="document.getElementById('opacityVal').innerText=this.value; savePaymentInfo();">
+                        </div>
                     </div>
                 </div>
 
@@ -671,7 +675,8 @@ let invoices = [
 ];
 let editingId = null;
 let payType = 'Lunas';
-let headerImgDataUrl = localStorage.getItem('invHeaderImg') || null;
+let centerLogoDataUrl = localStorage.getItem('invCenterLogo') || null;
+let centerLogoOpacity = localStorage.getItem('invCenterLogoOp') || 10;
 
 // Saved payment info
 const savedPayment = JSON.parse(localStorage.getItem('invPaymentInfo') || '{}');
@@ -685,6 +690,7 @@ function loadSavedPaymentInfo() {
     if (savedPayment.sigName)  document.getElementById('f_sigName').value = savedPayment.sigName;
     if (savedPayment.sigRole)  document.getElementById('f_sigRole').value = savedPayment.sigRole;
 }
+
 function savePaymentInfo() {
     const info = {
         bank:     document.getElementById('f_bank').value,
@@ -696,47 +702,50 @@ function savePaymentInfo() {
         sigRole:  document.getElementById('f_sigRole').value,
     };
     localStorage.setItem('invPaymentInfo', JSON.stringify(info));
+    localStorage.setItem('invCenterLogoOp', document.getElementById('f_logoOpacity').value);
     Object.assign(savedPayment, info);
-    showPopup('success', 'Info pembayaran & tanda tangan tersimpan permanen!');
+    showPopup('success', 'Info tersimpan permanen!');
 }
 
-// Init header img preview on load
+// Init center logo preview on load
 document.addEventListener('DOMContentLoaded', () => {
-    if (headerImgDataUrl) {
-        document.getElementById('headerImgPreview').src = headerImgDataUrl;
-        document.getElementById('headerPreviewWrap').style.display = 'block';
-        document.getElementById('headerUploadZone').style.display = 'none';
+    if (centerLogoDataUrl) {
+        document.getElementById('centerLogoPreview').src = centerLogoDataUrl;
+        document.getElementById('centerLogoPreviewWrap').style.display = 'block';
+        document.getElementById('centerLogoUploadZone').style.display = 'none';
     }
+    document.getElementById('f_logoOpacity').value = centerLogoOpacity;
+    document.getElementById('opacityVal').innerText = centerLogoOpacity;
     loadSavedPaymentInfo();
 });
 
-function handleHeaderImg(input) {
+function handleCenterLogo(input) {
     if (!input.files[0]) return;
     const reader = new FileReader();
     reader.onload = e => {
-        headerImgDataUrl = e.target.result;
-        localStorage.setItem('invHeaderImg', headerImgDataUrl);
-        document.getElementById('headerImgPreview').src = headerImgDataUrl;
-        document.getElementById('headerPreviewWrap').style.display = 'block';
-        document.getElementById('headerUploadZone').style.display = 'none';
+        centerLogoDataUrl = e.target.result;
+        localStorage.setItem('invCenterLogo', centerLogoDataUrl);
+        document.getElementById('centerLogoPreview').src = centerLogoDataUrl;
+        document.getElementById('centerLogoPreviewWrap').style.display = 'block';
+        document.getElementById('centerLogoUploadZone').style.display = 'none';
     };
     reader.readAsDataURL(input.files[0]);
 }
-function handleHeaderDrop(e) {
+function handleCenterLogoDrop(e) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file || !file.type.startsWith('image/')) return;
     const dt = new DataTransfer(); dt.items.add(file);
-    document.getElementById('f_headerImg').files = dt.files;
-    handleHeaderImg(document.getElementById('f_headerImg'));
+    document.getElementById('f_centerLogo').files = dt.files;
+    handleCenterLogo(document.getElementById('f_centerLogo'));
 }
-function removeHeaderImg() {
-    headerImgDataUrl = null;
-    localStorage.removeItem('invHeaderImg');
-    document.getElementById('headerImgPreview').src = '';
-    document.getElementById('headerPreviewWrap').style.display = 'none';
-    document.getElementById('headerUploadZone').style.display = 'block';
-    document.getElementById('f_headerImg').value = '';
+function removeCenterLogo() {
+    centerLogoDataUrl = null;
+    localStorage.removeItem('invCenterLogo');
+    document.getElementById('centerLogoPreview').src = '';
+    document.getElementById('centerLogoPreviewWrap').style.display = 'none';
+    document.getElementById('centerLogoUploadZone').style.display = 'block';
+    document.getElementById('f_centerLogo').value = '';
 }
 
 function renderTable(data){
@@ -947,9 +956,11 @@ function deleteInvoice(id){
 
 function buildInvoiceHTML(inv) {
     const ppnVal = inv.subtotal*(inv.ppn/100);
-    const headerHtml = headerImgDataUrl
-        ? `<img class="dark-header-img" src="${headerImgDataUrl}" alt="Header">`
-        : `<div class="dark-header-placeholder">HVM DIGITAL</div>`;
+    
+    let watermarkHtml = '';
+    if (centerLogoDataUrl) {
+        watermarkHtml = `<img src="${centerLogoDataUrl}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;opacity:${centerLogoOpacity/100};pointer-events:none;z-index:0;" alt="Watermark">`;
+    }
     let itemsHtml = inv.items.map(item => {
         const subsHtml = item.subs ? `<div style="font-size:0.75rem;color:#666;margin-top:4px;line-height:1.5;">${esc(item.subs).replace(/\n/g,'<br>')}</div>` : '';
         return `<tr>
@@ -965,9 +976,9 @@ function buildInvoiceHTML(inv) {
         Lunas: 'lunas', DP: 'dp', Pending: 'pending', Overdue: 'overdue'
     };
     const statusCls = statusColors[inv.status] || 'pending';
-    return `<div class="invoice-paper-dark">
-        ${headerHtml}
-        <div class="dark-inv-body">
+    return `<div class="invoice-paper-dark" style="position:relative;">
+        ${watermarkHtml}
+        <div class="dark-inv-body" style="position:relative;z-index:1;">
             <div class="dark-inv-logo-row">
                 <img src="/uploads/icon.png" style="width:44px;height:44px;object-fit:contain;border-radius:50%;" alt="HVM Digital">
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
@@ -1012,21 +1023,27 @@ function buildInvoiceHTML(inv) {
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
             </div>
-            <div class="dark-inv-bottom">
-                <div>
-                    <div class="dark-inv-payment-label">Payment Details</div>
+            <div class="dark-inv-bottom" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:40px;">
+                <div style="flex:1;padding-right:40px;">
+                    <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
                     <div class="dark-inv-payment-line">Payment Method: Bank Transfer</div>
                     <div class="dark-inv-payment-line">Bank: ${esc(inv.bank)}</div>
                     <div class="dark-inv-payment-line">Account: ${esc(inv.rekening)}</div>
                     <div class="dark-inv-payment-line">A/N: ${esc(inv.atasNama)}</div>
+                    
+                    ${inv.note?`<div style="margin-top:30px;"><div class="dark-inv-note-label">NOTES</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
                 </div>
-                ${inv.note?`<div><div class="dark-inv-note-label">Notes</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
-            </div>
-            <div class="dark-inv-signature">
-                <div class="dark-inv-sig-box">
-                    <div class="dark-inv-sig-line"></div>
-                    <div class="dark-inv-sig-name">${esc(inv.sigName||'')}</div>
-                    <div class="dark-inv-sig-role">${esc(inv.sigRole||'')}</div>
+                <div style="width:200px;text-align:center;">
+                    <!-- Barcode Box Placeholder (Kotak Merah di Ref) -->
+                    <div style="width:140px;height:140px;margin:0 auto 20px auto;border:1px solid #333;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#111;">
+                        <div style="font-size:0.7rem;color:#555;">[ QR Code ]</div>
+                    </div>
+                    <!-- Signature Box (Kotak Hijau di Ref) -->
+                    <div class="dark-inv-sig-box" style="margin:0 auto;width:100%;">
+                        <div class="dark-inv-sig-line"></div>
+                        <div class="dark-inv-sig-name" style="font-weight:700;">${esc(inv.sigName||'')}</div>
+                        <div class="dark-inv-sig-role">${esc(inv.sigRole||'')}</div>
+                    </div>
                 </div>
             </div>
         </div>
