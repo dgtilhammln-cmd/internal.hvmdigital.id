@@ -279,118 +279,111 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 .date-day { font-size:1.4rem; font-weight:700; color:#fff; margin-bottom:2px; }
 .date-full { font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
 
-.upcoming-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:24px; padding:25px; backdrop-filter:blur(20px); overflow-y:auto; max-height:160px; }
-.uc-header { font-size:0.75rem; font-weight:800; color:var(--neon-sec); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:15px; border-bottom:1px dashed var(--card-border); padding-bottom:5px; }
-.uc-item { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:12px; }
-.uc-name { font-size:0.9rem; color:#fff; font-weight:600; }
-.uc-days { font-size:0.75rem; color:var(--neon-red); font-weight:700; background:rgba(255,90,90,0.1); padding:3px 8px; border-radius:6px; }
+.upcoming-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:20px 22px; backdrop-filter:blur(20px); overflow-y:auto; max-height:160px; }
+.uc-header { font-size:0.68rem; font-weight:800; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:2px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.uc-item { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:2px solid rgba(255,255,255,0.08); }
+.uc-name { font-size:0.82rem; color:#e0e0e0; font-weight:600; }
+.uc-days { font-size:0.7rem; color:#aaa; font-weight:700; background:rgba(255,255,255,0.06); padding:3px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); white-space:nowrap; }
 
 /* ══ MONTHLY TARGET PREMIUM ══ */
 .target-premium-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(30px);
-    border: 1px solid var(--tier-color, var(--neon-main));
-    border-radius: 16px;
-    padding: 12px 20px;
+    background: rgba(12,12,14,0.95);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 18px 22px 14px;
     margin-bottom: 15px;
     position: relative;
     overflow: hidden;
-    transition: box-shadow 0.4s ease;
 }
 .target-premium-card::before {
     content: '';
     position: absolute;
-    top: -80px; right: -80px;
-    width: 280px; height: 280px;
-    background: var(--tier-color, var(--neon-main));
-    border-radius: 50%;
-    filter: blur(100px);
-    opacity: 0.12;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
     pointer-events: none;
 }
 
-.tp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.tp-label { font-size:0.72rem; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); }
+.tp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.tp-label { font-size:0.65rem; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,0.35); }
 .tp-badge {
     display: flex; align-items: center; gap: 5px;
     padding: 4px 12px; border-radius: 50px;
-    font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-    border: 1.5px solid;
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 /* Amount */
-.tp-amount-row { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
-.tp-achieved { font-size:1.8rem; font-weight:900; color:var(--tier-color, var(--neon-main)); line-height:1; }
-.tp-separator { font-size:1.2rem; font-weight:300; color:#444; }
-.tp-goal { font-size:1.1rem; font-weight:700; color:#666; }
-.tp-unit { font-size:0.8rem; font-weight:600; margin-left:2px; }
+.tp-amount-row { display:flex; align-items:baseline; gap:10px; margin-bottom:16px; }
+.tp-achieved { font-size:2rem; font-weight:900; color:#fff; line-height:1; letter-spacing:-1px; }
+.tp-separator { font-size:1rem; font-weight:300; color:rgba(255,255,255,0.2); }
+.tp-goal { font-size:1rem; font-weight:600; color:rgba(255,255,255,0.35); }
+.tp-unit { font-size:0.75rem; font-weight:600; margin-left:2px; color:rgba(255,255,255,0.5); }
 
 /* Track */
-.tp-track-wrap { margin-bottom:10px; }
+.tp-track-wrap { margin-bottom:8px; }
 .tp-track {
     position: relative;
-    height: 14px;
-    border-radius: 7px;
-    background: rgba(255,255,255,0.06);
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.07);
     overflow: visible;
     margin-bottom: 0;
 }
-.tp-zone {
-    position: absolute; top: 0; height: 100%; border-radius: 0;
-}
-.zone-red    { background: rgba(255,90,90,0.15); border-radius:7px 0 0 7px; }
-.zone-yellow { background: rgba(245,197,24,0.12); }
-.zone-green  { background: rgba(161,255,90,0.10); border-radius:0 7px 7px 0; }
+.tp-zone { display:none; }
 
 .tp-fill {
     position: absolute; top: 0; left: 0; height: 100%;
-    background: linear-gradient(90deg, #ff5a5a 0%, #f5c518 40%, #a1ff5a 100%);
-    border-radius: 7px;
-    box-shadow: 0 0 16px rgba(161,255,90,0.5);
+    background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.8) 100%);
+    border-radius: 2px;
     width: 0%;
     z-index: 1;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
 }
 .tp-thumb {
     position: absolute; top: 50%; transform: translate(-50%, -50%);
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 14px; height: 14px; border-radius: 50%;
     background: #fff;
-    border: 3px solid var(--tier-color, var(--neon-main));
+    border: 2px solid rgba(255,255,255,0.3);
     z-index: 2;
+    box-shadow: 0 0 12px rgba(255,255,255,0.3);
     display: flex; align-items: center; justify-content: center;
 }
-.tp-thumb-inner { width:7px; height:7px; border-radius:50%; background:var(--tier-color, var(--neon-main)); }
+.tp-thumb-inner { width:5px; height:5px; border-radius:50%; background:rgba(0,0,0,0.5); }
 
 /* Milestones */
-.tp-milestones { position:relative; height:35px; margin-top:5px; }
+.tp-milestones { position:relative; height:30px; margin-top:8px; }
 .tp-milestone {
     position: absolute;
     transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .ms-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: #333; border: 2px solid #555;
-    display: flex; align-items: center; justify-content: center;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
     transition: 0.3s;
 }
-.ms-dot.ms-start { background:#555; border-color:#777; }
-.ms-dot.ms-end   { width:13px; height:13px; border-color:#a1ff5a; }
-.ms-dot.ms-done  { background:var(--neon-main); border-color:var(--neon-main); box-shadow:0 0 8px var(--neon-main); }
-.ms-dot.ms-red-empty   { border-color:#ff9f43; }
-.ms-dot.ms-yellow-empty { border-color:#60a5fa; }
-.ms-dot.ms-gacor { background:#a1ff5a; border-color:#a1ff5a; box-shadow:0 0 15px rgba(161,255,90,0.4); }
+.ms-dot.ms-start { background:rgba(255,255,255,0.15); }
+.ms-dot.ms-end   { width:8px; height:8px; border-color:rgba(255,255,255,0.3); }
+.ms-dot.ms-done  { background:#fff; border-color:#fff; box-shadow:0 0 6px rgba(255,255,255,0.4); }
+.ms-dot.ms-red-empty   { border-color:rgba(255,255,255,0.2); }
+.ms-dot.ms-yellow-empty { border-color:rgba(255,255,255,0.2); }
+.ms-dot.ms-gacor { background:#fff; border-color:#fff; box-shadow:0 0 12px rgba(255,255,255,0.5); }
 
 .ms-info { display:flex; flex-direction:column; align-items:center; }
-.ms-label { font-size:0.68rem; color:#888; font-weight:700; }
-.ms-tag   { font-size:0.6rem;  font-weight:800; letter-spacing:0.5px; margin-top:1px; }
+.ms-label { font-size:0.62rem; color:rgba(255,255,255,0.35); font-weight:700; }
+.ms-tag   { font-size:0.55rem; font-weight:800; letter-spacing:0.5px; margin-top:1px; color:rgba(255,255,255,0.25); }
 
 /* Footer */
-.tp-footer { display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); }
+.tp-footer { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid rgba(255,255,255,0.05); margin-top:4px; }
 .tp-stat { display:flex; flex-direction:column; gap:2px; }
-.tp-stat-label { font-size:0.65rem; color:#666; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
-.tp-stat-val { font-size:0.95rem; font-weight:900; }
+.tp-stat-label { font-size:0.6rem; color:rgba(255,255,255,0.3); font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.tp-stat-val { font-size:0.9rem; font-weight:900; color:#fff; }
 .tp-stat-center { text-align:center; }
-.tp-msg { font-size:0.75rem; color:var(--tier-color, var(--neon-main)); font-weight:700; font-style:italic; }
+.tp-msg { font-size:0.72rem; color:rgba(255,255,255,0.4); font-weight:600; font-style:italic; }
 
 /* ══ STATS ROW ══ */
 .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:20px; margin-bottom:25px; animation:fadeIn 1s ease; }
@@ -656,7 +649,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     </div>
                 </div>
                 <div class="upcoming-card">
-                    <div class="uc-header">⚡ UPCOMING DEADLINE</div>
+                    <div class="uc-header"><i class="fas fa-clock"></i> UPCOMING DEADLINE</div>
                     <?php if(count($upcoming_deadlines) > 0): ?>
                         <?php foreach($upcoming_deadlines as $ud): ?>
                         <?php
@@ -665,9 +658,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         <div class="uc-item">
                             <div style="flex:1;min-width:0;">
                                 <div class="uc-name"><?php echo htmlspecialchars($ud['company']); ?></div>
-                                <div style="font-size:0.65rem;color:#555;margin-top:2px;"><?php echo htmlspecialchars($ud['type']); ?> · Berakhir <?php echo date('d M Y', strtotime($ud['end'])); ?></div>
+                                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:2px;"><?php echo htmlspecialchars($ud['type']); ?> · Berakhir <?php echo date('d M Y', strtotime($ud['end'])); ?></div>
                             </div>
-                            <span class="uc-days" style="background:<?php echo $urgency_color; ?>22;color:<?php echo $urgency_color; ?>;border:1px solid <?php echo $urgency_color; ?>44;">H-<?php echo $ud['sisa']; ?></span>
+                            <span class="uc-days">H-<?php echo $ud['sisa']; ?></span>
                         </div>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -682,14 +675,14 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
                 <div class="tp-header">
                     <div class="tp-label">MONTHLY TARGET</div>
-                    <div class="tp-badge" style="background:<?php echo $level_bg;?>; color:<?php echo $level_color;?>; border-color:<?php echo $level_color;?>44;">
+                    <div class="tp-badge">
                         <i class="fas <?php echo $level_icon; ?>"></i>
                         <span><?php echo $level_label; ?></span>
                     </div>
                 </div>
 
                 <div class="tp-amount-row">
-                    <div class="tp-achieved <?php echo $sensor_class; ?>">
+                    <div class="tp-achieved">
                         Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit">jt</span>
                     </div>
                     <div class="tp-separator">/</div>
@@ -718,14 +711,14 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             <div class="ms-dot <?php echo ($achieved>=10000000)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
                             <div class="ms-info">
                                 <span class="ms-label">10jt</span>
-                                <span class="ms-tag" style="color:#ff9f43;">Target 1</span>
+                                <span class="ms-tag">Target 1</span>
                             </div>
                         </div>
                         <div class="tp-milestone" style="left:50%">
                             <div class="ms-dot <?php echo ($achieved>=20000000)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
                             <div class="ms-info">
                                 <span class="ms-label">20jt</span>
-                                <span class="ms-tag" style="color:#60a5fa;">Target 2</span>
+                                <span class="ms-tag">Target 2</span>
                             </div>
                         </div>
                         <div class="tp-milestone" style="left:100%">
@@ -733,7 +726,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             </div>
                             <div class="ms-info">
                                 <span class="ms-label">40jt</span>
-                                <span class="ms-tag" style="color:#a1ff5a;">Reached</span>
+                                <span class="ms-tag">Reached</span>
                             </div>
                         </div>
                     </div>
@@ -742,15 +735,15 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 <div class="tp-footer">
                     <div class="tp-stat">
                         <span class="tp-stat-label">Progress</span>
-                        <span class="tp-stat-val" style="color:<?php echo $level_color;?>"><?php echo number_format(min(100,$persen_target),1); ?>%</span>
+                        <span class="tp-stat-val"><?php echo number_format(min(100,$persen_target),1); ?>%</span>
                     </div>
                     <div class="tp-stat-center">
                         <span class="tp-msg"><?php echo $level_msg; ?></span>
                     </div>
                     <div class="tp-stat" style="text-align:right;">
                         <span class="tp-stat-label">Gap ke Target</span>
-                        <span class="tp-stat-val <?php echo $sensor_class; ?>" style="color:var(--neon-red)">
-                            <?php echo $sisa_target > 0 ? 'Rp '.number_format($sisa_target/1000000,1).'jt' : 'DONE! 🎉'; ?>
+                        <span class="tp-stat-val">
+                            <?php echo $sisa_target > 0 ? 'Rp '.number_format($sisa_target/1000000,1).'jt' : 'DONE!'; ?>
                         </span>
                     </div>
                 </div>
