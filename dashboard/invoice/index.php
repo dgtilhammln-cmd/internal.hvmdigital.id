@@ -277,11 +277,15 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .popup.show { transform:translateY(0); opacity:1; }
 .popup.error { border-color:rgba(255,90,90,0.3); color:var(--neon-red); }
 
-/* PRINT */
+/* PRINT - CLEAN NO WATERMARK */
+@page { margin: 0; size: A4; }
 @media print {
-    body * { visibility:hidden; }
-    .invoice-paper, .invoice-paper * { visibility:visible; }
-    .invoice-paper { position:absolute; left:0; top:0; width:100%; box-shadow:none; border-radius:0; }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; background: #fff; }
+    #printArea.dark-print { background: #0a0a0a; }
+    .preview-actions, .modal-overlay, .ambient-glow { display: none !important; }
 }
 
 @media (max-width: 768px) {
@@ -292,6 +296,79 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     .items-head { display:none; }
     .item-row { grid-template-columns:1fr; }
 }
+
+/* ====== DARK INVOICE PAPER ====== */
+.invoice-paper-dark {
+    background: #0a0a0a;
+    color: #fff;
+    width: 720px;
+    max-width: 100%;
+    font-family: 'Montserrat', sans-serif;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+}
+.dark-header-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+.dark-header-placeholder {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: rgba(255,255,255,0.1);
+    letter-spacing: 8px;
+    font-weight: 900;
+}
+.dark-inv-body { padding: 36px 44px; }
+.dark-inv-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+.dark-inv-logo { width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.dark-inv-logo svg { width: 22px; height: 22px; fill: #fff; }
+.dark-inv-number { font-size: 0.85rem; font-weight: 700; color: #888; letter-spacing: 1px; }
+.dark-inv-title { font-size: 3.2rem; font-weight: 900; color: #fff; letter-spacing: -2px; line-height: 1; margin-bottom: 32px; }
+.dark-inv-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+.dark-inv-party-label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 6px; }
+.dark-inv-party-name { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 3px; }
+.dark-inv-party-info { font-size: 0.75rem; color: #777; line-height: 1.6; }
+.dark-inv-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.dark-inv-table thead tr { border-bottom: 1px solid #333; }
+.dark-inv-table th { padding: 10px 0; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #555; text-align: left; }
+.dark-inv-table th:not(:first-child) { text-align: right; }
+.dark-inv-table tbody tr { border-bottom: 1px solid #1a1a1a; }
+.dark-inv-table tbody tr:last-child { border-bottom: none; }
+.dark-inv-table td { padding: 16px 0; font-size: 0.88rem; color: #ccc; vertical-align: top; }
+.dark-inv-table td:not(:first-child) { text-align: right; }
+.dark-inv-table td strong { color: #fff; font-weight: 700; }
+.dark-inv-totals { display: flex; justify-content: flex-end; margin-bottom: 32px; }
+.dark-inv-totals-box { width: 260px; }
+.dark-inv-totals-line { display: flex; justify-content: space-between; font-size: 0.82rem; color: #888; margin-bottom: 8px; }
+.dark-inv-totals-div { border: none; border-top: 1px solid #333; margin: 12px 0; }
+.dark-inv-totals-grand { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; color: #fff; }
+.dark-inv-totals-grand span:last-child { font-size: 1.1rem; }
+.dark-inv-payment { margin-bottom: 24px; }
+.dark-inv-payment-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1.5px; color: #555; font-weight: 700; margin-bottom: 8px; }
+.dark-inv-payment-line { font-size: 0.82rem; color: #888; margin-bottom: 4px; }
+.dark-inv-payment-line b { color: #bbb; }
+.dark-inv-note { font-size: 0.78rem; color: #777; margin-bottom: 28px; }
+.dark-inv-note strong { color: #555; display: block; margin-bottom: 4px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
+
+/* theme toggle button */
+.btn-theme-toggle {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #ccc; border-radius: 10px;
+    padding: 10px 16px; font-family: inherit; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s;
+}
+.btn-theme-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.btn-theme-toggle.dark-active { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); color: #fff; }
 </style>
 </head>
 <body>
@@ -356,6 +433,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                 </select>
             </div>
             <div style="display:flex;gap:10px;">
+                <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleInvTheme()" title="Toggle Dark Invoice"><i class="fas fa-moon"></i> Dark Theme</button>
                 <button class="btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
                 <button class="btn-neon" onclick="openCreateModal()"><i class="fas fa-plus"></i> Buat Invoice</button>
             </div>
@@ -395,6 +473,22 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
         </div>
         <div class="modal-body">
             <div class="inv-form-wrap">
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-image"></i> Header Invoice (Dark Theme)</div>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div id="headerPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);position:relative;">
+                            <img id="headerImgPreview" src="" style="width:100%;height:160px;object-fit:cover;display:block;">
+                            <button type="button" onclick="removeHeaderImg()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.8rem;" title="Hapus Gambar"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div id="headerUploadZone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:0.2s;" onclick="document.getElementById('f_headerImg').click()" ondragover="event.preventDefault();this.style.borderColor='var(--neon-main)'" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'" ondrop="handleHeaderDrop(event)">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;color:#555;margin-bottom:8px;display:block;"></i>
+                            <div style="font-size:0.82rem;color:#666;">Klik atau drag untuk upload foto header</div>
+                            <div style="font-size:0.7rem;color:#444;margin-top:4px;">Akan otomatis disimpan dan digunakan di semua invoice dark theme</div>
+                        </div>
+                        <input type="file" id="f_headerImg" accept="image/*" style="display:none;" onchange="handleHeaderImg(this)">
+                    </div>
+                </div>
+
                 <div class="form-section">
                     <div class="form-section-title"><i class="fas fa-info-circle"></i> Informasi Invoice</div>
                     <div class="form-grid">
@@ -548,13 +642,15 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 </div>
 
 <!-- PREVIEW MODAL -->
-<div class="preview-modal-overlay" id="previewModal">
+<div id="previewModal" style="position:fixed;inset:0;z-index:2000;background:#111;display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:20px;">
     <div class="preview-actions">
-        <button class="btn-neon" onclick="window.print()"><i class="fas fa-print"></i> Print / PDF</button>
+        <button class="btn-neon" onclick="doPrintClean()"><i class="fas fa-print"></i> Print / PDF</button>
         <button class="btn-ghost" style="border-color:rgba(255,255,255,0.15);color:#bbb;" onclick="closePreview()"><i class="fas fa-times"></i> Tutup</button>
     </div>
-    <div class="invoice-paper" id="invoicePaper"></div>
+    <div id="invoicePaper"></div>
 </div>
+<!-- PRINT AREA (bersih, tanpa chrome) -->
+<div id="printArea" style="display:none;"></div>
 
 <!-- POPUP -->
 <div id="popup" class="popup"><i class="fas fa-check-circle"></i> <span id="popupMsg">Berhasil</span></div>
@@ -569,6 +665,62 @@ let invoices = [
 ];
 let editingId = null;
 let payType = 'Lunas';
+let invTheme = localStorage.getItem('invTheme') || 'light'; // 'light' or 'dark'
+let headerImgDataUrl = localStorage.getItem('invHeaderImg') || null;
+
+// Init header img preview on load
+document.addEventListener('DOMContentLoaded', () => {
+    updateThemeBtn();
+    if (headerImgDataUrl) {
+        document.getElementById('headerImgPreview').src = headerImgDataUrl;
+        document.getElementById('headerPreviewWrap').style.display = 'block';
+        document.getElementById('headerUploadZone').style.display = 'none';
+    }
+});
+
+function toggleInvTheme() {
+    invTheme = invTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('invTheme', invTheme);
+    updateThemeBtn();
+}
+function updateThemeBtn() {
+    const btn = document.getElementById('themeToggleBtn');
+    if (invTheme === 'dark') {
+        btn.innerHTML = '<i class="fas fa-sun"></i> Light Theme';
+        btn.classList.add('dark-active');
+    } else {
+        btn.innerHTML = '<i class="fas fa-moon"></i> Dark Theme';
+        btn.classList.remove('dark-active');
+    }
+}
+function handleHeaderImg(input) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        headerImgDataUrl = e.target.result;
+        localStorage.setItem('invHeaderImg', headerImgDataUrl);
+        document.getElementById('headerImgPreview').src = headerImgDataUrl;
+        document.getElementById('headerPreviewWrap').style.display = 'block';
+        document.getElementById('headerUploadZone').style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+function handleHeaderDrop(e) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('f_headerImg').files = dt.files;
+    handleHeaderImg(document.getElementById('f_headerImg'));
+}
+function removeHeaderImg() {
+    headerImgDataUrl = null;
+    localStorage.removeItem('invHeaderImg');
+    document.getElementById('headerImgPreview').src = '';
+    document.getElementById('headerPreviewWrap').style.display = 'none';
+    document.getElementById('headerUploadZone').style.display = 'block';
+    document.getElementById('f_headerImg').value = '';
+}
 
 function renderTable(data){
     const tbody = document.getElementById('invoiceBody');
@@ -776,7 +928,8 @@ function deleteInvoice(id){
     filterInvoices(); showPopup('success','Invoice dihapus.');
 }
 
-function buildInvoiceHTML(inv){
+function buildInvoiceHTML(inv) {
+    if (invTheme === 'dark') return buildDarkInvoiceHTML(inv);
     const ppnVal = inv.subtotal*(inv.ppn/100);
     let itemsHtml = inv.items.map(item => {
         const subsHtml = item.subs ? item.subs.split('\n').filter(Boolean).map(s=>`<div>${s}</div>`).join('') : '';
@@ -836,6 +989,78 @@ function buildInvoiceHTML(inv){
         <div class="inv-paper-contact"><b>Terima Kasih</b><br>${esc(inv.contact)} | ${esc(inv.email)}</div>`;
 }
 
+function buildDarkInvoiceHTML(inv) {
+    const ppnVal = inv.subtotal*(inv.ppn/100);
+    const headerHtml = headerImgDataUrl
+        ? `<img class="dark-header-img" src="${headerImgDataUrl}" alt="Header">`
+        : `<div class="dark-header-placeholder">HVM</div>`;
+    let itemsHtml = inv.items.map(item => {
+        return `<tr>
+            <td><strong>${esc(item.name)}</strong></td>
+            <td>${item.qty}</td>
+            <td>${fmtRp(item.price)}</td>
+            <td><strong>${fmtRp(item.qty*item.price)}</strong></td>
+        </tr>`;
+    }).join('');
+    const today = new Date();
+    const due = inv.date ? new Date(new Date(inv.date).getTime() + 30*86400000) : today;
+    return `<div class="invoice-paper-dark">
+        ${headerHtml}
+        <div class="dark-inv-body">
+            <div class="dark-inv-logo-row">
+                <div class="dark-inv-logo">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
+            </div>
+            <div class="dark-inv-title">INVOICE</div>
+            <div class="dark-inv-parties">
+                <div>
+                    <div class="dark-inv-party-label">From</div>
+                    <div class="dark-inv-party-name">HVM Digital</div>
+                    <div class="dark-inv-party-info">${esc(inv.email)}<br>${esc(inv.contact)}<br>${esc(inv.atasNama)}</div>
+                </div>
+                <div>
+                    <div class="dark-inv-party-label">Bill To</div>
+                    <div class="dark-inv-party-name">${esc(inv.client)}</div>
+                    <div class="dark-inv-party-info">${esc(inv.bank)}<br>No. Rek: ${esc(inv.rekening)}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="dark-inv-party-label">Issued</div>
+                    <div class="dark-inv-party-name" style="font-size:0.9rem;">${fmtDate(inv.date)}</div>
+                    <div class="dark-inv-party-label" style="margin-top:12px;">Due</div>
+                    <div class="dark-inv-party-name" style="font-size:0.9rem;">${fmtDate(due.toISOString().split('T')[0])}</div>
+                </div>
+            </div>
+            <table class="dark-inv-table">
+                <thead><tr>
+                    <th style="width:55%;">DESCRIPTION</th>
+                    <th>QTY</th>
+                    <th>RATE</th>
+                    <th>AMOUNT</th>
+                </tr></thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+            <div class="dark-inv-totals">
+                <div class="dark-inv-totals-box">
+                    <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(inv.subtotal)}</span></div>
+                    ${inv.ppn?`<div class="dark-inv-totals-line"><span>Tax (${inv.ppn}%)</span><span>${fmtRp(ppnVal)}</span></div>`:''}
+                    <hr class="dark-inv-totals-div">
+                    <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
+                </div>
+            </div>
+            <div class="dark-inv-payment">
+                <div class="dark-inv-payment-label">Payment Details</div>
+                <div class="dark-inv-payment-line">Payment Method: <b>Bank Transfer</b></div>
+                <div class="dark-inv-payment-line">Bank: <b>${esc(inv.bank)}</b></div>
+                <div class="dark-inv-payment-line">Account: <b>${esc(inv.rekening)}</b></div>
+                <div class="dark-inv-payment-line">A/N: <b>${esc(inv.atasNama)}</b></div>
+            </div>
+            ${inv.note?`<div class="dark-inv-note"><strong>Notes</strong>${esc(inv.note)}</div>`:''}
+        </div>
+    </div>`;
+}
+
 function previewInvoice(doPrint){
     const no = document.getElementById('f_invNo').value||'—';
     const client = document.getElementById('f_clientName').value||'—';
@@ -855,14 +1080,29 @@ function previewInvoice(doPrint){
         sigName: document.getElementById('f_sigName').value, sigRole: document.getElementById('f_sigRole').value,
         contact: document.getElementById('f_contact').value, email: document.getElementById('f_email').value,
         note: document.getElementById('f_note').value, items };
-    document.getElementById('invoicePaper').innerHTML = buildInvoiceHTML(inv);
-    document.getElementById('previewModal').classList.add('active');
-    if(doPrint) setTimeout(()=>window.print(), 500);
+    const html = buildInvoiceHTML(inv);
+    document.getElementById('invoicePaper').innerHTML = html;
+    const pm = document.getElementById('previewModal');
+    pm.style.display = 'flex';
+    if(doPrint) setTimeout(()=>doPrintClean(), 500);
 }
 
-function viewInvoice(id){ const inv=invoices.find(i=>i.id===id); if(!inv)return; document.getElementById('invoicePaper').innerHTML=buildInvoiceHTML(inv); document.getElementById('previewModal').classList.add('active'); }
-function printInvoice(id){ viewInvoice(id); setTimeout(()=>window.print(),600); }
-function closePreview(){ document.getElementById('previewModal').classList.remove('active'); }
+function doPrintClean() {
+    const content = document.getElementById('invoicePaper').innerHTML;
+    const isDark = invTheme === 'dark';
+    const pa = document.getElementById('printArea');
+    pa.innerHTML = content;
+    pa.className = isDark ? 'dark-print' : '';
+    pa.style.display = 'block';
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => { pa.style.display = 'none'; pa.innerHTML = ''; }, 1000);
+    }, 300);
+}
+
+function viewInvoice(id){ const inv=invoices.find(i=>i.id===id); if(!inv)return; document.getElementById('invoicePaper').innerHTML=buildInvoiceHTML(inv); document.getElementById('previewModal').style.display='flex'; }
+function printInvoice(id){ viewInvoice(id); setTimeout(()=>doPrintClean(),600); }
+function closePreview(){ document.getElementById('previewModal').style.display='none'; }
 
 function exportCSV(){
     if(!invoices.length){ showPopup('error','Tidak ada data untuk diekspor.'); return; }
