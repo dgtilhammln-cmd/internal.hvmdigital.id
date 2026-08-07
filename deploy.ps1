@@ -17,6 +17,6 @@ git push origin master
 
 Write-Host "4. Menyuruh Hostinger melakukan Pull dari GitHub..." -ForegroundColor Cyan
 # Asumsi path folder Hostinger: public_html 
-ssh -p 65002 u664715641@46.202.186.86 "cd public_html ; git fetch origin ; git reset --hard origin/master"
+ssh -p 65002 u664715641@46.202.186.86 "cd domains/internal.hvmdigital.id/public_html ; git fetch origin ; git reset --hard origin/master"
 
 Write-Host "Selesai! Berhasil di-deploy ke Hostinger." -ForegroundColor Green
