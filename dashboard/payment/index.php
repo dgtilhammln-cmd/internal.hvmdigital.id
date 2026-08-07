@@ -127,26 +127,27 @@ if (isset($_GET['action']) && $_GET['action'] === 'export') {
     $cols = !empty($rows) ? array_keys($rows[0]) : [];
 
     if ($format === 'excel') {
-        header("Content-Type: application/vnd.ms-excel");
+        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
         header("Content-Disposition: attachment; filename=HVM_" . strtoupper($type) . "_" . date('Ymd') . ".xls");
-        echo "<table border='1'>";
+        echo "<html><head><meta charset='utf-8'></head><body>";
+        echo "<table border='1' style='border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;'>";
         if (!empty($rows)) {
-            echo "<tr style='background:#000;color:#fff;font-weight:bold;'>";
-            foreach ($cols as $c) echo "<th>" . htmlspecialchars($c) . "</th>";
+            echo "<tr>";
+            foreach ($cols as $c) echo "<th style='background-color:#1a1a1a; color:#ffffff; font-weight:bold; padding:10px; text-transform:uppercase; text-align:left; border:1px solid #dddddd;'>" . htmlspecialchars($c) . "</th>";
             echo "</tr>";
             foreach ($rows as $r) {
                 echo "<tr>";
                 foreach ($r as $k => $v) {
-                    if ($k==='Nominal') echo "<td>" . number_format((float)$v,0,',','.') . "</td>";
-                    elseif ($k==='Date') echo "<td>" . date('d/m/Y',strtotime($v)) . "</td>";
-                    else echo "<td>" . htmlspecialchars((string)$v) . "</td>";
+                    if ($k==='Nominal') echo "<td style='padding:8px; text-align:right; border:1px solid #dddddd;'>" . number_format((float)$v,0,',','.') . "</td>";
+                    elseif ($k==='Date') echo "<td style='padding:8px; text-align:center; border:1px solid #dddddd;'>" . date('d/m/Y',strtotime($v)) . "</td>";
+                    else echo "<td style='padding:8px; border:1px solid #dddddd;'>" . htmlspecialchars((string)$v) . "</td>";
                 }
                 echo "</tr>";
             }
             $sp = count($cols)-1;
-            echo "<tr style='background:#eee;font-weight:bold;'><td colspan='$sp' style='text-align:right'>TOTAL</td><td>" . number_format($total_sum,0,',','.') . "</td></tr>";
+            echo "<tr><td colspan='$sp' style='padding:10px; text-align:right; font-weight:bold; background-color:#f5f5f5; border:1px solid #dddddd;'>TOTAL</td><td style='padding:10px; text-align:right; font-weight:bold; background-color:#f5f5f5; border:1px solid #dddddd;'>" . number_format($total_sum,0,',','.') . "</td></tr>";
         }
-        echo "</table>"; exit;
+        echo "</table></body></html>"; exit;
     }
 
     // PDF
@@ -190,8 +191,10 @@ tr:nth-child(even) td{background:#fafafa}
 .ft{position:fixed;bottom:0;left:0;right:0;background:#0a0a0a;color:#888;padding:10px 40px;display:flex;justify-content:space-between;font-size:8px;letter-spacing:1px}
 .nd{text-align:center;padding:50px;color:#bbb}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body onload="window.print()">
+<body>
+<div id="pdfContent">
 <div class="hdr">
     <div><div class="bn">HVM DIGITAL</div><div class="bs">INTERNAL ACCOUNTING SYSTEM</div></div>
     <div><div class="rt"><?php echo htmlspecialchars(strtoupper($type)); ?> STATEMENT</div><div class="rs">Generated: <?php echo date('d M Y, H:i'); ?> WIB</div></div>
@@ -234,7 +237,24 @@ tr:nth-child(even) td{background:#fafafa}
     <div class="sb"><div class="sl">Verified By,</div><div class="sn"><div class="snm">Ilham Maulana</div><div class="sr">Managing Director</div></div></div>
 </div>
 </div>
+</div>
 <div class="ft"><span>CONFIDENTIAL &mdash; INTERNAL USE ONLY</span><span>HVM DIGITAL &copy; <?php echo date('Y'); ?></span><span>Printed: <?php echo date('d/m/Y H:i'); ?></span></div>
+</div>
+<script>
+    window.onload = function() {
+        var el = document.getElementById('pdfContent');
+        var opt = {
+            margin: 0,
+            filename: 'HVM_<?php echo strtoupper($type); ?>_<?php echo date('Ymd'); ?>.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().from(el).set(opt).save().then(function() {
+            setTimeout(() => { window.close(); }, 1000); // Close window after download
+        });
+    };
+</script>
 </body></html>
 <?php exit; }
 
@@ -291,6 +311,50 @@ if (isset($_POST['add_spending'])) {
             auditLog($conn,'INSERT','spendings',$nid,"Tambah pengeluaran Rp ".number_format($amount)." $stype: $detail");
             $_SESSION['popup'] = "Pengeluaran Rp ".number_format($amount)." berhasil dicatat!";
         } else { $_SESSION['popup_err'] = "Gagal simpan: ".@mysqli_error($conn); }
+        header("Location: index.php?view=expense&start=".date('Y-m-01',strtotime($date))."&end=".date('Y-m-t',strtotime($date))); exit;
+    } catch (Exception $e) { $_SESSION['popup_err']=$e->getMessage(); header("Location: index.php?view=expense"); exit; }
+}
+
+if (isset($_POST['edit_payment'])) {
+    try {
+        $id         = @mysqli_real_escape_string($conn, $_POST['payment_id']);
+        $date       = (!empty($_POST['payment_date'])) ? $_POST['payment_date'] : date('Y-m-d');
+        $email      = @mysqli_real_escape_string($conn, trim(isset($_POST['email']) ? $_POST['email'] : ''));
+        $company    = @mysqli_real_escape_string($conn, trim(isset($_POST['company_name']) ? $_POST['company_name'] : ''));
+        $service    = (isset($_POST['service_type']) && is_array($_POST['service_type'])) ? implode(', ',$_POST['service_type']) : 'General';
+        $amount     = (int)preg_replace('/[^0-9]/','', isset($_POST['amount']) ? $_POST['amount'] : '0');
+        $ptype      = @mysqli_real_escape_string($conn, isset($_POST['payment_type']) ? $_POST['payment_type'] : 'New Client');
+        $notes      = @mysqli_real_escape_string($conn, trim(isset($_POST['notes']) ? $_POST['notes'] : ''));
+        $invoice_no = @mysqli_real_escape_string($conn, trim(isset($_POST['invoice_no']) ? $_POST['invoice_no'] : ''));
+        $proof      = handleUpload('proof_file');
+        
+        $upd_proof = ($proof !== null) ? ", proof='".@mysqli_real_escape_string($conn,$proof)."'" : "";
+        $ok = safeQuery($conn,"UPDATE payments SET email='$email', company_name='$company', amount='$amount', payment_date='$date', service_type='$service', payment_type='$ptype', notes='$notes', invoice_no='$invoice_no' $upd_proof WHERE payment_id='$id'");
+        if ($ok) {
+            auditLog($conn,'UPDATE','payments',$id,"Edit pemasukan Rp ".number_format($amount)." dari $company");
+            $_SESSION['popup'] = "Pemasukan berhasil diubah!";
+        } else { $_SESSION['popup_err'] = "Gagal edit: ".@mysqli_error($conn); }
+        header("Location: index.php?view=income&start=".date('Y-m-01',strtotime($date))."&end=".date('Y-m-t',strtotime($date))); exit;
+    } catch (Exception $e) { $_SESSION['popup_err']=$e->getMessage(); header("Location: index.php?view=income"); exit; }
+}
+
+if (isset($_POST['edit_spending'])) {
+    try {
+        $id     = (int)$_POST['spending_id'];
+        $stype  = @mysqli_real_escape_string($conn, isset($_POST['type']) ? $_POST['type'] : 'operasional');
+        $detail = @mysqli_real_escape_string($conn, trim(isset($_POST['detail']) ? $_POST['detail'] : ''));
+        $vendor = @mysqli_real_escape_string($conn, trim(isset($_POST['vendor']) ? $_POST['vendor'] : ''));
+        $amount = (int)preg_replace('/[^0-9]/','', isset($_POST['amount']) ? $_POST['amount'] : '0');
+        $date   = !empty($_POST['spending_date']) ? $_POST['spending_date'] : date('Y-m-d');
+        $notes  = @mysqli_real_escape_string($conn, trim(isset($_POST['notes']) ? $_POST['notes'] : ''));
+        $proof  = handleUpload('proof_file');
+        
+        $upd_proof = ($proof !== null) ? ", proof='".@mysqli_real_escape_string($conn,$proof)."'" : "";
+        $ok = safeQuery($conn,"UPDATE spendings SET type='$stype', detail='$detail', vendor='$vendor', amount='$amount', spending_date='$date', notes='$notes' $upd_proof WHERE id='$id'");
+        if ($ok) {
+            auditLog($conn,'UPDATE','spendings',$id,"Edit pengeluaran Rp ".number_format($amount)." $stype: $detail");
+            $_SESSION['popup'] = "Pengeluaran berhasil diubah!";
+        } else { $_SESSION['popup_err'] = "Gagal edit: ".@mysqli_error($conn); }
         header("Location: index.php?view=expense&start=".date('Y-m-01',strtotime($date))."&end=".date('Y-m-t',strtotime($date))); exit;
     } catch (Exception $e) { $_SESSION['popup_err']=$e->getMessage(); header("Location: index.php?view=expense"); exit; }
 }
@@ -460,18 +524,7 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                 <div class="stat-value val-out">Rp <?php echo number_format($total_out/1000000,2); ?> jt</div>
                 <div class="stat-sub"><?php echo $count_out; ?> transaksi</div>
             </div>
-            <div class="glass-card">
-                <i class="fas fa-building card-bg-icon icon-alloc"></i>
-                <div class="stat-label">Alokasi Aset (20%)</div>
-                <div class="stat-value val-alloc">Rp <?php echo number_format($alloc_aset/1000000,2); ?> jt</div>
-                <div class="stat-sub">dari gross income</div>
-            </div>
-            <div class="glass-card">
-                <i class="fas fa-users card-bg-icon icon-alloc"></i>
-                <div class="stat-label">Alokasi Gaji (10%)</div>
-                <div class="stat-value val-alloc">Rp <?php echo number_format($alloc_gaji/1000000,2); ?> jt</div>
-                <div class="stat-sub">dari gross income</div>
-            </div>
+
             <div class="glass-card <?php echo ($real_profit<0)?'card-negative':''; ?>">
                 <i class="fas fa-wallet card-bg-icon icon-net"></i>
                 <div class="stat-label">Net Profit</div>
@@ -566,7 +619,7 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
             <div class="tab-group">
                 <button class="tab-btn <?php echo ($view==='income')?'active':''; ?>" onclick="window.location='?view=income&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-up"></i> Income</button>
                 <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-down"></i> Expense</button>
-                <button class="tab-btn <?php echo ($view==='mutasi')?'active':''; ?>" onclick="window.location='?view=mutasi&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-exchange-alt"></i> Mutasi</button>
+
             </div>
             <form method="GET" class="filter-group">
                 <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
@@ -591,9 +644,7 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
             <div class="table-responsive">
                 <table>
                     <thead>
-                    <?php if ($view==='mutasi'): ?>
-                        <tr><th>Date</th><th>Trans ID</th><th>Client</th><th class="align-right">Gross In</th><th class="align-right">Aset 20%</th><th class="align-right">Gaji 10%</th><th class="align-right">Net Bersih</th></tr>
-                    <?php elseif ($view==='income'): ?>
+                    <?php if ($view==='income'): ?>
                         <tr><th>Date</th><th>Trans ID</th><th>Client</th><th>Service</th><th>Type</th><th class="align-right">Amount</th><th class="align-center">Proof</th><th>Aksi</th></tr>
                     <?php else: ?>
                         <tr><th>Date</th><th>Kategori</th><th>Vendor</th><th>Detail</th><th class="align-right">Amount</th><th class="align-center">Proof</th><th>Aksi</th></tr>
@@ -607,19 +658,7 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                         <tr><td colspan="8"><div class="empty-state-table"><i class="fas fa-inbox"></i><p>Tidak ada data untuk periode ini</p></div></td></tr>
                     <?php else: while ($row = mysqli_fetch_assoc($result)): $rn++; ?>
                     <tr class="fade-row" style="animation-delay:<?php echo $rn*0.03; ?>s">
-                        <?php if ($view==='mutasi'):
-                            $pa = (float)$row['amount']*0.20;
-                            $pg = (float)$row['amount']*0.10;
-                            $pn = (float)$row['amount']-$pa-$pg;
-                        ?>
-                            <td><?php echo date('d M Y',strtotime($row['payment_date'])); ?></td>
-                            <td><span class="tx-id"><?php echo htmlspecialchars($row['payment_id']); ?></span></td>
-                            <td><div class="client-name"><?php echo htmlspecialchars($row['company_name']); ?></div><?php if (!empty($row['email'])): ?><div class="client-email"><?php echo htmlspecialchars($row['email']); ?></div><?php endif; ?></td>
-                            <td class="align-right val-in fw-bold">Rp <?php echo number_format($row['amount']); ?></td>
-                            <td class="align-right" style="color:var(--neon-orange)">- Rp <?php echo number_format($pa); ?></td>
-                            <td class="align-right" style="color:var(--neon-orange)">- Rp <?php echo number_format($pg); ?></td>
-                            <td class="align-right val-net fw-bold">Rp <?php echo number_format($pn); ?></td>
-                        <?php elseif ($view==='income'): ?>
+                        <?php if ($view==='income'): ?>
                             <td><?php echo date('d M Y',strtotime($row['payment_date'])); ?></td>
                             <td><span class="tx-id"><?php echo htmlspecialchars($row['payment_id']); ?></span></td>
                             <td>
@@ -638,7 +677,11 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                                 <button class="btn-icon" onclick="viewProof('/uploads/proofs/<?php echo htmlspecialchars($row['proof']); ?>','<?php echo htmlspecialchars($row['payment_id']); ?>')" title="Lihat"><i class="fas fa-<?php echo isProofPDF($row['proof'])?'file-pdf':'image'; ?>"></i></button>
                                 <?php else: ?><span class="no-proof" title="Belum ada"><i class="fas fa-times-circle"></i></span><?php endif; ?>
                             </td>
-                            <td><button class="btn-icon btn-del" onclick="confirmDelete('?del_pay=<?php echo urlencode($row['payment_id']); ?>','<?php echo htmlspecialchars(addslashes($row['company_name'])); ?>','Rp <?php echo number_format($row['amount']); ?>')" title="Hapus"><i class="fas fa-trash"></i></button></td>
+                            <td style="white-space:nowrap;">
+                                <button class="btn-icon" onclick='viewDetailIncome(<?php echo htmlspecialchars(json_encode($row), ENT_QUOTES, "UTF-8"); ?>)' title="View"><i class="fas fa-eye"></i></button>
+                                <button class="btn-icon" onclick='editIncome(<?php echo htmlspecialchars(json_encode($row), ENT_QUOTES, "UTF-8"); ?>)' title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-icon btn-del" onclick="confirmDelete('?del_pay=<?php echo urlencode($row['payment_id']); ?>','<?php echo htmlspecialchars(addslashes($row['company_name'])); ?>','Rp <?php echo number_format($row['amount']); ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
+                            </td>
                         <?php else: ?>
                             <td><?php echo date('d M Y',strtotime($row['spending_date'])); ?></td>
                             <td><span class="badge exp"><?php echo htmlspecialchars(ucfirst($row['type'])); ?></span></td>
@@ -650,7 +693,11 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                                 <button class="btn-icon" onclick="viewProof('/uploads/proofs/<?php echo htmlspecialchars($row['proof']); ?>','#<?php echo $row['id']; ?>')" title="Lihat"><i class="fas fa-<?php echo isProofPDF($row['proof'])?'file-pdf':'image'; ?>"></i></button>
                                 <?php else: ?><span class="no-proof" title="Belum ada"><i class="fas fa-times-circle"></i></span><?php endif; ?>
                             </td>
-                            <td><button class="btn-icon btn-del" onclick="confirmDelete('?del_spend=<?php echo $row['id']; ?>','<?php echo htmlspecialchars(addslashes($row['detail'])); ?>','Rp <?php echo number_format($row['amount']); ?>')" title="Hapus"><i class="fas fa-trash"></i></button></td>
+                            <td style="white-space:nowrap;">
+                                <button class="btn-icon" onclick='viewDetailExpense(<?php echo htmlspecialchars(json_encode($row), ENT_QUOTES, "UTF-8"); ?>)' title="View"><i class="fas fa-eye"></i></button>
+                                <button class="btn-icon" onclick='editExpense(<?php echo htmlspecialchars(json_encode($row), ENT_QUOTES, "UTF-8"); ?>)' title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-icon btn-del" onclick="confirmDelete('?del_spend=<?php echo $row['id']; ?>','<?php echo htmlspecialchars(addslashes($row['detail'])); ?>','Rp <?php echo number_format($row['amount']); ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
+                            </td>
                         <?php endif; ?>
                     </tr>
                     <?php endwhile; endif; ?>
@@ -728,6 +775,71 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
     <div class="form-group"><label>Catatan</label><textarea name="notes" class="form-input" rows="3" placeholder="Catatan internal..."></textarea></div>
 </div>
 <button type="submit" name="add_spending" class="btn-grad red btn-submit"><i class="fas fa-save"></i> Simpan Pengeluaran</button>
+</form>
+</div>
+</div>
+
+<!-- MODAL: VIEW DETAIL -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-content" style="background:#0c0c0e; border:1px solid rgba(255,255,255,0.07); width:500px; max-width:95%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative;">
+        <div class="modal-top-actions" style="position:absolute; top:20px; right:20px;">
+            <button class="btn-close-x" onclick="closeModal('detailModal')" style="background:none; border:none; color:#555; font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        <h2 class="modal-title" style="color:#fff; margin-bottom:20px; font-size:1.3rem; font-weight:700;"><i class="fas fa-file-invoice-dollar" style="margin-right:8px; color:#888;"></i>Transaction Detail</h2>
+        <div id="detailContent"></div>
+    </div>
+</div>
+
+<!-- MODAL: EDIT INCOME -->
+<div class="modal-overlay" id="editIncomeModal">
+<div class="modal-content">
+<div class="modal-header"><h2 class="modal-title" style="color:var(--neon-main)"><i class="fas fa-edit" style="margin-right:10px"></i>Edit Pemasukan</h2><button class="close-btn" onclick="closeModal('editIncomeModal')">&times;</button></div>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="edit_payment" value="1">
+<input type="hidden" name="payment_id" id="edit_in_id">
+<div class="form-grid">
+    <div class="form-group"><label>Trans ID</label><input type="text" id="edit_in_txid" class="form-input" readonly style="background:rgba(255,255,255,0.02);color:#888;"></div>
+    <div class="form-group"><label>Tanggal Transaksi</label><input type="date" name="payment_date" id="edit_in_date" class="form-input" required></div>
+    <div class="form-group"><label>Client / Perusahaan</label><input type="text" name="company_name" id="edit_in_company" class="form-input" required></div>
+    <div class="form-group"><label>Email Client (Opsional)</label><input type="email" name="email" id="edit_in_email" class="form-input"></div>
+    <div class="form-group full"><label>Layanan (Service)</label>
+        <div class="checkbox-group">
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="Web Development" id="edit_svc_1"> Web Development</label>
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="Social Media Management" id="edit_svc_2"> Socmed Mgt</label>
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="Digital Ads (Meta/Google)" id="edit_svc_3"> Digital Ads</label>
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="Branding & Design" id="edit_svc_4"> Branding</label>
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="SEO" id="edit_svc_5"> SEO</label>
+            <label class="check-label"><input type="checkbox" name="service_type[]" value="Lainnya" id="edit_svc_6"> Lainnya</label>
+        </div>
+    </div>
+    <div class="form-group"><label>Tipe Pembayaran</label><select name="payment_type" id="edit_in_ptype" class="form-input"><option value="New Client">New Client</option><option value="Recurring">Recurring (Perpanjangan)</option><option value="Down Payment">Down Payment (DP)</option><option value="Pelunasan">Pelunasan</option></select></div>
+    <div class="form-group"><label>Nominal</label><input type="text" name="amount" id="edit_in_amount" class="form-input rupiah" required></div>
+    <div class="form-group"><label>Nomor Invoice (Opsional)</label><input type="text" name="invoice_no" id="edit_in_inv" class="form-input" placeholder="INV-202X-..."></div>
+    <div class="form-group"><label>Bukti Baru (Opsional)</label><input type="file" name="proof_file" class="form-input"></div>
+    <div class="form-group full"><label>Catatan</label><textarea name="notes" id="edit_in_notes" class="form-input" rows="3"></textarea></div>
+</div>
+<button type="submit" class="btn-grad blue btn-submit"><i class="fas fa-save"></i> Simpan Perubahan</button>
+</form>
+</div>
+</div>
+
+<!-- MODAL: EDIT EXPENSE -->
+<div class="modal-overlay" id="editExpenseModal">
+<div class="modal-content">
+<div class="modal-header"><h2 class="modal-title" style="color:var(--neon-red)"><i class="fas fa-edit" style="margin-right:10px"></i>Edit Pengeluaran</h2><button class="close-btn" onclick="closeModal('editExpenseModal')">&times;</button></div>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="edit_spending" value="1">
+<input type="hidden" name="spending_id" id="edit_ex_id">
+<div class="form-grid">
+    <div class="form-group"><label>Kategori</label><select name="type" id="edit_ex_type" class="form-input"><option value="aset">Aset / Inventaris</option><option value="operasional">Operasional</option><option value="fee">Fee / Komisi</option><option value="gaji">Gaji / Honor</option><option value="software">Software / Subscription</option><option value="marketing">Marketing / Iklan</option><option value="pajak">Pajak / Retribusi</option><option value="lainnya">Lainnya</option></select></div>
+    <div class="form-group"><label>Tanggal</label><input type="date" name="spending_date" id="edit_ex_date" class="form-input" required></div>
+    <div class="form-group"><label>Vendor (Opsional)</label><input type="text" name="vendor" id="edit_ex_vendor" class="form-input"></div>
+    <div class="form-group"><label>Nominal</label><input type="text" name="amount" id="edit_ex_amount" class="form-input rupiah" required></div>
+    <div class="form-group full"><label>Deskripsi</label><input type="text" name="detail" id="edit_ex_detail" class="form-input" required></div>
+    <div class="form-group"><label>Bukti Baru (Opsional)</label><input type="file" name="proof_file" class="form-input"></div>
+    <div class="form-group full"><label>Catatan</label><textarea name="notes" id="edit_ex_notes" class="form-input" rows="3"></textarea></div>
+</div>
+<button type="submit" class="btn-grad red btn-submit"><i class="fas fa-save"></i> Simpan Perubahan</button>
 </form>
 </div>
 </div>
@@ -834,6 +946,73 @@ function updateTransID(){
     var d=new Date(dv+'T00:00:00');
     var r=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
     document.getElementById('trans_id_field').value='HVM/'+r[d.getMonth()]+'/'+d.getFullYear()+'/00X';
+}
+
+function viewDetailIncome(data) {
+    const container = document.getElementById('detailContent');
+    const dateObj = new Date(data.payment_date);
+    const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    let proofHtml = data.proof ? `<button class="btn-icon" onclick="viewProof('/uploads/proofs/${data.proof}','${data.payment_id}')" style="margin-left:10px; background:#111; padding:5px 10px; border-radius:5px;"><i class="fas fa-file"></i> Lihat Bukti</button>` : '';
+    
+    container.innerHTML = `
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">TRANS ID</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${data.payment_id} ${proofHtml}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">WAKTU</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${dateNice}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">CLIENT / PT</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${data.company_name}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">SERVICE & TIPE</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${data.service_type} &bull; ${data.payment_type}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">NOMINAL</span><div class="detail-val" style="font-size:1rem; color:#4efdc4; font-weight:600;">+ Rp ${parseInt(data.amount).toLocaleString('id-ID')}</div></div>
+        <div class="detail-row" style="border:none;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">CATATAN</span><div class="detail-desc" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:12px; color:#aaa; font-size:0.85rem; line-height:1.5;">${data.notes || '-'}</div></div>
+    `;
+    openModal('detailModal');
+}
+
+function viewDetailExpense(data) {
+    const container = document.getElementById('detailContent');
+    const dateObj = new Date(data.spending_date);
+    const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    let proofHtml = data.proof ? `<button class="btn-icon" onclick="viewProof('/uploads/proofs/${data.proof}','#${data.id}')" style="margin-left:10px; background:#111; padding:5px 10px; border-radius:5px;"><i class="fas fa-file"></i> Lihat Bukti</button>` : '';
+    
+    container.innerHTML = `
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">KATEGORI</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600; text-transform:capitalize;">${data.type} ${proofHtml}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">WAKTU</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${dateNice}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">VENDOR & DETAIL</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600;">${data.vendor || '-'} &bull; ${data.detail}</div></div>
+        <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">NOMINAL</span><div class="detail-val" style="font-size:1rem; color:#ff5a5a; font-weight:600;">- Rp ${parseInt(data.amount).toLocaleString('id-ID')}</div></div>
+        <div class="detail-row" style="border:none;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">CATATAN</span><div class="detail-desc" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:12px; color:#aaa; font-size:0.85rem; line-height:1.5;">${data.notes || '-'}</div></div>
+    `;
+    openModal('detailModal');
+}
+
+function editIncome(data) {
+    document.getElementById('edit_in_id').value = data.payment_id;
+    document.getElementById('edit_in_txid').value = data.payment_id;
+    document.getElementById('edit_in_date').value = data.payment_date;
+    document.getElementById('edit_in_company').value = data.company_name;
+    document.getElementById('edit_in_email').value = data.email || '';
+    document.getElementById('edit_in_ptype').value = data.payment_type;
+    document.getElementById('edit_in_amount').value = formatRupiah(data.amount.toString());
+    document.getElementById('edit_in_inv').value = data.invoice_no || '';
+    document.getElementById('edit_in_notes').value = data.notes || '';
+    
+    for(let i=1; i<=6; i++) document.getElementById('edit_svc_'+i).checked = false;
+    if(data.service_type) {
+        let svcs = data.service_type.split(', ');
+        for(let i=1; i<=6; i++) {
+            if(svcs.includes(document.getElementById('edit_svc_'+i).value)) {
+                document.getElementById('edit_svc_'+i).checked = true;
+            }
+        }
+    }
+    openModal('editIncomeModal');
+}
+
+function editExpense(data) {
+    document.getElementById('edit_ex_id').value = data.id;
+    document.getElementById('edit_ex_type').value = data.type;
+    document.getElementById('edit_ex_date').value = data.spending_date;
+    document.getElementById('edit_ex_vendor').value = data.vendor || '';
+    document.getElementById('edit_ex_amount').value = formatRupiah(data.amount.toString());
+    document.getElementById('edit_ex_detail').value = data.detail || '';
+    document.getElementById('edit_ex_notes').value = data.notes || '';
+    openModal('editExpenseModal');
 }
 
 function fillClientData(){
