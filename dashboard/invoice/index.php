@@ -7,6 +7,7 @@
 <title>Invoice Generator - HVM Digital</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root {
     --bg-dark:     #050505;
@@ -303,12 +304,14 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .invoice-paper-dark {
     background: #000000;
     color: #ffffff;
-    width: 760px;
+    width: 794px;       /* A4 at 96dpi */
+    min-height: 1123px; /* A4 height */
     max-width: 100%;
     font-family: 'Montserrat', sans-serif;
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    position: relative;
 }
 .dark-header-img { width: 100%; height: 240px; object-fit: cover; display: block; }
 .dark-header-placeholder { width: 100%; height: 240px; background: linear-gradient(135deg, #111, #222); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #333; font-weight: 900; }
@@ -340,18 +343,35 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .dark-inv-payment-line { font-size: 0.8rem; color: #888; margin-bottom: 6px; }
 .dark-inv-note-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 12px; }
 .dark-inv-note-text { font-size: 0.8rem; color: #888; line-height: 1.5; max-width: 400px; }
+.dark-inv-signature { margin-top: 48px; display: flex; justify-content: flex-end; }
+.dark-inv-sig-box { text-align: center; }
+.dark-inv-sig-line { width: 160px; border-top: 1px solid #444; margin-bottom: 8px; padding-top: 8px; }
+.dark-inv-sig-name { font-size: 0.85rem; font-weight: 700; color: #fff; }
+.dark-inv-sig-role { font-size: 0.72rem; color: #666; margin-top: 2px; }
+.dark-inv-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 32px; }
+.dark-inv-status-badge.lunas { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+.dark-inv-status-badge.dp { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+.dark-inv-status-badge.pending { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.dark-inv-status-badge.overdue { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
 
-/* theme toggle button */
-.btn-theme-toggle {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #ccc; border-radius: 10px;
-    padding: 10px 16px; font-family: inherit; font-size: 0.82rem; font-weight: 600;
+/* theme toggle button - kept for legacy CSS */
+.btn-theme-toggle { display:none; }
+
+/* Preview Modal Actions */
+.preview-btn-dl {
+    background: #fff; color: #000; border: none; border-radius: 10px;
+    padding: 10px 20px; font-family: inherit; font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: opacity 0.2s;
+}
+.preview-btn-dl:hover { opacity: 0.85; }
+.preview-btn-print {
+    background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #ccc; border-radius: 10px;
+    padding: 10px 20px; font-family: inherit; font-size: 0.85rem; font-weight: 600;
     cursor: pointer; display: flex; align-items: center; gap: 8px;
     transition: all 0.2s;
 }
-.btn-theme-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.btn-theme-toggle.dark-active { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); color: #fff; }
+.preview-btn-print:hover { border-color: #fff; color: #fff; }
 </style>
 </head>
 <body>
@@ -579,6 +599,9 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             </div>
                         </div>
                     </div>
+                    <div style="margin-top:14px;">
+                        <button type="button" onclick="savePaymentInfo()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#ccc;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.borderColor='rgba(255,255,255,0.4)';this.style.color='#fff';" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='#ccc';"><i class="fas fa-save"></i> Simpan Permanen (berlaku di semua invoice)</button>
+                    </div>
                 </div>
 
                 <div class="form-section">
@@ -624,10 +647,11 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 </div>
 
 <!-- PREVIEW MODAL -->
-<div id="previewModal" style="position:fixed;inset:0;z-index:2000;background:#111;display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:20px;">
-    <div class="preview-actions">
-        <button class="btn-neon" onclick="doPrintClean()"><i class="fas fa-print"></i> Print / PDF</button>
-        <button class="btn-ghost" style="border-color:rgba(255,255,255,0.15);color:#bbb;" onclick="closePreview()"><i class="fas fa-times"></i> Tutup</button>
+<div id="previewModal" style="position:fixed;inset:0;z-index:2000;background:#111;display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:24px 20px;">
+    <div class="preview-actions" style="display:flex;gap:10px;margin-bottom:24px;">
+        <button class="preview-btn-dl" onclick="downloadPDF()"><i class="fas fa-file-download"></i> Download PDF</button>
+        <button class="preview-btn-print" onclick="doPrintClean()"><i class="fas fa-print"></i> Print</button>
+        <button class="preview-btn-print" onclick="closePreview()"><i class="fas fa-times"></i> Tutup</button>
     </div>
     <div id="invoicePaper"></div>
 </div>
@@ -649,14 +673,41 @@ let editingId = null;
 let payType = 'Lunas';
 let headerImgDataUrl = localStorage.getItem('invHeaderImg') || null;
 
+// Saved payment info
+const savedPayment = JSON.parse(localStorage.getItem('invPaymentInfo') || '{}');
+
+function loadSavedPaymentInfo() {
+    if (savedPayment.bank)     document.getElementById('f_bank').value = savedPayment.bank;
+    if (savedPayment.rekening) document.getElementById('f_rekening').value = savedPayment.rekening;
+    if (savedPayment.atasNama) document.getElementById('f_atasNama').value = savedPayment.atasNama;
+    if (savedPayment.contact)  document.getElementById('f_contact').value = savedPayment.contact;
+    if (savedPayment.email)    document.getElementById('f_email').value = savedPayment.email;
+    if (savedPayment.sigName)  document.getElementById('f_sigName').value = savedPayment.sigName;
+    if (savedPayment.sigRole)  document.getElementById('f_sigRole').value = savedPayment.sigRole;
+}
+function savePaymentInfo() {
+    const info = {
+        bank:     document.getElementById('f_bank').value,
+        rekening: document.getElementById('f_rekening').value,
+        atasNama: document.getElementById('f_atasNama').value,
+        contact:  document.getElementById('f_contact').value,
+        email:    document.getElementById('f_email').value,
+        sigName:  document.getElementById('f_sigName').value,
+        sigRole:  document.getElementById('f_sigRole').value,
+    };
+    localStorage.setItem('invPaymentInfo', JSON.stringify(info));
+    Object.assign(savedPayment, info);
+    showPopup('success', 'Info pembayaran & tanda tangan tersimpan permanen!');
+}
+
 // Init header img preview on load
 document.addEventListener('DOMContentLoaded', () => {
-    updateThemeBtn();
     if (headerImgDataUrl) {
         document.getElementById('headerImgPreview').src = headerImgDataUrl;
         document.getElementById('headerPreviewWrap').style.display = 'block';
         document.getElementById('headerUploadZone').style.display = 'none';
     }
+    loadSavedPaymentInfo();
 });
 
 function handleHeaderImg(input) {
@@ -900,8 +951,9 @@ function buildInvoiceHTML(inv) {
         ? `<img class="dark-header-img" src="${headerImgDataUrl}" alt="Header">`
         : `<div class="dark-header-placeholder">HVM DIGITAL</div>`;
     let itemsHtml = inv.items.map(item => {
+        const subsHtml = item.subs ? `<div style="font-size:0.75rem;color:#666;margin-top:4px;line-height:1.5;">${esc(item.subs).replace(/\n/g,'<br>')}</div>` : '';
         return `<tr>
-            <td style="color:#fff;">${esc(item.name)}</td>
+            <td style="color:#fff;">${esc(item.name)}${subsHtml}</td>
             <td>${item.qty}</td>
             <td>${fmtRp(item.price)}</td>
             <td><strong>${fmtRp(item.qty*item.price)}</strong></td>
@@ -909,14 +961,26 @@ function buildInvoiceHTML(inv) {
     }).join('');
     const today = new Date();
     const due = inv.date ? new Date(new Date(inv.date).getTime() + 30*86400000) : today;
+    const statusColors = {
+        Lunas: 'lunas', DP: 'dp', Pending: 'pending', Overdue: 'overdue'
+    };
+    const statusCls = statusColors[inv.status] || 'pending';
+    const logoSvg = `<svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" fill="white"/>
+        <path d="M10 13H16V20H24V13H30V27H24V22H16V27H10V13Z" fill="black"/>
+    </svg>`;
     return `<div class="invoice-paper-dark">
         ${headerHtml}
         <div class="dark-inv-body">
             <div class="dark-inv-logo-row">
-                <div class="dark-inv-logo">H</div>
+                <div class="dark-inv-logo">${logoSvg}</div>
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
+            <div class="dark-inv-status-badge ${statusCls}">
+                <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+                ${esc(inv.status||'Pending')}
+            </div>
             <div class="dark-inv-parties">
                 <div>
                     <div class="dark-inv-party-label">From</div>
@@ -962,13 +1026,26 @@ function buildInvoiceHTML(inv) {
                 </div>
                 ${inv.note?`<div><div class="dark-inv-note-label">Notes</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
             </div>
+            <div class="dark-inv-signature">
+                <div class="dark-inv-sig-box">
+                    <div class="dark-inv-sig-line"></div>
+                    <div class="dark-inv-sig-name">${esc(inv.sigName||'')}</div>
+                    <div class="dark-inv-sig-role">${esc(inv.sigRole||'')}</div>
+                </div>
+            </div>
         </div>
     </div>`;
 }
 
+let _currentInvClient = '';
+let _currentInvNo = '';
+
 function previewInvoice(doPrint){
     const no = document.getElementById('f_invNo').value||'—';
     const client = document.getElementById('f_clientName').value||'—';
+    const status = document.getElementById('f_status').value||'Pending';
+    _currentInvClient = client;
+    _currentInvNo = no;
     const items = []; let sub = 0;
     document.querySelectorAll('#itemsBody .item-row').forEach(row => {
         const name = row.querySelector('.item-desc-input').value;
@@ -978,7 +1055,7 @@ function previewInvoice(doPrint){
         items.push({name,subs,qty,price}); sub += qty*price;
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
-    const inv = { no, client, date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
+    const inv = { no, client, status, date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
         subtotal: sub, ppn, total: sub+sub*(ppn/100),
         bank: document.getElementById('f_bank').value, rekening: document.getElementById('f_rekening').value,
         atasNama: document.getElementById('f_atasNama').value, payType, dp1Pct: parseFloat(document.getElementById('f_dp1Pct').value)||50,
@@ -1004,7 +1081,30 @@ function doPrintClean() {
     }, 300);
 }
 
-function viewInvoice(id){ const inv=invoices.find(i=>i.id===id); if(!inv)return; document.getElementById('invoicePaper').innerHTML=buildInvoiceHTML(inv); document.getElementById('previewModal').style.display='flex'; }
+function downloadPDF() {
+    const el = document.getElementById('invoicePaper');
+    if (!el || !el.innerHTML.trim()) { showPopup('error','Buka preview dulu sebelum download PDF.'); return; }
+    const clientName = _currentInvClient || 'Client';
+    const filename = `Invoice to ${clientName} - HVM Digital.pdf`;
+    showPopup('success', 'Menyiapkan PDF...');
+    const opt = {
+        margin:       0,
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000' },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(el).set(opt).save();
+}
+
+function viewInvoice(id){
+    const inv = invoices.find(i=>i.id===id);
+    if(!inv) return;
+    _currentInvClient = inv.client;
+    _currentInvNo = inv.no;
+    document.getElementById('invoicePaper').innerHTML = buildInvoiceHTML(inv);
+    document.getElementById('previewModal').style.display = 'flex';
+}
 function printInvoice(id){ viewInvoice(id); setTimeout(()=>doPrintClean(),600); }
 function closePreview(){ document.getElementById('previewModal').style.display='none'; }
 
