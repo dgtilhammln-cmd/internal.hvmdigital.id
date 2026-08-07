@@ -421,25 +421,37 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 
 /* MULTI-SERVICE CARDS (VIEW MODE) */
 .ms-card {
-    background: rgba(25, 25, 25, 0.6);
+    background: linear-gradient(145deg, rgba(30,30,30,0.8) 0%, rgba(15,15,15,0.95) 100%);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-left: 4px solid var(--neon-main);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 12px;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    transition: 0.3s;
+    gap: 16px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6);
 }
-.ms-card:hover { background: rgba(30, 30, 30, 0.8); }
+.ms-card::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--card-color, var(--neon-main));
+    box-shadow: 0 0 15px var(--card-color, var(--neon-main));
+}
+.ms-card:hover {
+    transform: translateY(-3px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.1);
+}
 .ms-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.ms-title { font-size: 1.1rem; font-weight: 800; }
-.ms-status { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-.ms-status.active { background: rgba(161, 255, 90, 0.1); color: var(--neon-main); border: 1px solid rgba(161, 255, 90, 0.2); }
+.ms-title { font-size: 1.25rem; font-weight: 800; color: var(--neon-main); letter-spacing: -0.5px; }
+.ms-status { padding: 6px 14px; border-radius: 30px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; backdrop-filter: blur(10px); }
+.ms-status.active { background: rgba(161, 255, 90, 0.1); color: var(--neon-main); border: 1px solid rgba(161, 255, 90, 0.2); box-shadow: 0 0 15px rgba(161, 255, 90, 0.1); }
 .ms-status.inactive { background: rgba(255, 90, 90, 0.1); color: var(--neon-red); border: 1px solid rgba(255, 90, 90, 0.2); }
-.ms-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; }
-.ms-keywords { font-size: 0.8rem; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+.ms-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.02); }
+.ms-detail div { display: flex; flex-direction: column; gap: 4px; }
+.ms-detail-label { font-size: 0.65rem; color: #777; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+.ms-detail-val { font-size: 0.95rem; color: #fff; font-weight: 700; }
+.ms-keywords { font-size: 0.8rem; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px; }
 
 /* SCORE RING */
 .score-card { display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.03); border-radius:15px; padding:20px; margin-bottom:20px; border:1px solid rgba(255,255,255,0.05); }
@@ -1935,25 +1947,25 @@ function renderServicesView(svcs) {
         const statusLabel = isActive ? 'Active' : 'Inactive';
         const color = svcColors[s.type] || '#888';
         const kwHtml = s.keywords ? `<div class="ms-keywords"><i class="fas fa-search" style="margin-right:5px;opacity:0.6;"></i><strong>Keywords:</strong><br>${s.keywords.split(',').map(k=>`<span style="display:inline-block;background:rgba(78,253,196,0.08);border:1px solid rgba(78,253,196,0.15);border-radius:4px;padding:2px 8px;margin:3px 4px 0 0;font-size:0.75rem;">${k.trim()}</span>`).join('')}</div>` : '';
-        const notesHtml = s.notes ? `<div style="margin-top:10px;padding:10px;background:rgba(255,159,67,0.04);border-radius:8px;border:1px solid rgba(255,159,67,0.1);"><span style="font-size:0.65rem;color:var(--neon-orange);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-sticky-note"></i> Catatan</span><p style="font-size:0.8rem;color:#aaa;margin-top:5px;line-height:1.5;">${s.notes}</p></div>` : '';
+        const notesHtml = s.notes ? `<div style="margin-top:4px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.05);"><div style="font-size:0.7rem;color:var(--neon-main);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="fas fa-sticky-note"></i> Catatan Khusus</div><div style="font-size:0.85rem;color:#ddd;line-height:1.6;">${s.notes}</div></div>` : '';
         const daysLeft = s.end ? Math.ceil((new Date(s.end) - today) / 86400000) : null;
         const daysHtml = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30
-            ? `<span style="font-size:0.7rem;padding:2px 8px;background:${daysLeft<=7?'rgba(255,90,90,0.15)':daysLeft<=14?'rgba(255,159,67,0.15)':'rgba(245,197,24,0.1)'};color:${daysLeft<=7?'#ff5a5a':daysLeft<=14?'#ff9f43':'#f5c518'};border-radius:6px;font-weight:700;margin-left:8px;">⚠ H-${daysLeft}</span>` : '';
+            ? `<span style="font-size:0.65rem;padding:4px 10px;background:${daysLeft<=7?'rgba(255,90,90,0.15)':daysLeft<=14?'rgba(255,159,67,0.15)':'rgba(245,197,24,0.1)'};color:${daysLeft<=7?'#ff5a5a':daysLeft<=14?'#ff9f43':'#f5c518'};border-radius:20px;font-weight:800;margin-left:12px;letter-spacing:1px;border:1px solid ${daysLeft<=7?'rgba(255,90,90,0.3)':daysLeft<=14?'rgba(255,159,67,0.3)':'rgba(245,197,24,0.3)'};">⚠ H-${daysLeft}</span>` : '';
         const card = document.createElement('div');
         card.className = 'ms-card';
-        card.style.borderLeftColor = color;
+        card.style.setProperty('--card-color', color);
         card.innerHTML = `
             <div class="ms-header">
                 <div>
-                    <div style="font-size:0.7rem;color:#666;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px;">${s.type}</div>
-                    <div class="ms-title" style="color:${color};">${s.type} Service${daysHtml}</div>
+                    <div style="font-size:0.7rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${s.type}</div>
+                    <div class="ms-title">${s.type} Service${daysHtml}</div>
                 </div>
                 <span class="ms-status ${statusClass}">${statusLabel}</span>
             </div>
             <div class="ms-detail">
-                <div><span style="color:#555;">Mulai:</span> <strong>${fmtDate(s.start)}</strong></div>
-                <div><span style="color:#555;">Berakhir:</span> <strong>${fmtDate(s.end)}</strong></div>
-                ${s.price ? `<div style="grid-column:span 2;"><span style="color:#555;">Deal Price:</span> <strong style="color:var(--neon-main);">${s.price}</strong></div>` : ''}
+                <div><span class="ms-detail-label">Mulai</span><span class="ms-detail-val">${s.start ? new Date(s.start).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-'}</span></div>
+                <div><span class="ms-detail-label">Berakhir</span><span class="ms-detail-val">${s.end ? new Date(s.end).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-'}</span></div>
+                ${s.price ? `<div><span class="ms-detail-label">Harga/Bulan</span><span class="ms-detail-val">Rp ${parseInt(s.price).toLocaleString('id-ID')}</span></div>` : ''}
             </div>
             ${kwHtml}
             ${notesHtml}
@@ -1976,11 +1988,11 @@ function populateServicesEdit(svcs) {
 const SVC_META = {
     'Web Dev':        {icon:'fa-code',            color:'#a1ff5a', bg:'rgba(161,255,90,0.06)'},
     'SEO':            {icon:'fa-search',          color:'#4efdc4', bg:'rgba(78,253,196,0.06)'},
-    'Social Media':   {icon:'fa-instagram',       color:'#ff9f43', bg:'rgba(255,159,67,0.06)'},
+    'Social Media':   {icon:'fa-hashtag',         color:'#ff9f43', bg:'rgba(255,159,67,0.06)'},
     'Branding':       {icon:'fa-paint-brush',     color:'#c084fc', bg:'rgba(192,132,252,0.06)'},
     'Content Creator':{icon:'fa-video',           color:'#f87171', bg:'rgba(248,113,113,0.06)'},
     'Ads':            {icon:'fa-bullhorn',        color:'#60a5fa', bg:'rgba(96,165,250,0.06)'},
-    'Other':          {icon:'fa-cog',             color:'#6b7280', bg:'rgba(107,114,128,0.06)'},
+    'Other':          {icon:'fa-cube',            color:'#6b7280', bg:'rgba(107,114,128,0.06)'},
 };
 
 let _svcRowCount = 0;
@@ -2006,12 +2018,12 @@ function addServiceRow(data) {
     const curMeta = SVC_META[curType] || SVC_META['Other'];
 
     row.innerHTML = `
-        <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div class="svc-icon-badge" style="width:32px;height:32px;border-radius:8px;background:${curMeta.bg};border:1px solid ${curMeta.color}44;display:flex;align-items:center;justify-content:center;">
-                    <i class="fas ${curMeta.icon}" style="color:${curMeta.color};font-size:0.82rem;"></i>
+        <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:${curMeta.bg};color:${curMeta.color};display:flex;align-items:center;justify-content:center;">
+                    <i class="fas ${curMeta.icon}"></i>
                 </div>
-                <span class="svc-type-label" style="font-size:0.82rem;font-weight:800;color:${curMeta.color};">${curType}</span>
+                <span class="svc-type-label" style="font-size:0.82rem;font-weight:800;color:var(--neon-main);">${curType}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <select name="svc_status[]" class="form-input" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;">
