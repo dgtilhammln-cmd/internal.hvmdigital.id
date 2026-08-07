@@ -2014,9 +2014,9 @@ function addServiceRow(data) {
                 <span class="svc-type-label" style="font-size:0.82rem;font-weight:800;color:${curMeta.color};">${curType}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <select name="svc_status[]" class="form-input fa-select" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;font-family:'Inter', 'Font Awesome 5 Free';font-weight:900;">
-                    <option value="Active" ${!data||data.status==='Active'?'selected':''}>&#xf058; Active</option>
-                    <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>&#xf057; Inactive</option>
+                <select name="svc_status[]" class="form-input" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;">
+                    <option value="Active" ${!data||data.status==='Active'?'selected':''}>Active</option>
+                    <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>Inactive</option>
                 </select>
                 <button type="button" class="btn-remove-svc" onclick="this.closest('.svc-row').remove()" title="Hapus">
                     <i class="fas fa-trash"></i>

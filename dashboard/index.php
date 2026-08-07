@@ -754,8 +754,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
                     <div class="panel-header-v30">
                         <div class="ph-left">
-                            <h2 id="plannerTitle" style="cursor:pointer; margin:0; display:inline-block;" onclick="openMonthPicker()" title="Klik untuk pilih bulan">...</h2>
-                            <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;">
+                            <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
+                                <h2 id="plannerTitle" style="margin:0;">...</h2>
+                                <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
+                            </label>
                             <div class="ph-nav-group">
                                 <button class="btn-today-v30" onclick="goToday()">TODAY</button>
                                 <div class="arrow-nav-v30">
