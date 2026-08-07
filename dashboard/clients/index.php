@@ -1219,9 +1219,9 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                         <div class="form-group"><label>Sector / Industri</label><input type="text" name="sector" id="f_sector" class="form-input" required></div>
                         <div class="form-group"><label>City / Address</label><input type="text" name="city" id="f_city" class="form-input" required></div>
                         <div class="form-group"><label><i class="fas fa-circle" style="color:var(--neon-main);margin-right:5px;"></i>Status Klien</label>
-                            <select name="client_status" id="f_status" class="form-input" style="cursor:pointer;">
-                                <option value="Active">✅ Aktif</option>
-                                <option value="Inactive">❌ Non-Aktif</option>
+                            <select name="client_status" id="f_status" class="form-input fa-select" style="cursor:pointer; font-family:'Inter', 'Font Awesome 5 Free'; font-weight:900;">
+                                <option value="Active">&#xf058; Aktif</option>
+                                <option value="Inactive">&#xf057; Non-Aktif</option>
                             </select>
                         </div>
                         <input type="hidden" name="contract_type" id="f_contract_type" value="">
@@ -1930,8 +1930,7 @@ function renderServicesView(svcs) {
     if(emptyEl) emptyEl.style.display = 'none';
     const today = new Date();
     svcs.forEach(s => {
-        const endDate = s.end ? new Date(s.end) : null;
-        const isActive = !endDate || endDate >= today;
+        const isActive = (s.status === 'Active');
         const statusClass = isActive ? 'active' : 'inactive';
         const statusLabel = isActive ? 'Active' : 'Inactive';
         const color = svcColors[s.type] || '#888';
@@ -2015,9 +2014,9 @@ function addServiceRow(data) {
                 <span class="svc-type-label" style="font-size:0.82rem;font-weight:800;color:${curMeta.color};">${curType}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <select name="svc_status[]" class="form-input" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;">
-                    <option value="Active" ${!data||data.status==='Active'?'selected':''}>✅ Active</option>
-                    <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>❌ Inactive</option>
+                <select name="svc_status[]" class="form-input fa-select" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#888;font-size:0.75rem;padding:4px 10px;width:auto;cursor:pointer;border-radius:20px;font-family:'Inter', 'Font Awesome 5 Free';font-weight:900;">
+                    <option value="Active" ${!data||data.status==='Active'?'selected':''}>&#xf058; Active</option>
+                    <option value="Inactive" ${data&&data.status==='Inactive'?'selected':''}>&#xf057; Inactive</option>
                 </select>
                 <button type="button" class="btn-remove-svc" onclick="this.closest('.svc-row').remove()" title="Hapus">
                     <i class="fas fa-trash"></i>
