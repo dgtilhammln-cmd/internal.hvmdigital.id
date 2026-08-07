@@ -754,7 +754,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
                     <div class="panel-header-v30">
                         <div class="ph-left">
-                            <h2 id="plannerTitle">...</h2>
+                            <label style="cursor:pointer; position:relative; display:inline-block; margin:0;" title="Klik untuk pilih bulan">
+                                <h2 id="plannerTitle" style="margin:0;">...</h2>
+                                <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0;">
+                            </label>
                             <div class="ph-nav-group">
                                 <button class="btn-today-v30" onclick="goToday()">TODAY</button>
                                 <div class="arrow-nav-v30">
@@ -1007,6 +1010,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const months = ["JANUARI","FEBRUARI","MARET","APRIL","MEI","JUNI","JULI","AGUSTUS","SEPTEMBER","OKTOBER","NOVEMBER","DESEMBER"];
             mt.innerText = months[currentDate.getMonth()] + " " + currentDate.getFullYear();
             
+            const monthPicker = document.getElementById('monthPicker');
+            if(monthPicker) {
+                const y = currentDate.getFullYear();
+                const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+                monthPicker.value = `${y}-${m}`;
+            }
+            
             try {
                 const res = await fetch(`/dashboard/workspace/planner_logic_v28.php?date=${dStr}&mode=${curMode}`);
                 vp.innerHTML = await res.text();
@@ -1051,9 +1061,20 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         function setMode(m, btn) { curMode = m; document.querySelectorAll('.mode-switch-v30 button').forEach(el => el.classList.remove('active')); btn.classList.add('active'); refreshPlanner(); }
         function navigatePlanner(dir) {
             if(curMode === 'month') currentDate.setMonth(currentDate.getMonth() + dir);
-            else currentDate.setDate(currentDate.getDate() + (dir * 7));
+            else if(curMode === 'week') currentDate.setDate(currentDate.getDate() + (dir*7));
+            else if(curMode === 'day') currentDate.setDate(currentDate.getDate() + dir);
             refreshPlanner();
         }
+
+        function jumpToMonth(val) {
+            if(!val) return;
+            const parts = val.split('-');
+            if(parts.length === 2) {
+                currentDate = new Date(parts[0], parseInt(parts[1])-1, 1);
+                refreshPlanner();
+            }
+        }
+
         function goToday() { currentDate = new Date(); refreshPlanner(); }
         
         function openEventModal(dateStr = '') {
