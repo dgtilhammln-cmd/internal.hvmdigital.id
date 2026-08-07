@@ -1042,7 +1042,7 @@ function buildInvoiceHTML(inv) {
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
             </div>
-            <div class="dark-inv-bottom" style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div class="dark-inv-bottom" style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;">
                 <!-- LEFT COLUMN: Payment, Notes -->
                 <div style="flex:1;padding-right:40px;">
                     <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
