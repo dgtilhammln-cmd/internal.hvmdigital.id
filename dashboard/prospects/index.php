@@ -71,6 +71,13 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             $meetings = [];
             $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
             if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+            
+            $chk_tid = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
+            if(mysqli_num_rows($chk_tid) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_id` INT DEFAULT NULL");
+            
+            $chk_ttype = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_type'");
+            if(mysqli_num_rows($chk_ttype) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_type` ENUM('Client','Prospect') DEFAULT NULL");
+
             $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id=$id AND target_type='Prospect' ORDER BY event_date DESC");
             if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
             $row['meetings'] = $meetings;

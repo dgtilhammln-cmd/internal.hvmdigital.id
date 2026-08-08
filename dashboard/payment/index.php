@@ -627,71 +627,81 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
             </div>
         </div>
 
-        <div class="action-container" style="display:flex; flex-direction:column; gap:15px; background:var(--card); padding:15px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div class="tab-group" style="margin:0;">
-                    <button class="tab-btn <?php echo ($view==='income')?'active':''; ?>" onclick="window.location='?view=income&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-up"></i> Income</button>
-                    <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-down"></i> Expense</button>
+        <div class="action-container" style="display:flex; flex-direction:column; gap:20px; background:var(--card); padding:20px; border-radius:16px; border:1px solid var(--border); margin-bottom:24px;">
+            <!-- Top Row: Tabs & Primary Actions -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                <div class="tab-group" style="margin:0; display:flex; background:rgba(0,0,0,0.4); padding:4px; border-radius:12px; border:1px solid rgba(255,255,255,0.03);">
+                    <button class="tab-btn <?php echo ($view==='income')?'active':''; ?>" onclick="window.location='?view=income&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'" style="margin:0; border-radius:8px; padding:8px 24px;"><i class="fas fa-arrow-up"></i> Income</button>
+                    <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'" style="margin:0; border-radius:8px; padding:8px 24px;"><i class="fas fa-arrow-down"></i> Expense</button>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <button class="btn-grad blue" onclick="openModal('downloadModal')"><i class="fas fa-download"></i> Export</button>
-                    <?php if ($view==='income'): ?><button class="btn-grad" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> Add Income</button>
-                    <?php elseif ($view==='expense'): ?><button class="btn-grad red" onclick="openModal('expenseModal')"><i class="fas fa-minus"></i> Add Expense</button><?php endif; ?>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <button class="btn-grad blue" onclick="openModal('downloadModal')" style="padding:10px 20px; border-radius:10px; font-size:0.85rem;"><i class="fas fa-file-export"></i> Export</button>
+                    <?php if ($view==='income'): ?>
+                    <button class="btn-grad" onclick="openModal('incomeModal')" style="padding:10px 20px; border-radius:10px; font-size:0.85rem;"><i class="fas fa-plus-circle"></i> Add Income</button>
+                    <?php elseif ($view==='expense'): ?>
+                    <button class="btn-grad red" onclick="openModal('expenseModal')" style="padding:10px 20px; border-radius:10px; font-size:0.85rem;"><i class="fas fa-minus-circle"></i> Add Expense</button>
+                    <?php endif; ?>
                 </div>
             </div>
             
-            <form method="GET" class="filter-group" id="filterForm" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width:100%;">
+            <div style="height:1px; background:rgba(255,255,255,0.04); width:100%;"></div>
+            
+            <!-- Bottom Row: Filters -->
+            <form method="GET" id="filterForm" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; width:100%;">
                 <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
                 
-                <div class="search-wrap" style="flex:1; min-width:200px;">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" name="q" class="search-input" placeholder="Cari client, detail, ID..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off" style="width:100%;">
+                <div class="search-wrap" style="flex:1; min-width:240px; position:relative;">
+                    <i class="fas fa-search" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted);"></i>
+                    <input type="text" name="q" placeholder="Cari client, layanan, atau ID..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:10px 14px 10px 38px; color:#fff; font-size:0.85rem; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='rgba(161,255,90,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'">
                 </div>
                 
-                <div style="display:flex; align-items:center; gap:5px; background:rgba(0,0,0,0.3); padding:4px; border-radius:8px; border:1px solid var(--border);">
-                    <input type="date" name="start" class="date-select" style="border:none; background:transparent;" value="<?php echo $date_start; ?>" onchange="this.form.submit()">
-                    <span class="date-sep" style="color:#666;">&#8594;</span>
-                    <input type="date" name="end" class="date-select" style="border:none; background:transparent;" value="<?php echo $date_end; ?>" onchange="this.form.submit()">
-                </div>
-                
-                <div style="display:flex; gap:4px; border-right:1px solid rgba(255,255,255,0.1); padding-right:10px; margin-right:5px;">
-                    <button type="button" class="btn-icon" onclick="setDateRange('today')" title="Hari Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Hari Ini</button>
-                    <button type="button" class="btn-icon" onclick="setDateRange('week')" title="7 Hari" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">7 Hari</button>
-                    <button type="button" class="btn-icon" onclick="setDateRange('month')" title="Bulan Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Bulan Ini</button>
-                    <button type="button" class="btn-icon" onclick="setDateRange('year')" title="Tahun Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Tahun Ini</button>
+                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:4px 8px; height:40px;">
+                    <input type="date" name="start" style="background:transparent; border:none; color:#ccc; outline:none; font-family:inherit; font-size:0.85rem;" value="<?php echo $date_start; ?>" onchange="this.form.submit()">
+                    <span style="color:var(--muted); margin:0 8px;">&rarr;</span>
+                    <input type="date" name="end" style="background:transparent; border:none; color:#ccc; outline:none; font-family:inherit; font-size:0.85rem;" value="<?php echo $date_end; ?>" onchange="this.form.submit()">
                 </div>
 
                 <?php if ($view === 'income'): ?>
-                <select name="ptype" class="date-select" style="min-width:140px;" onchange="this.form.submit()">
-                    <option value="">Semua Tipe</option>
-                    <option value="New Client" <?php if($filter_ptype==='New Client') echo 'selected'; ?>>New Client</option>
-                    <option value="Recurring" <?php if($filter_ptype==='Recurring') echo 'selected'; ?>>Recurring</option>
-                    <option value="Down Payment" <?php if($filter_ptype==='Down Payment') echo 'selected'; ?>>DP</option>
-                    <option value="Pelunasan" <?php if($filter_ptype==='Pelunasan') echo 'selected'; ?>>Pelunasan</option>
+                <select name="ptype" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#ccc; border-radius:10px; padding:0 14px; height:40px; outline:none; font-family:inherit; font-size:0.85rem; min-width:140px;" onchange="this.form.submit()">
+                    <option value="" style="background:#111">Semua Tipe</option>
+                    <option value="New Client" style="background:#111" <?php if($filter_ptype==='New Client') echo 'selected'; ?>>New Client</option>
+                    <option value="Recurring" style="background:#111" <?php if($filter_ptype==='Recurring') echo 'selected'; ?>>Recurring</option>
+                    <option value="Down Payment" style="background:#111" <?php if($filter_ptype==='Down Payment') echo 'selected'; ?>>DP</option>
+                    <option value="Pelunasan" style="background:#111" <?php if($filter_ptype==='Pelunasan') echo 'selected'; ?>>Pelunasan</option>
                 </select>
                 <?php elseif ($view === 'expense'): ?>
-                <select name="cat" class="date-select" style="min-width:140px;" onchange="this.form.submit()">
-                    <option value="">Semua Kategori</option>
-                    <option value="aset" <?php if($filter_cat==='aset') echo 'selected'; ?>>Aset / Inventaris</option>
-                    <option value="operasional" <?php if($filter_cat==='operasional') echo 'selected'; ?>>Operasional</option>
-                    <option value="fee" <?php if($filter_cat==='fee') echo 'selected'; ?>>Fee / Komisi</option>
-                    <option value="gaji" <?php if($filter_cat==='gaji') echo 'selected'; ?>>Gaji / Honor</option>
-                    <option value="software" <?php if($filter_cat==='software') echo 'selected'; ?>>Software</option>
-                    <option value="marketing" <?php if($filter_cat==='marketing') echo 'selected'; ?>>Marketing</option>
-                    <option value="pajak" <?php if($filter_cat==='pajak') echo 'selected'; ?>>Pajak</option>
-                    <option value="lainnya" <?php if($filter_cat==='lainnya') echo 'selected'; ?>>Lainnya</option>
+                <select name="cat" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#ccc; border-radius:10px; padding:0 14px; height:40px; outline:none; font-family:inherit; font-size:0.85rem; min-width:140px;" onchange="this.form.submit()">
+                    <option value="" style="background:#111">Semua Kategori</option>
+                    <option value="aset" style="background:#111" <?php if($filter_cat==='aset') echo 'selected'; ?>>Aset / Inventaris</option>
+                    <option value="operasional" style="background:#111" <?php if($filter_cat==='operasional') echo 'selected'; ?>>Operasional</option>
+                    <option value="fee" style="background:#111" <?php if($filter_cat==='fee') echo 'selected'; ?>>Fee / Komisi</option>
+                    <option value="gaji" style="background:#111" <?php if($filter_cat==='gaji') echo 'selected'; ?>>Gaji / Honor</option>
+                    <option value="software" style="background:#111" <?php if($filter_cat==='software') echo 'selected'; ?>>Software</option>
+                    <option value="marketing" style="background:#111" <?php if($filter_cat==='marketing') echo 'selected'; ?>>Marketing</option>
+                    <option value="pajak" style="background:#111" <?php if($filter_cat==='pajak') echo 'selected'; ?>>Pajak</option>
+                    <option value="lainnya" style="background:#111" <?php if($filter_cat==='lainnya') echo 'selected'; ?>>Lainnya</option>
                 </select>
                 <?php endif; ?>
                 
-                <input type="number" name="amin" class="date-select" style="width:110px;" placeholder="Min Rp" value="<?php echo $filter_min; ?>" min="0">
-                <input type="number" name="amax" class="date-select" style="width:110px;" placeholder="Max Rp" value="<?php echo $filter_max; ?>" min="0">
+                <input type="number" name="amin" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#ccc; border-radius:10px; padding:0 12px; height:40px; outline:none; width:120px; font-family:inherit; font-size:0.85rem;" placeholder="Min Rp" value="<?php echo $filter_min; ?>" min="0">
+                <input type="number" name="amax" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); color:#ccc; border-radius:10px; padding:0 12px; height:40px; outline:none; width:120px; font-family:inherit; font-size:0.85rem;" placeholder="Max Rp" value="<?php echo $filter_max; ?>" min="0">
                 
-                <button type="submit" class="btn-icon" title="Filter" style="background:rgba(255,255,255,0.1);padding:8px 14px;border-radius:8px;color:#fff;"><i class="fas fa-filter"></i></button>
-                <?php $has_filter = ($search || $filter_ptype || $filter_cat || $filter_min!=='' || $filter_max!==''); ?>
-                <?php if ($has_filter): ?>
-                <a href="?view=<?php echo $view; ?>&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>" class="btn-icon" style="background:rgba(255,90,90,0.15);padding:8px 12px;border-radius:8px;color:#ff5a5a;text-decoration:none;" title="Reset Filter"><i class="fas fa-times"></i></a>
-                <?php endif; ?>
+                <div style="display:flex; gap:8px; margin-left:auto;">
+                    <button type="submit" style="background:rgba(161,255,90,0.1); color:var(--green); border:1px solid rgba(161,255,90,0.2); border-radius:10px; height:40px; padding:0 16px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:0.85rem; font-family:inherit; transition:background 0.2s;" onmouseover="this.style.background='rgba(161,255,90,0.2)'" onmouseout="this.style.background='rgba(161,255,90,0.1)'"><i class="fas fa-filter"></i> Filter</button>
+                    <?php $has_filter = ($search || $filter_ptype || $filter_cat || $filter_min!=='' || $filter_max!==''); ?>
+                    <?php if ($has_filter): ?>
+                    <a href="?view=<?php echo $view; ?>&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>" style="background:rgba(255,107,107,0.1); color:var(--red); border:1px solid rgba(255,107,107,0.2); border-radius:10px; height:40px; padding:0 14px; display:flex; align-items:center; justify-content:center; text-decoration:none; transition:background 0.2s;" title="Reset Filter" onmouseover="this.style.background='rgba(255,107,107,0.2)'" onmouseout="this.style.background='rgba(255,107,107,0.1)'"><i class="fas fa-times"></i></a>
+                    <?php endif; ?>
+                </div>
             </form>
+            
+            <div style="display:flex; gap:10px; align-items:center; font-size:0.75rem; color:var(--muted); padding-top:4px;">
+                <i class="fas fa-bolt" style="color:var(--orange);"></i> <span style="font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Shortcut:</span>
+                <a href="#" onclick="event.preventDefault();setDateRange('today');" style="color:#aaa; text-decoration:none; padding:4px 10px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.05); transition:all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='#aaa'; this.style.background='rgba(255,255,255,0.03)'">Hari Ini</a>
+                <a href="#" onclick="event.preventDefault();setDateRange('week');" style="color:#aaa; text-decoration:none; padding:4px 10px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.05); transition:all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='#aaa'; this.style.background='rgba(255,255,255,0.03)'">7 Hari Terakhir</a>
+                <a href="#" onclick="event.preventDefault();setDateRange('month');" style="color:#aaa; text-decoration:none; padding:4px 10px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.05); transition:all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='#aaa'; this.style.background='rgba(255,255,255,0.03)'">Bulan Ini</a>
+                <a href="#" onclick="event.preventDefault();setDateRange('year');" style="color:#aaa; text-decoration:none; padding:4px 10px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.05); transition:all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='#aaa'; this.style.background='rgba(255,255,255,0.03)'">Tahun Ini</a>
+            </div>
         </div>
 
         <div class="table-card">

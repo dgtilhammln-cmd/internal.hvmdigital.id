@@ -130,13 +130,16 @@ if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
     // Meeting history
     $meetings = [];
     $chk_tid = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
-    if(mysqli_num_rows($chk_tid) > 0) {
-        $cli_id_esc = mysqli_real_escape_string($conn, $id);
-        $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
-        if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
-        $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id='$cli_id_esc' AND target_type='Client' ORDER BY event_date DESC");
-        if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
-    }
+    if(mysqli_num_rows($chk_tid) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_id` INT DEFAULT NULL");
+    
+    $chk_ttype = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_type'");
+    if(mysqli_num_rows($chk_ttype) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_type` ENUM('Client','Prospect') DEFAULT NULL");
+
+    $cli_id_esc = mysqli_real_escape_string($conn, $id);
+    $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+    if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+    $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id='$cli_id_esc' AND target_type='Client' ORDER BY event_date DESC");
+    if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
 
     // Invoice history (status Lunas)
     $invoices_hist = [];
