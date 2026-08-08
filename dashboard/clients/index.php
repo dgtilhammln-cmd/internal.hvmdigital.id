@@ -127,6 +127,25 @@ if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
     $creds_data = [];
     if($cred_raw){ $p = json_decode($cred_raw, true); if(is_array($p)) $creds_data = $p; }
 
+    // Meeting history
+    $meetings = [];
+    $chk_tid = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
+    if(mysqli_num_rows($chk_tid) > 0) {
+        $cli_id_esc = mysqli_real_escape_string($conn, $id);
+        $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+        if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+        $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id='$cli_id_esc' AND target_type='Client' ORDER BY event_date DESC");
+        if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
+    }
+
+    // Invoice history (status Lunas)
+    $invoices_hist = [];
+    $chk_inv = mysqli_query($conn, "SHOW TABLES LIKE 'invoices'");
+    if(mysqli_num_rows($chk_inv) > 0) {
+        $q_inv = mysqli_query($conn, "SELECT id, inv_no, client_name, service_label, inv_date, total, status FROM invoices WHERE (client_ref_id='$id' AND client_ref_type='Client') AND status='Lunas' ORDER BY inv_date DESC LIMIT 20");
+        if($q_inv) while($r=mysqli_fetch_assoc($q_inv)) $invoices_hist[] = $r;
+    }
+
     echo json_encode([
         'data'             => $client,
         'history'          => $is_super ? $history : [],
@@ -141,9 +160,12 @@ if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
         'legal_docs'       => $legal_docs,
         'services_data'    => $services_data,
         'credentials_data' => $creds_data,
+        'meetings'         => $meetings,
+        'invoices_hist'    => $is_super ? $invoices_hist : [],
     ]);
     exit;
 }
+
 
 // 4b. AJAX: ADD LEGAL DOC
 if(isset($_POST['action']) && $_POST['action'] == 'add_legal_doc'){
@@ -1191,6 +1213,8 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div class="tab-link" onclick="switchTab('vault')"><i class="fas fa-shield-alt"></i> Vault</div>
             <div class="tab-link" onclick="switchTab('creds')"><i class="fas fa-link"></i> Resources</div>
             <div class="tab-link" onclick="switchTab('legal')"><i class="fas fa-file-contract"></i> Dokumen</div>
+            <div class="tab-link" onclick="switchTab('meetings')"><i class="fas fa-calendar-check"></i> Meetings</div>
+            <div class="tab-link" onclick="switchTab('invoices')"><i class="fas fa-file-invoice"></i> Invoices</div>
             <?php if($is_super): ?><div class="tab-link" onclick="switchTab('history')"><i class="fas fa-history"></i> History</div><?php endif; ?>
         </div>
 
@@ -1399,6 +1423,18 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             <span>Belum ada dokumen legal tersimpan.</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- TAB MEETINGS -->
+                <div id="tab_meetings" class="tab-pane">
+                    <div class="detail-section-title"><i class="fas fa-calendar-check" style="color:var(--neon-main);margin-right:6px;"></i>RIWAYAT MEETING</div>
+                    <div id="meetingsList" class="history-list"></div>
+                </div>
+
+                <!-- TAB INVOICES -->
+                <div id="tab_invoices" class="tab-pane">
+                    <div class="detail-section-title"><i class="fas fa-file-invoice" style="color:var(--neon-orange);margin-right:6px;"></i>INVOICE TERKIRIM (LUNAS)</div>
+                    <div id="invoicesList" class="history-list"></div>
                 </div>
 
                 <!-- TAB HISTORY -->
@@ -1613,13 +1649,75 @@ function fetchData(id, mode){
 
         // Render legal docs
         renderLegalDocs(res.legal_docs || []);
-        // Store current client id for doc actions
         window._currentClientId = d.client_id;
-        // Reset add doc form
         resetAddDocForm();
 
-        // === RENDER SERVICES ===
-        renderServicesView(res.services_data || []);
+        renderLegalDocs(res.legal_docs);
+        renderServicesView(res.services_data);
+        
+        // Render Meetings
+        const meetList = document.getElementById('meetingsList');
+        if(meetList) {
+            meetList.innerHTML = '';
+            if(res.meetings && res.meetings.length>0) {
+                res.meetings.forEach(m => {
+                    const dateStr = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                    const timeStr = m.time_start || '';
+                    let logHtml = m.log_hasil ? `<div style="font-size:0.75rem;color:#ccc;background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;margin-bottom:8px;">${m.log_hasil}</div>` : `<div style="font-size:0.75rem;color:#666;font-style:italic;margin-bottom:8px;">Belum ada log/catatan.</div>`;
+                    const editBtn = `<button type="button" onclick="editMeetingLog(${m.id})" style="padding:4px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#a1ff5a;border-radius:4px;font-size:0.7rem;cursor:pointer;"><i class="fas fa-edit"></i> Edit Log Hasil</button>`;
+                    meetList.innerHTML += `
+                        <div class="hist-item">
+                            <div class="hist-icon" style="background:rgba(161,255,90,0.1);color:#a1ff5a;"><i class="fas fa-calendar-check"></i></div>
+                            <div class="hist-content">
+                                <div class="hist-head">
+                                    <div class="hist-title">${m.title}</div>
+                                    <div class="hist-amount" style="color:#888;font-size:0.8rem;">[${m.meeting_mode}]</div>
+                                </div>
+                                <div class="hist-date">${dateStr} ${timeStr} | ${m.meeting_type}</div>
+                                <div style="margin-top:10px;">
+                                    ${logHtml}
+                                    ${editBtn}
+                                    <div id="log-edit-form-${m.id}" style="display:none;margin-top:8px;">
+                                        <textarea id="log-val-${m.id}" style="width:100%;height:80px;background:rgba(0,0,0,0.5);border:1px solid #444;color:#fff;border-radius:6px;padding:8px;font-size:0.8rem;margin-bottom:6px;">${m.log_hasil||''}</textarea>
+                                        <button type="button" onclick="saveMeetingLog(${m.id})" style="padding:5px 12px;background:var(--neon-main);color:#000;border:none;border-radius:4px;font-size:0.75rem;cursor:pointer;font-weight:700;">Simpan</button>
+                                        <button type="button" onclick="document.getElementById('log-edit-form-${m.id}').style.display='none'" style="padding:5px 12px;background:transparent;color:#888;border:none;cursor:pointer;font-size:0.75rem;">Batal</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                meetList.innerHTML = '<div style="text-align:center;color:#666;padding:20px;font-size:0.85rem;"><i class="fas fa-calendar-times" style="font-size:1.5rem;display:block;margin-bottom:10px;opacity:0.5;"></i>Belum ada riwayat meeting.</div>';
+            }
+        }
+
+        // Render Invoices
+        const invList = document.getElementById('invoicesList');
+        if(invList) {
+            invList.innerHTML = '';
+            if(res.invoices_hist && res.invoices_hist.length>0) {
+                res.invoices_hist.forEach(inv => {
+                    const dateStr = new Date(inv.inv_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                    const totalStr = 'Rp ' + parseInt(inv.total).toLocaleString('id-ID');
+                    invList.innerHTML += `
+                        <div class="hist-item">
+                            <div class="hist-icon" style="background:rgba(255,159,67,0.1);color:var(--neon-orange);"><i class="fas fa-file-invoice"></i></div>
+                            <div class="hist-content">
+                                <div class="hist-head">
+                                    <div class="hist-title">Invoice #${inv.inv_no}</div>
+                                    <div class="hist-amount">${totalStr}</div>
+                                </div>
+                                <div class="hist-date">${dateStr} | ${inv.service_label} <span style="float:right;color:var(--neon-main);font-weight:700;"><i class="fas fa-check-circle"></i> LUNAS</span></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                invList.innerHTML = '<div style="text-align:center;color:#666;padding:20px;font-size:0.85rem;"><i class="fas fa-box-open" style="font-size:1.5rem;display:block;margin-bottom:10px;opacity:0.5;"></i>Belum ada riwayat invoice lunas.</div>';
+            }
+        }
+
         if(mode === 'edit') {
             populateServicesEdit(res.services_data || []);
             // Set status dropdown
@@ -1708,7 +1806,7 @@ function toggleLinks(show){
 function switchTab(tab){
     document.querySelectorAll('.tab-link').forEach(t=>t.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-    const map={info:0,services:1,vault:2,creds:3,legal:4,history:5};
+    const map={info:0,services:1,vault:2,creds:3,legal:4,meetings:5,invoices:6,history:7};
     const tabs=document.querySelectorAll('.tab-link');
     if(tabs[map[tab]]!==undefined) tabs[map[tab]].classList.add('active');
     const pane=document.getElementById('tab_'+tab);
@@ -2072,6 +2170,29 @@ function updateSvcRowStyle(selectEl) {
     row.querySelector('.svc-icon-badge i').style.color = m.color;
     row.querySelector('.svc-type-label').textContent = t;
     row.querySelector('.svc-type-label').style.color = m.color;
+}
+
+function editMeetingLog(id) {
+    document.getElementById(`log-edit-form-${id}`).style.display = 'block';
+}
+
+function saveMeetingLog(id) {
+    const val = document.getElementById(`log-val-${id}`).value;
+    const fd = new FormData();
+    fd.append('ajax_action', 'update_log');
+    fd.append('event_id', id);
+    fd.append('log_hasil', val);
+    
+    fetch('../index.php', { method:'POST', body:fd })
+        .then(r=>r.json())
+        .then(res => {
+            if(res.ok) {
+                showPopup('success', 'Log meeting berhasil disimpan');
+                viewClient(window._currentClientId); // Refresh UI
+            } else {
+                showPopup('error', 'Gagal menyimpan log');
+            }
+        });
 }
 
 window.onclick=e=>{ if(e.target===modal) closeModal(); };

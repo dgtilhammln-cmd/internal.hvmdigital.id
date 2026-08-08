@@ -3,6 +3,50 @@ session_start();
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
 
 if(!isset($_SESSION['admin'])){ header("Location: /"); exit; }
+if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
+    header('Content-Type: application/json');
+    $act = $_POST['ajax_action'];
+
+    // Return clients + prospects for dropdown
+    if($act === 'get_targets') {
+        $clients = []; $prospects = [];
+        $qcl = mysqli_query($conn, "SELECT client_id as id, company_name FROM clients ORDER BY company_name ASC");
+        if($qcl) while($r=mysqli_fetch_assoc($qcl)) $clients[] = ['id'=>$r['id'],'name'=>$r['company_name'],'type'=>'Client'];
+        $qpr_chk = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
+        if(mysqli_num_rows($qpr_chk) > 0) {
+            $qpr = mysqli_query($conn, "SELECT id, company_name FROM prospects ORDER BY company_name ASC");
+            if($qpr) while($r=mysqli_fetch_assoc($qpr)) $prospects[] = ['id'=>$r['id'],'name'=>$r['company_name'],'type'=>'Prospect'];
+        }
+        echo json_encode(['clients'=>$clients,'prospects'=>$prospects]); exit;
+    }
+
+    // Update meeting log_hasil
+    if($act === 'update_log') {
+        $eid = intval($_POST['event_id'] ?? 0);
+        $log = mysqli_real_escape_string($conn, $_POST['log_hasil'] ?? '');
+        // Ensure column exists
+        $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+        if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+        $ok = mysqli_query($conn, "UPDATE events SET log_hasil='$log' WHERE id=$eid");
+        echo json_encode(['ok'=>(bool)$ok]); exit;
+    }
+
+    // Get meetings for a specific entity
+    if($act === 'get_meetings') {
+        $tid   = intval($_POST['target_id'] ?? 0);
+        $ttype = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
+        $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+        if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+        $chk_tid = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
+        if(mysqli_num_rows($chk_tid) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_id` INT DEFAULT NULL");
+        $rows = [];
+        $q = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id=$tid AND target_type='$ttype' ORDER BY event_date DESC");
+        if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
+        echo json_encode($rows); exit;
+    }
+    exit;
+}
+
 // EVENT SAVE
 if(isset($_POST['save_event'])){
     $cols = [
@@ -10,7 +54,9 @@ if(isset($_POST['save_event'])){
         'meeting_mode' => "VARCHAR(20) DEFAULT NULL",
         'target_type'  => "VARCHAR(20) DEFAULT NULL",
         'target_name'  => "VARCHAR(255) DEFAULT NULL",
-        'location'     => "TEXT DEFAULT NULL"
+        'target_id'    => "INT DEFAULT NULL",
+        'location'     => "TEXT DEFAULT NULL",
+        'log_hasil'    => "TEXT DEFAULT NULL"
     ];
     foreach($cols as $col => $def){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
@@ -24,11 +70,12 @@ if(isset($_POST['save_event'])){
     $meet_mode   = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
     $target_type = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
     $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
+    $target_id   = intval($_POST['target_id'] ?? 0);
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
     if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location')");
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location')");
     header("Location: /dashboard/"); exit;
 }
 
@@ -959,15 +1006,16 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         <button type="button" class="target-type-btn" id="d-btn-prospect" onclick="dashSwitchTarget('Prospect')"><i class="fas fa-binoculars"></i> Prospects</button>
                     </div>
                     <input type="hidden" name="target_type" id="d-target-type" value="Client">
-                    <select name="target_name" id="d-company-sel" class="form-input" style="background:#111;" onchange="dashUpdateTitle()">
+                    <input type="hidden" name="target_id" id="d-target-id" value="">
+                    <select name="target_name" id="d-company-sel" class="form-input" style="background:#111;" onchange="dashOnSelectChange()">
                         <option value="">-- Pilih Perusahaan --</option>
                         <?php
-                        $qc = mysqli_query($conn, "SELECT company_name FROM clients ORDER BY company_name ASC");
-                        while($r = mysqli_fetch_assoc($qc)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Client'>".htmlspecialchars($r['company_name'])."</option>";
+                        $qc = mysqli_query($conn, "SELECT client_id, company_name FROM clients ORDER BY company_name ASC");
+                        while($r = mysqli_fetch_assoc($qc)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Client' data-id='".htmlspecialchars($r['client_id'])."'>".htmlspecialchars($r['company_name'])."</option>";
                         $qp_chk = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
                         if(mysqli_num_rows($qp_chk) > 0){
-                            $qp = mysqli_query($conn, "SELECT company_name FROM prospects ORDER BY company_name ASC");
-                            while($r = mysqli_fetch_assoc($qp)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Prospect' class='opt-prospect' style='display:none'>".htmlspecialchars($r['company_name'])."</option>";
+                            $qp = mysqli_query($conn, "SELECT id, company_name FROM prospects ORDER BY company_name ASC");
+                            while($r = mysqli_fetch_assoc($qp)) echo "<option value='".htmlspecialchars($r['company_name'])."' data-type='Prospect' data-id='".htmlspecialchars($r['id'])."' class='opt-prospect' style='display:none'>".htmlspecialchars($r['company_name'])."</option>";
                         }
                         ?>
                     </select>
@@ -1178,8 +1226,16 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             }
         }
 
+        function dashOnSelectChange() {
+            const sel = document.getElementById('d-company-sel');
+            const opt = sel.options[sel.selectedIndex];
+            document.getElementById('d-target-id').value = opt ? (opt.dataset.id || '') : '';
+            dashUpdateTitle();
+        }
+
         function dashSwitchTarget(type) {
             document.getElementById('d-target-type').value = type;
+            document.getElementById('d-target-id').value = '';
             document.getElementById('d-btn-client').classList.toggle('active', type === 'Client');
             document.getElementById('d-btn-prospect').classList.toggle('active', type === 'Prospect');
             const sel = document.getElementById('d-company-sel');
@@ -1208,7 +1264,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const container = document.getElementById('detailContent');
             const dateObj = new Date(date);
             const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            
             container.innerHTML = `
                 <div class="detail-row"><span class="detail-label">NAMA PROJECT</span><div class="detail-val">${title}</div></div>
                 <div class="detail-row"><span class="detail-label">WAKTU</span><div class="detail-val">${dateNice} &bull; ${time || 'Seharian'}</div></div>

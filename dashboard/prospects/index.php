@@ -67,6 +67,22 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $id = intval($_POST['id'] ?? 0);
         $q = mysqli_query($conn, "SELECT * FROM prospects WHERE id=$id");
         $row = mysqli_fetch_assoc($q);
+        if($row) {
+            $meetings = [];
+            $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+            if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+            $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id=$id AND target_type='Prospect' ORDER BY event_date DESC");
+            if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
+            $row['meetings'] = $meetings;
+
+            $invoices_hist = [];
+            $chk_inv = mysqli_query($conn, "SHOW TABLES LIKE 'invoices'");
+            if(mysqli_num_rows($chk_inv) > 0) {
+                $q_inv = mysqli_query($conn, "SELECT id, inv_no, service_label, inv_date, total FROM invoices WHERE (client_ref_id='$id' AND client_ref_type='Prospect') AND status='Lunas' ORDER BY inv_date DESC LIMIT 20");
+                if($q_inv) while($r=mysqli_fetch_assoc($q_inv)) $invoices_hist[] = $r;
+            }
+            $row['invoices_hist'] = $invoices_hist;
+        }
         echo json_encode($row ?: null);
         exit;
     }
@@ -362,6 +378,12 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                 <label>Catatan</label>
                 <textarea id="f_catatan" rows="3" placeholder="Catatan meeting, kebutuhan, dll..."></textarea>
             </div>
+            <div id="prospectHistorySection" style="display:none; margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:12px;"><i class="fas fa-calendar-check" style="color:var(--green); margin-right:6px;"></i> Riwayat Meeting</div>
+                <div id="pMeetingsList" style="margin-bottom:20px;"></div>
+                <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:12px;"><i class="fas fa-file-invoice" style="color:var(--orange); margin-right:6px;"></i> Invoice Dikirim (LUNAS)</div>
+                <div id="pInvoicesList"></div>
+            </div>
         </div>
         <div class="modal-foot">
             <button class="btn-cancel" onclick="closeModal()">Batal</button>
@@ -402,6 +424,66 @@ function openModal(data = null) {
     document.getElementById('f_catatan').value = data ? (data.catatan||'') : '';
     document.getElementById('f_status').value = data ? (data.status||'Cold') : 'Cold';
     document.getElementById('modalTitle').textContent = data ? 'Edit Prospek' : 'Tambah Prospek';
+    
+    // Render History Section
+    const histSec = document.getElementById('prospectHistorySection');
+    if(data && data.id) {
+        histSec.style.display = 'block';
+        
+        // Meetings
+        const pMeet = document.getElementById('pMeetingsList');
+        pMeet.innerHTML = '';
+        if(data.meetings && data.meetings.length>0) {
+            data.meetings.forEach(m => {
+                const dateStr = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                const timeStr = m.time_start || '';
+                let logHtml = m.log_hasil ? `<div style="font-size:0.75rem;color:#ccc;background:rgba(255,255,255,0.03);padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;margin-bottom:8px;">${m.log_hasil}</div>` : `<div style="font-size:0.75rem;color:#666;font-style:italic;margin-bottom:8px;">Belum ada log/catatan.</div>`;
+                const editBtn = `<button type="button" onclick="editMeetingLog(${m.id})" style="padding:4px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--green);border-radius:4px;font-size:0.7rem;cursor:pointer;"><i class="fas fa-edit"></i> Edit Log Hasil</button>`;
+                pMeet.innerHTML += `
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-weight:700;font-size:0.85rem;color:#fff;">${m.title}</div>
+                            <div style="font-size:0.75rem;color:var(--muted);">${m.meeting_mode}</div>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--teal);margin-bottom:10px;">${dateStr} ${timeStr} | ${m.meeting_type}</div>
+                        ${logHtml}
+                        ${editBtn}
+                        <div id="log-edit-form-${m.id}" style="display:none;margin-top:8px;">
+                            <textarea id="log-val-${m.id}" style="width:100%;height:80px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:6px;padding:8px;font-size:0.8rem;margin-bottom:6px;">${m.log_hasil||''}</textarea>
+                            <button type="button" onclick="saveMeetingLog(${m.id})" style="padding:5px 12px;background:var(--green);color:#000;border:none;border-radius:4px;font-size:0.75rem;cursor:pointer;font-weight:700;">Simpan</button>
+                            <button type="button" onclick="document.getElementById('log-edit-form-${m.id}').style.display='none'" style="padding:5px 12px;background:transparent;color:var(--muted);border:none;cursor:pointer;font-size:0.75rem;">Batal</button>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            pMeet.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;">Belum ada riwayat meeting.</div>';
+        }
+
+        // Invoices
+        const pInv = document.getElementById('pInvoicesList');
+        pInv.innerHTML = '';
+        if(data.invoices_hist && data.invoices_hist.length>0) {
+            data.invoices_hist.forEach(inv => {
+                const dateStr = new Date(inv.inv_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                const totalStr = 'Rp ' + parseInt(inv.total).toLocaleString('id-ID');
+                pInv.innerHTML += `
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <div style="font-weight:700;font-size:0.85rem;color:#fff;margin-bottom:4px;">Invoice #${inv.inv_no}</div>
+                            <div style="font-size:0.75rem;color:var(--muted);">${dateStr} | ${inv.service_label}</div>
+                        </div>
+                        <div style="font-weight:700;color:var(--green);font-size:0.9rem;">${totalStr}</div>
+                    </div>
+                `;
+            });
+        } else {
+            pInv.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;">Belum ada invoice.</div>';
+        }
+    } else {
+        histSec.style.display = 'none';
+    }
+
     document.getElementById('prospectModal').classList.add('open');
     setTimeout(() => document.getElementById('f_company').focus(), 100);
 }
@@ -455,6 +537,30 @@ function showToast(msg, isErr = false) {
     t.style.color = isErr ? 'var(--red)' : 'var(--green)';
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 2800);
+}
+
+function editMeetingLog(id) {
+    document.getElementById(`log-edit-form-${id}`).style.display = 'block';
+}
+
+function saveMeetingLog(id) {
+    const val = document.getElementById(`log-val-${id}`).value;
+    const fd = new FormData();
+    fd.append('ajax_action', 'update_log');
+    fd.append('event_id', id);
+    fd.append('log_hasil', val);
+    
+    // We send this to the main dashboard endpoint where update_log is handled
+    fetch('../index.php', { method:'POST', body:fd })
+        .then(r=>r.json())
+        .then(res => {
+            if(res.ok) {
+                showToast('Log meeting berhasil disimpan');
+                editProspect(document.getElementById('f_id').value); // Refresh modal
+            } else {
+                showToast('Gagal menyimpan log', true);
+            }
+        });
 }
 
 document.getElementById('prospectModal').addEventListener('click', function(e) {

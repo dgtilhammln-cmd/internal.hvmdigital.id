@@ -1,7 +1,112 @@
 <?php
+session_start();
+include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
+if(!isset($_SESSION['admin'])){ echo "<script>window.location='/index.php';</script>"; exit; }
+
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
+
+// Auto-create invoices table
+mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `invoices` (
+    `id`              VARCHAR(20)  NOT NULL PRIMARY KEY,
+    `inv_no`          VARCHAR(50)  DEFAULT NULL,
+    `client_name`     VARCHAR(255) DEFAULT NULL,
+    `client_ref_type` ENUM('Client','Prospect','') DEFAULT '',
+    `client_ref_id`   VARCHAR(50)  DEFAULT NULL,
+    `service_label`   VARCHAR(255) DEFAULT NULL,
+    `inv_date`        DATE         DEFAULT NULL,
+    `subtotal`        BIGINT       DEFAULT 0,
+    `ppn`             TINYINT      DEFAULT 11,
+    `total`           BIGINT       DEFAULT 0,
+    `status`          ENUM('Pending','DP','Lunas','Overdue') DEFAULT 'Pending',
+    `bank`            VARCHAR(100) DEFAULT NULL,
+    `rekening`        VARCHAR(100) DEFAULT NULL,
+    `atas_nama`       VARCHAR(255) DEFAULT NULL,
+    `pay_type`        VARCHAR(50)  DEFAULT 'Lunas',
+    `dp1_pct`         TINYINT      DEFAULT 100,
+    `sig_name`        VARCHAR(100) DEFAULT NULL,
+    `sig_role`        VARCHAR(100) DEFAULT NULL,
+    `contact`         VARCHAR(100) DEFAULT NULL,
+    `email`           VARCHAR(255) DEFAULT NULL,
+    `note`            TEXT         DEFAULT NULL,
+    `items_json`      LONGTEXT     DEFAULT NULL,
+    `created_at`      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)");
+
+// AJAX handlers
+if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
+    header('Content-Type: application/json');
+    $act = $_POST['inv_ajax'];
+
+    if($act === 'get_all') {
+        $rows = [];
+        $q = mysqli_query($conn, "SELECT * FROM invoices ORDER BY inv_date DESC, created_at DESC");
+        if($q) while($r = mysqli_fetch_assoc($q)) { $r['items'] = json_decode($r['items_json'] ?? '[]', true) ?: []; $rows[] = $r; }
+        echo json_encode($rows); exit;
+    }
+
+    if($act === 'get_companies') {
+        $out = [];
+        $qc = mysqli_query($conn, "SELECT client_id as ref_id, company_name FROM clients ORDER BY company_name ASC");
+        if($qc) while($r=mysqli_fetch_assoc($qc)) $out[] = ['ref_id'=>$r['ref_id'],'name'=>$r['company_name'],'type'=>'Client'];
+        $qpr_chk = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
+        if(mysqli_num_rows($qpr_chk) > 0) {
+            $qp = mysqli_query($conn, "SELECT id as ref_id, company_name FROM prospects ORDER BY company_name ASC");
+            if($qp) while($r=mysqli_fetch_assoc($qp)) $out[] = ['ref_id'=>$r['ref_id'],'name'=>$r['company_name'],'type'=>'Prospect'];
+        }
+        echo json_encode($out); exit;
+    }
+
+    if($act === 'save') {
+        $d = $_POST;
+        $id       = mysqli_real_escape_string($conn, $d['id']);
+        $inv_no   = mysqli_real_escape_string($conn, $d['no'] ?? '');
+        $client   = mysqli_real_escape_string($conn, $d['client'] ?? '');
+        $ref_type = mysqli_real_escape_string($conn, $d['client_ref_type'] ?? '');
+        $ref_id   = mysqli_real_escape_string($conn, $d['client_ref_id'] ?? '');
+        $service  = mysqli_real_escape_string($conn, $d['service'] ?? '');
+        $inv_date = mysqli_real_escape_string($conn, $d['date'] ?? date('Y-m-d'));
+        $subtotal = (int)($d['subtotal'] ?? 0);
+        $ppn      = (int)($d['ppn'] ?? 11);
+        $total    = (int)($d['total'] ?? 0);
+        $status   = mysqli_real_escape_string($conn, $d['status'] ?? 'Pending');
+        $bank     = mysqli_real_escape_string($conn, $d['bank'] ?? '');
+        $rek      = mysqli_real_escape_string($conn, $d['rekening'] ?? '');
+        $an       = mysqli_real_escape_string($conn, $d['atasNama'] ?? '');
+        $pt       = mysqli_real_escape_string($conn, $d['payType'] ?? 'Lunas');
+        $dp1      = (int)($d['dp1Pct'] ?? 100);
+        $sn       = mysqli_real_escape_string($conn, $d['sigName'] ?? '');
+        $sr       = mysqli_real_escape_string($conn, $d['sigRole'] ?? '');
+        $ct       = mysqli_real_escape_string($conn, $d['contact'] ?? '');
+        $em       = mysqli_real_escape_string($conn, $d['email'] ?? '');
+        $note     = mysqli_real_escape_string($conn, $d['note'] ?? '');
+        $items    = mysqli_real_escape_string($conn, $d['items_json'] ?? '[]');
+
+        $chk = mysqli_query($conn, "SELECT id FROM invoices WHERE id='$id'");
+        if(mysqli_num_rows($chk) > 0) {
+            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', subtotal=$subtotal, ppn=$ppn, total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
+        } else {
+            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,client_ref_type,client_ref_id,service_label,inv_date,subtotal,ppn,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$ref_type','$ref_id','$service','$inv_date',$subtotal,$ppn,$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
+        }
+        echo json_encode(['ok'=>(bool)$ok]); exit;
+    }
+
+    if($act === 'delete') {
+        $id = mysqli_real_escape_string($conn, $_POST['id']);
+        $ok = mysqli_query($conn, "DELETE FROM invoices WHERE id='$id'");
+        echo json_encode(['ok'=>(bool)$ok]); exit;
+    }
+
+    if($act === 'update_status') {
+        $id     = mysqli_real_escape_string($conn, $_POST['id']);
+        $status = mysqli_real_escape_string($conn, $_POST['status']);
+        $ok = mysqli_query($conn, "UPDATE invoices SET status='$status' WHERE id='$id'");
+        echo json_encode(['ok'=>(bool)$ok]); exit;
+    }
+    exit;
+}
 ?>
 <?php include '../sidebar.php'; ?>
 <!DOCTYPE html>
@@ -528,8 +633,18 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             <input type="date" class="form-input" id="f_invDate">
                         </div>
                         <div class="form-group full">
-                            <label>Nama Klien / Perusahaan</label>
-                            <input type="text" class="form-input" id="f_clientName" placeholder="PT. Global Indo Power">
+                            <label>Klien / Perusahaan</label>
+                            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                <button type="button" id="inv-btn-client" onclick="invSwitchClientType('Client')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(161,255,90,0.1);color:#a1ff5a;font-size:.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-users"></i> Clients</button>
+                                <button type="button" id="inv-btn-prospect" onclick="invSwitchClientType('Prospect')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#666;font-size:.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-binoculars"></i> Prospects</button>
+                                <button type="button" onclick="invSwitchClientType('manual')" id="inv-btn-manual" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#666;font-size:.75rem;font-weight:700;cursor:pointer;"><i class="fas fa-keyboard"></i> Manual</button>
+                            </div>
+                            <input type="hidden" id="f_clientRefType" value="">
+                            <input type="hidden" id="f_clientRefId" value="">
+                            <select id="f_clientSelect" class="form-input" style="display:none;" onchange="invOnClientSelect(this)">
+                                <option value="">-- Pilih Perusahaan --</option>
+                            </select>
+                            <input type="text" class="form-input" id="f_clientName" placeholder="Ketik nama klien manual..." style="display:none;">
                         </div>
                     </div>
                 </div>
@@ -687,13 +802,8 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 <div id="popup" class="popup"><i class="fas fa-check-circle"></i> <span id="popupMsg">Berhasil</span></div>
 
 <script>
-let invoices = [
-    { id:'INV-001', no:'0980526', client:'PT. Global Indo Power', service:'Website Growth', date:'2026-05-22', subtotal:6143242, ppn:11, total:6779000, status:'Pending', bank:'BANK BCA', rekening:'342-999-3629', atasNama:'PT. ARAH SUKSES BERSAMA', payType:'DP', dp1Pct:50, sigName:'Casandra', sigRole:'Finance Dept.', contact:'0851-6261-2373', email:'bisnis@hvmdigital.id', note:'Mohon konfirmasi setelah melakukan pembayaran, untuk kami lanjut ke tahap selanjutnya untuk proses optimalisasi.', items:[{name:'Website Growth', subs:'Website Company Profile\nSLL Domain Protection\nOptimasi SEO & AI (Google Search)\nOptimasi Kecepatan Website\nOptimasi Mobile Friendly Exclusive\nDesign Fitur Tracking Visitor\nBonus SEO 5 Keyword Garansi\nMaintenance (1 Tahun)', qty:1, price:6143242}] },
-    { id:'INV-002', no:'0980424', client:'CV. Maju Bersama', service:'Social Media', date:'2026-04-20', subtotal:4500000, ppn:11, total:4995000, status:'Lunas', bank:'BANK BCA', rekening:'342-999-3629', atasNama:'PT. ARAH SUKSES BERSAMA', payType:'Lunas', dp1Pct:100, sigName:'Casandra', sigRole:'Finance Dept.', contact:'0851-6261-2373', email:'bisnis@hvmdigital.id', note:'', items:[{name:'Social Media Management', subs:'Konten Instagram & TikTok\nScheduling & Posting\nMonthly Report', qty:1, price:4500000}] },
-    { id:'INV-003', no:'0980323', client:'PT. Teknologi Nusantara', service:'SEO & Branding', date:'2026-03-15', subtotal:8200000, ppn:11, total:9102000, status:'DP', bank:'BANK BCA', rekening:'342-999-3629', atasNama:'PT. ARAH SUKSES BERSAMA', payType:'DP', dp1Pct:50, sigName:'Casandra', sigRole:'Finance Dept.', contact:'0851-6261-2373', email:'bisnis@hvmdigital.id', note:'', items:[{name:'SEO Full Package', subs:'Riset Keyword\nOptimasi On-Page & Off-Page\n20 Artikel Konten', qty:1, price:6000000},{name:'Branding Identity', subs:'Logo & Brand Guidelines', qty:1, price:2200000}] },
-    { id:'INV-004', no:'0980222', client:'UD. Surya Gemilang', service:'Web Dev', date:'2026-02-10', subtotal:3000000, ppn:11, total:3330000, status:'Lunas', bank:'BANK BCA', rekening:'342-999-3629', atasNama:'PT. ARAH SUKSES BERSAMA', payType:'Lunas', dp1Pct:100, sigName:'Casandra', sigRole:'Finance Dept.', contact:'0851-6261-2373', email:'bisnis@hvmdigital.id', note:'', items:[{name:'Landing Page', subs:'Desain & Development\nDomain 1 Tahun', qty:1, price:3000000}] },
-    { id:'INV-005', no:'0980120', client:'PT. Artha Prima', service:'Content Creator', date:'2026-01-08', subtotal:5400000, ppn:11, total:5994000, status:'Overdue', bank:'BANK BCA', rekening:'342-999-3629', atasNama:'PT. ARAH SUKSES BERSAMA', payType:'Pending', dp1Pct:50, sigName:'Casandra', sigRole:'Finance Dept.', contact:'0851-6261-2373', email:'bisnis@hvmdigital.id', note:'', items:[{name:'Content Creator Package', subs:'12 Video Reels/bulan\nEditing & Caption\nPublishing', qty:1, price:5400000}] },
-];
+let invoices = [];
+let allCompanies = { clients:[], prospects:[] };
 let editingId = null;
 let payType = 'Lunas';
 let centerLogoDataUrl = localStorage.getItem('invCenterLogo') || null;
@@ -738,7 +848,73 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('f_logoOpacity').value = centerLogoOpacity;
     document.getElementById('opacityVal').innerText = centerLogoOpacity;
     loadSavedPaymentInfo();
+    loadCompanies();
+    loadInvoices();
 });
+
+function loadCompanies() {
+    const fd = new FormData(); fd.append('inv_ajax', 'get_companies');
+    fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
+        allCompanies.clients = data.filter(d=>d.type==='Client');
+        allCompanies.prospects = data.filter(d=>d.type==='Prospect');
+        invSwitchClientType('Client');
+    });
+}
+
+function invSwitchClientType(type) {
+    document.getElementById('inv-btn-client').style.background = type==='Client' ? 'rgba(161,255,90,0.1)' : 'rgba(255,255,255,0.03)';
+    document.getElementById('inv-btn-client').style.color = type==='Client' ? '#a1ff5a' : '#666';
+    document.getElementById('inv-btn-prospect').style.background = type==='Prospect' ? 'rgba(161,255,90,0.1)' : 'rgba(255,255,255,0.03)';
+    document.getElementById('inv-btn-prospect').style.color = type==='Prospect' ? '#a1ff5a' : '#666';
+    document.getElementById('inv-btn-manual').style.background = type==='manual' ? 'rgba(161,255,90,0.1)' : 'rgba(255,255,255,0.03)';
+    document.getElementById('inv-btn-manual').style.color = type==='manual' ? '#a1ff5a' : '#666';
+
+    const sel = document.getElementById('f_clientSelect');
+    const inp = document.getElementById('f_clientName');
+    
+    if(type==='manual') {
+        sel.style.display = 'none';
+        inp.style.display = 'block';
+        document.getElementById('f_clientRefType').value = '';
+        document.getElementById('f_clientRefId').value = '';
+    } else {
+        sel.style.display = 'block';
+        inp.style.display = 'none';
+        document.getElementById('f_clientRefType').value = type;
+        
+        const opts = (type==='Client') ? allCompanies.clients : allCompanies.prospects;
+        sel.innerHTML = '<option value="">-- Pilih Perusahaan --</option>';
+        opts.forEach(o => {
+            sel.innerHTML += `<option value="${o.name}" data-id="${o.ref_id}">${o.name}</option>`;
+        });
+        invOnClientSelect(sel);
+    }
+}
+
+function invOnClientSelect(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    if(opt && opt.value) {
+        document.getElementById('f_clientName').value = opt.value;
+        document.getElementById('f_clientRefId').value = opt.dataset.id || '';
+    } else {
+        document.getElementById('f_clientName').value = '';
+        document.getElementById('f_clientRefId').value = '';
+    }
+}
+
+function loadInvoices() {
+    const fd = new FormData(); fd.append('inv_ajax', 'get_all');
+    fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
+        invoices = data.map(i => ({
+            id: i.id, no: i.inv_no, client: i.client_name, refType: i.client_ref_type, refId: i.client_ref_id,
+            service: i.service_label, date: i.inv_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn),
+            total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
+            payType: i.pay_type, dp1Pct: parseFloat(i.dp1_pct), sigName: i.sig_name, sigRole: i.sig_role,
+            contact: i.contact, email: i.email, note: i.note, items: i.items
+        }));
+        filterInvoices();
+    });
+}
 
 function handleCenterLogo(input) {
     if (!input.files[0]) return;
@@ -923,6 +1099,15 @@ function editInvoice(id){
     document.getElementById('f_note').value = inv.note;
     document.getElementById('f_status').value = inv.status;
     payType = inv.payType;
+    document.getElementById('f_clientRefType').value = inv.refType || '';
+    document.getElementById('f_clientRefId').value = inv.refId || '';
+    if(inv.refType) {
+        invSwitchClientType(inv.refType);
+        document.getElementById('f_clientSelect').value = inv.client;
+    } else {
+        invSwitchClientType('manual');
+        document.getElementById('f_clientName').value = inv.client;
+    }
     document.querySelectorAll('.payment-toggle').forEach(b=>{b.classList.remove('active');if(b.dataset.val===inv.payType)b.classList.add('active');});
     document.getElementById('dpSection').style.display = inv.payType==='DP' ? 'block' : 'none';
     document.getElementById('f_dp1Pct').value = inv.dp1Pct;
@@ -946,33 +1131,55 @@ function saveInvoice(){
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
     const total = sub + sub*(ppn/100);
-    const inv = {
-        id: editingId || ('INV-'+String(Date.now()).slice(-6)),
-        no, client,
-        service: items[0]?.name || 'Layanan',
-        date: document.getElementById('f_invDate').value || new Date().toISOString().split('T')[0],
-        subtotal: sub, ppn, total,
-        status: document.getElementById('f_status').value,
-        bank: document.getElementById('f_bank').value,
-        rekening: document.getElementById('f_rekening').value,
-        atasNama: document.getElementById('f_atasNama').value,
-        payType, dp1Pct: parseFloat(document.getElementById('f_dp1Pct').value)||50,
-        sigName: document.getElementById('f_sigName').value,
-        sigRole: document.getElementById('f_sigRole').value,
-        contact: document.getElementById('f_contact').value,
-        email: document.getElementById('f_email').value,
-        note: document.getElementById('f_note').value,
-        items,
-    };
-    if(editingId){ invoices[invoices.findIndex(i=>i.id===editingId)] = inv; showPopup('success','Invoice berhasil diperbarui!'); }
-    else { invoices.unshift(inv); showPopup('success','Invoice berhasil disimpan!'); }
-    closeModal(); filterInvoices();
+    const id = editingId || ('INV-'+String(Date.now()).slice(-6));
+    
+    const fd = new FormData();
+    fd.append('inv_ajax', 'save');
+    fd.append('id', id);
+    fd.append('no', no);
+    fd.append('client', client);
+    fd.append('client_ref_type', document.getElementById('f_clientRefType').value);
+    fd.append('client_ref_id', document.getElementById('f_clientRefId').value);
+    fd.append('service', items[0]?.name || 'Layanan');
+    fd.append('date', document.getElementById('f_invDate').value || new Date().toISOString().split('T')[0]);
+    fd.append('subtotal', sub);
+    fd.append('ppn', ppn);
+    fd.append('total', total);
+    fd.append('status', document.getElementById('f_status').value);
+    fd.append('bank', document.getElementById('f_bank').value);
+    fd.append('rekening', document.getElementById('f_rekening').value);
+    fd.append('atasNama', document.getElementById('f_atasNama').value);
+    fd.append('payType', payType);
+    fd.append('dp1Pct', parseFloat(document.getElementById('f_dp1Pct').value)||50);
+    fd.append('sigName', document.getElementById('f_sigName').value);
+    fd.append('sigRole', document.getElementById('f_sigRole').value);
+    fd.append('contact', document.getElementById('f_contact').value);
+    fd.append('email', document.getElementById('f_email').value);
+    fd.append('note', document.getElementById('f_note').value);
+    fd.append('items_json', JSON.stringify(items));
+
+    fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res=>{
+        if(res.ok) {
+            showPopup('success', editingId ? 'Invoice berhasil diperbarui!' : 'Invoice berhasil disimpan!');
+            closeModal();
+            loadInvoices();
+        } else {
+            showPopup('error', 'Gagal menyimpan invoice.');
+        }
+    });
 }
 
 function deleteInvoice(id){
     if(!confirm('Hapus invoice ini?')) return;
-    invoices = invoices.filter(i=>i.id!==id);
-    filterInvoices(); showPopup('success','Invoice dihapus.');
+    const fd = new FormData(); fd.append('inv_ajax', 'delete'); fd.append('id', id);
+    fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res=>{
+        if(res.ok) {
+            showPopup('success','Invoice dihapus.');
+            loadInvoices();
+        } else {
+            showPopup('error', 'Gagal menghapus.');
+        }
+    });
 }
 
 function buildInvoiceHTML(inv) {
