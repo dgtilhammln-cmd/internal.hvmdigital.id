@@ -1,0 +1,3 @@
+# Larang akses langsung ke workspace (jadi) — folder lama/backup
+Order Deny,Allow
+Deny from all

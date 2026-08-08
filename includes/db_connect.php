@@ -1,4 +1,9 @@
 <?php
+// Larang akses langsung ke file ini
+if (!defined('ABSPATH') && basename($_SERVER['PHP_SELF']) === 'db_connect.php') {
+    http_response_code(403);
+    die('Akses Ditolak.');
+}
 // Matikan error reporting di layar agar user tidak lihat error aneh
 // error_reporting(0); 
 

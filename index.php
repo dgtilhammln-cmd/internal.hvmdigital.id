@@ -7,38 +7,50 @@ $login_error = '';
 $user_name = '';
 
 if(isset($_POST['do_login'])) {
-    $input = mysqli_real_escape_string($conn, $_POST['username']); 
-    $pass = $_POST['password'];
+    $input = trim($_POST['username'] ?? '');
+    $pass  = $_POST['password'] ?? '';
 
-    $q = "SELECT * FROM teams WHERE email='$input' OR name='$input'";
-    $res = mysqli_query($conn, $q);
+    // Coba login via tabel teams (prepared statement, anti SQL injection)
+    $stmt = $conn->prepare("SELECT * FROM teams WHERE email=? OR name=?");
+    $stmt->bind_param('ss', $input, $input);
+    $stmt->execute();
+    $res = $stmt->get_result();
 
     if(mysqli_num_rows($res) > 0){
         $row = mysqli_fetch_assoc($res);
         if(password_verify($pass, $row['password'])){
-            $_SESSION['admin'] = $row['name'];
-            $_SESSION['role'] = $row['role'];
+            session_regenerate_id(true);
+            $_SESSION['admin']   = $row['name'];
+            $_SESSION['role']    = $row['role'];
             $_SESSION['team_id'] = $row['team_id'];
             $login_success = true;
             $user_name = $row['name'];
         } else {
-            $login_error = "Password Anda salah!";
+            $login_error = "Password yang Anda masukkan salah!";
         }
     } else {
-        $q_old = "SELECT * FROM admin_users WHERE username='$input'";
-        $res_old = mysqli_query($conn, $q_old);
-        if(mysqli_num_rows($res_old) > 0){
-            $row_old = mysqli_fetch_assoc($res_old);
-            if($pass == $row_old['password']) {
-                $_SESSION['admin'] = $row_old['username'];
-                $_SESSION['role'] = $row_old['role'] ?? 'super_admin';
-                $login_success = true;
-                $user_name = $row_old['username'];
+        // Fallback ke tabel admin_users lama
+        $stmt2 = $conn->prepare("SELECT * FROM admin_users WHERE username=?");
+        if($stmt2) {
+            $stmt2->bind_param('s', $input);
+            $stmt2->execute();
+            $res_old = $stmt2->get_result();
+            if(mysqli_num_rows($res_old) > 0){
+                $row_old = mysqli_fetch_assoc($res_old);
+                if($pass == $row_old['password']) {
+                    session_regenerate_id(true);
+                    $_SESSION['admin'] = $row_old['username'];
+                    $_SESSION['role']  = $row_old['role'] ?? 'super_admin';
+                    $login_success = true;
+                    $user_name = $row_old['username'];
+                } else {
+                    $login_error = "Password yang Anda masukkan salah!";
+                }
             } else {
-                $login_error = "Password Anda salah!";
+                $login_error = "Akun tidak ditemukan. Periksa kembali email Anda.";
             }
         } else {
-            $login_error = "Akun tidak ditemukan!";
+            $login_error = "Akun tidak ditemukan. Periksa kembali email Anda.";
         }
     }
 }
@@ -342,8 +354,8 @@ if(isset($_POST['do_login'])) {
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-card">
             <div class="icon-box"><i class="fas fa-rocket"></i></div>
-            <h2 style="color:#fff; font-size:1.4rem; margin-bottom:5px;">Welcome Team!</h2>
-            <p style="color:#555; font-size:0.85rem;">Initializing Dashboard...</p>
+            <h2 style="color:#fff; font-size:1.4rem; margin-bottom:5px;">Selamat Datang!</h2>
+            <p style="color:#555; font-size:0.85rem;">Menyiapkan Dashboard Anda...</p>
             <div class="loader-container"><div class="loader-bar"></div></div>
         </div>
     </div>
@@ -355,19 +367,19 @@ if(isset($_POST['do_login'])) {
         <div class="left-panel">
             <div class="left-top">
                 <img src="uploads/logohvm.png" alt="HVM Logo" class="left-logo">
-                <div class="badge-pill"><i class="fas fa-layer-group"></i> Internal System v2.0</div>
+                <div class="badge-pill"><i class="fas fa-layer-group"></i> Sistem Internal v2.0</div>
                 <div class="accent-line"></div>
-                <h1 class="left-title">The Next Gen <span>Database System.</span></h1>
-                <p class="left-desc">Centralized ecosystem for data automation, team collaboration, and real-time performance tracking with high-level security.</p>
+                <h1 class="left-title">Pusat Data & <span>Operasional Digital.</span></h1>
+                <p class="left-desc">Ekosistem terpusat untuk otomasi data, kolaborasi tim, dan pemantauan performa secara real-time dengan keamanan tingkat tinggi.</p>
             </div>
             <div class="left-bottom">
                 <div class="info-card">
                     <i class="fas fa-shield-alt"></i>
-                    <div><h4>SECURE</h4><p>Encrypted Data</p></div>
+                    <div><h4>AMAN</h4><p>Data Terenkripsi</p></div>
                 </div>
                 <div class="info-card">
                     <i class="fas fa-database"></i>
-                    <div><h4>REALTIME</h4><p>Live Sync</p></div>
+                    <div><h4>REALTIME</h4><p>Sinkronisasi Langsung</p></div>
                 </div>
             </div>
         </div>
@@ -375,30 +387,30 @@ if(isset($_POST['do_login'])) {
         <!-- RIGHT: Login Form -->
         <div class="right-panel">
             <img src="uploads/logohvm.png" alt="Logo" class="right-logo">
-            <h2 class="login-title">Team Login</h2>
-            <p class="login-subtitle">Masukkan kredensial untuk mengakses sistem</p>
+            <h2 class="login-title">Masuk ke Sistem</h2>
+            <p class="login-subtitle">Masukkan kredensial akun Anda untuk melanjutkan</p>
 
             <?php if(isset($login_error) && !empty($login_error)): ?>
                 <div class="error-msg">
-                    <i class="fas fa-exclamation-triangle"></i> <?php echo $login_error; ?>
+                    <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($login_error); ?>
                 </div>
             <?php endif; ?>
 
             <form method="POST">
                 <div class="input-group">
-                    <label>Email or Username</label>
-                    <input type="text" name="username" class="glass-input" placeholder="Enter your email" required autocomplete="off">
+                    <label>Email atau Nama Pengguna</label>
+                    <input type="text" name="username" class="glass-input" placeholder="Masukkan email Anda" required autocomplete="off">
                 </div>
                 <div class="input-group">
-                    <label>Password</label>
+                    <label>Kata Sandi</label>
                     <input type="password" name="password" class="glass-input" placeholder="••••••••" required>
                 </div>
                 <button type="submit" name="do_login" class="btn-submit">
-                    Enter System <i class="fas fa-arrow-right"></i>
+                    Masuk ke Dashboard <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
 
-            <p class="footer-text">Protected by HVM Secure Gateway &copy; 2025</p>
+            <p class="footer-text">Dilindungi oleh HVM Secure Gateway &copy; <?php echo date('Y'); ?></p>
         </div>
 
     </div>

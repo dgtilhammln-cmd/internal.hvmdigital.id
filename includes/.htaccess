@@ -1,0 +1,4 @@
+# Larang akses langsung ke folder includes
+# File ini hanya boleh di-include dari PHP, bukan diakses browser
+Order Deny,Allow
+Deny from all

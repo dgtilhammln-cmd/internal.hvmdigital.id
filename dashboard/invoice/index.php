@@ -553,7 +553,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(161,255,90,0.08);color:var(--neon-main);"><i class="fas fa-file-invoice"></i></div>
                 <div>
-                    <div class="stat-num" style="color:var(--neon-main);" id="statTotal">5</div>
+                    <div class="stat-num" style="color:var(--neon-main);" id="statTotal">--</div>
                     <div class="stat-label">Total Invoice</div>
                 </div>
                 <div class="stat-deco">INV</div>
@@ -561,7 +561,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(78,253,196,0.08);color:var(--neon-sec);"><i class="fas fa-check-double"></i></div>
                 <div>
-                    <div class="stat-num" style="color:var(--neon-sec);" id="statPaid">2</div>
+                    <div class="stat-num" style="color:var(--neon-sec);" id="statPaid">--</div>
                     <div class="stat-label">Lunas</div>
                 </div>
                 <div class="stat-deco">OK</div>
@@ -569,7 +569,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(255,159,67,0.08);color:var(--neon-orange);"><i class="fas fa-clock"></i></div>
                 <div>
-                    <div class="stat-num" style="color:var(--neon-orange);" id="statPending">2</div>
+                    <div class="stat-num" style="color:var(--neon-orange);" id="statPending">--</div>
                     <div class="stat-label">Pending / DP</div>
                 </div>
                 <div class="stat-deco">DP</div>
@@ -577,7 +577,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
             <div class="stat-card">
                 <div class="stat-icon" style="background:rgba(192,132,252,0.08);color:var(--neon-purple);"><i class="fas fa-wallet"></i></div>
                 <div>
-                    <div class="stat-num" style="color:var(--neon-purple);font-size:1.2rem;" id="statRevenue">67,8 Jt</div>
+                    <div class="stat-num" style="color:var(--neon-purple);font-size:1.2rem;" id="statRevenue">--</div>
                     <div class="stat-label">Total Revenue</div>
                 </div>
                 <div class="stat-deco">Rp</div>
