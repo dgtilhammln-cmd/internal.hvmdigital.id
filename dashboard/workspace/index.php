@@ -481,7 +481,7 @@ if(isset($_POST['save_event'])) {
             mt.innerText = months[currentDate.getMonth()] + " " + currentDate.getFullYear();
             
             try {
-                const res = await fetch(`planner_logic_v28.php?date=${dStr}&mode=${curMode}`);
+                const res = await fetch(`planner_logic_v28.php?date=${dStr}&mode=${curMode}&_=${Date.now()}`, {cache: 'no-store'});
                 vp.innerHTML = await res.text();
             } catch(e) {
                 vp.innerHTML = "Error loading calendar.";
@@ -565,8 +565,8 @@ if(isset($_POST['save_event'])) {
 
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-        // FUNGSI TAMPIL DETAIL + EDIT (menggunakan event ID)
-        function showEventDetail(eventId, title, date, time, desc, color) {
+        // FUNGSI TAMPIL DETAIL + EDIT (menggunakan event ID sebagai argumen ke-6 untuk backward compatibility cache)
+        function showEventDetail(title, date, time, desc, color, eventId = 0) {
             const container = document.getElementById('detailContent');
             const footer    = document.getElementById('detailFooter');
             const dateObj = new Date(date + 'T00:00:00');
@@ -680,7 +680,7 @@ if(isset($_POST['save_event'])) {
                 </div>
             `;
             document.getElementById('detailFooter').innerHTML = `
-                <button onclick="showEventDetail(${id},'${ev.title}','${ev.event_date}','${ev.time_start}','${ev.detail||''}','${ev.color}')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;">← Kembali</button>
+                <button onclick="showEventDetail('${ev.title}','${ev.event_date}','${ev.time_start}','${ev.detail||''}','${ev.color}',${id})" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;">← Kembali</button>
                 <button onclick="saveEditEvent(${id})" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-save"></i> Simpan</button>
             `;
             // Activate radio chips

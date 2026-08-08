@@ -294,6 +294,17 @@ $res = mysqli_query($conn, $q);
         </div>
     </div>
 
+    <!-- 4. MODAL MEETING DETAIL -->
+    <div class="modal-overlay" id="meetingDetailModal">
+        <div class="modal-content medium" style="background:#0f0f12; border:1px solid rgba(161,255,90,0.1); border-radius:16px;">
+            <div class="modal-header">
+                <h2 class="modal-title" style="color:#a1ff5a;"><i class="fas fa-calendar-check" style="margin-right:8px;"></i>Detail Meeting</h2>
+                <button class="close-btn" onclick="closeModal('meetingDetailModal')">&times;</button>
+            </div>
+            <div id="meetingDetailContent" style="padding-top:10px;"></div>
+        </div>
+    </div>
+
     <!-- POPUP -->
     <div id="popup" class="popup">
         <i class="fas fa-check-circle"></i>
@@ -346,6 +357,63 @@ $res = mysqli_query($conn, $q);
 
         function openBroadcast() { document.getElementById('broadcastModal').classList.add('active'); }
 
+        let teamMeetingsData = [];
+
+        function switchTeamTab(tabName) {
+            document.querySelectorAll('.team-tab-btn').forEach(b => b.style.color = '#888');
+            document.querySelectorAll('.team-tab-btn').forEach(b => b.style.borderBottom = '2px solid transparent');
+            const activeBtn = document.getElementById('tab-btn-' + tabName);
+            if(activeBtn) {
+                activeBtn.style.color = '#a1ff5a';
+                activeBtn.style.borderBottom = '2px solid #a1ff5a';
+            }
+            
+            document.getElementById('t-tab-profil').style.display = 'none';
+            document.getElementById('t-tab-meeting').style.display = 'none';
+            document.getElementById('t-tab-' + tabName).style.display = 'block';
+        }
+
+        function viewMeetingDetail(idx) {
+            const m = teamMeetingsData[idx];
+            if(!m) return;
+            const d = new Date(m.event_date).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+            
+            const html = `
+                <div style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">JUDUL MEETING</div>
+                    <div style="font-size:1.1rem;color:#fff;font-weight:700;">${m.title}</div>
+                </div>
+                <div style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">WAKTU</div>
+                    <div style="font-size:0.9rem;color:#ccc;">${d} &bull; ${m.time_start||'Seharian'}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:12px;">
+                    <div>
+                        <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">JENIS & MODE</div>
+                        <div style="font-size:0.85rem;color:#fff;">${m.meeting_type||'-'} &bull; <span style="color:#a1ff5a;">${m.meeting_mode||'-'}</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">PERUSAHAAN</div>
+                        <div style="font-size:0.85rem;color:#fff;">${m.target_type||'-'}: ${m.target_name||'-'}</div>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">LOKASI / LINK</div>
+                    <div style="font-size:0.85rem;color:#4efdc4;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location||'')}" target="_blank" style="color:#4efdc4;text-decoration:none;">${m.location||'-'}</a></div>
+                </div>
+                <div style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">TIM HADIR</div>
+                    <div style="font-size:0.85rem;color:#ccc;">${m.teams_involved ? m.teams_involved.split(',').map(t=>`<span style="display:inline-block;background:rgba(161,255,90,0.1);color:#a1ff5a;padding:2px 8px;border-radius:12px;margin:2px 4px 2px 0;font-size:0.75rem;">${t.trim()}</span>`).join('') : '-'}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px;">LOG HASIL</div>
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;white-space:pre-wrap;">${m.log_hasil||'Belum ada log.'}</div>
+                </div>
+            `;
+            document.getElementById('meetingDetailContent').innerHTML = html;
+            document.getElementById('meetingDetailModal').classList.add('active');
+        }
+
         function viewDetail(data) {
             document.getElementById('viewModal').classList.add('active');
             const img = data.photo ? `/uploads/teams/${data.photo}` : null;
@@ -355,27 +423,37 @@ $res = mysqli_query($conn, $q);
                     <div class="profile-left">
                         <div class="detail-avatar">${avatarHtml}</div>
                         <div class="detail-name">${data.name}</div>
-                        <div class="detail-role">${data.position}</div>
-                        <div class="info-grid" style="grid-template-columns:1fr; gap:10px;">
+                        <div class="detail-role" style="color:var(--neon-2); font-weight:700;">${data.position}</div>
+                        <div class="info-grid" style="grid-template-columns:1fr; gap:10px; margin-top:20px;">
                             <div class="info-item"><span class="info-label">ID Team</span> <div class="info-value">${data.team_id}</div></div>
-                            <div class="info-item"><span class="info-label">Role</span> <div class="info-value" style="color:var(--neon-2)">${data.role.toUpperCase()}</div></div>
+                            <div class="info-item"><span class="info-label">Role Access</span> <div class="info-value" style="color:#ff9f43;">${data.role.toUpperCase()}</div></div>
                         </div>
                     </div>
-                    <div class="profile-right">
-                        <div class="info-grid">
-                            <div class="info-item"><span class="info-label">Education</span> <div class="info-value">${data.education}</div></div>
-                            <div class="info-item"><span class="info-label">Domicile</span> <div class="info-value">${data.domicile}</div></div>
-                            <div class="info-item"><span class="info-label">WhatsApp</span> <div class="info-value">${data.whatsapp}</div></div>
-                            <div class="info-item"><span class="info-label">Email</span> <div class="info-value">${data.email}</div></div>
+                    <div class="profile-right" style="display:flex; flex-direction:column;">
+                        <!-- TABS HEADER -->
+                        <div style="display:flex; gap:20px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px; padding-bottom:5px;">
+                            <div id="tab-btn-profil" class="team-tab-btn" onclick="switchTeamTab('profil')" style="cursor:pointer; color:#a1ff5a; font-weight:700; font-size:0.9rem; padding:5px 0; border-bottom:2px solid #a1ff5a; transition:0.3s;">Profil & Jobdesc</div>
+                            <div id="tab-btn-meeting" class="team-tab-btn" onclick="switchTeamTab('meeting')" style="cursor:pointer; color:#888; font-weight:700; font-size:0.9rem; padding:5px 0; border-bottom:2px solid transparent; transition:0.3s;">Riwayat Meeting</div>
                         </div>
-                        <div class="job-section">
-                            <div class="job-title">JOB DESCRIPTION</div>
-                            <div class="job-content">${data.jobdesk}</div>
+
+                        <!-- TAB: PROFIL -->
+                        <div id="t-tab-profil" style="display:block; flex:1; overflow-y:auto; padding-right:10px;">
+                            <div class="info-grid" style="margin-bottom:20px;">
+                                <div class="info-item"><span class="info-label">Education</span> <div class="info-value">${data.education || '-'}</div></div>
+                                <div class="info-item"><span class="info-label">Domicile</span> <div class="info-value">${data.domicile || '-'}</div></div>
+                                <div class="info-item"><span class="info-label">WhatsApp</span> <div class="info-value">${data.whatsapp || '-'}</div></div>
+                                <div class="info-item"><span class="info-label">Email</span> <div class="info-value">${data.email || '-'}</div></div>
+                            </div>
+                            <div class="job-section">
+                                <div class="job-title" style="color:var(--neon-1);"><i class="fas fa-briefcase" style="margin-right:6px;"></i>JOB DESCRIPTION</div>
+                                <div class="job-content" style="white-space:pre-wrap;">${data.jobdesk || 'Belum ada deskripsi pekerjaan.'}</div>
+                            </div>
                         </div>
-                        <div class="job-section" style="margin-top:16px;">
-                            <div class="job-title" style="color:var(--neon-1);"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>RIWAYAT MEETING</div>
-                            <div id="teamMeetingStats" style="font-size:0.82rem;color:#888;margin-bottom:8px;">Memuat...</div>
-                            <div id="teamMeetingList"></div>
+
+                        <!-- TAB: MEETING -->
+                        <div id="t-tab-meeting" style="display:none; flex:1; overflow-y:auto; padding-right:10px;">
+                            <div id="teamMeetingStats" style="font-size:0.82rem;color:#888;margin-bottom:12px;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);">Memuat data meeting...</div>
+                            <div id="teamMeetingList" style="display:flex; flex-direction:column; gap:10px;"></div>
                         </div>
                     </div>
                 </div>
@@ -389,29 +467,27 @@ $res = mysqli_query($conn, $q);
                     const stats = document.getElementById('teamMeetingStats');
                     const list = document.getElementById('teamMeetingList');
                     if(!stats || !list) return;
-                    stats.innerHTML = `Total: <strong style="color:var(--neon-1);">${res.count} meeting</strong> dihadiri`;
-                    if(res.meetings.length === 0) {
-                        list.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.8rem;">Belum pernah hadir di meeting manapun.</div>';
+                    teamMeetingsData = res.meetings || [];
+                    
+                    stats.innerHTML = `<i class="fas fa-chart-line" style="margin-right:6px; color:#a1ff5a;"></i>Total: <strong style="color:#fff;">${res.count} meeting</strong> dihadiri`;
+                    
+                    if(teamMeetingsData.length === 0) {
+                        list.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.85rem;text-align:center;padding:20px;">Belum pernah hadir di meeting manapun.</div>';
                         return;
                     }
-                    list.innerHTML = res.meetings.map(m => {
+                    list.innerHTML = teamMeetingsData.map((m, idx) => {
                         const d = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
-                        const locHtml = m.location ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}" target="_blank" style="font-size:0.7rem;color:#888;text-decoration:none;display:block;margin-top:3px;" onmouseover="this.style.color='var(--neon-2)'" onmouseout="this.style.color='#888'"><i class="fas fa-map-marker-alt" style="margin-right:3px;color:var(--neon-orange);"></i>${m.location}</a>` : '';
-                        const teamsArr = (m.teams_involved||'').split(',').filter(t=>t.trim());
-                        const teamsHtml = teamsArr.length > 0 ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${teamsArr.map(t=>`<span style="font-size:0.64rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:1px 6px;border-radius:20px;">${t.trim()}</span>`).join('')}</div>` : '';
-                        return `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;margin-bottom:8px;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                                <div style="font-weight:700;font-size:0.82rem;color:#fff;flex:1;">${m.title}</div>
-                                <div style="font-size:0.68rem;color:#666;white-space:nowrap;">${m.meeting_mode}</div>
+                        return `<div onclick="viewMeetingDetail(${idx})" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(161,255,90,0.05)';this.style.borderColor='rgba(161,255,90,0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.06)';">
+                            <div style="flex:1;">
+                                <div style="font-weight:700;font-size:0.9rem;color:#fff;margin-bottom:4px;">${m.title}</div>
+                                <div style="font-size:0.75rem;color:#aaa;">${d} &bull; ${m.time_start||''} &bull; <span style="color:#4efdc4;">${m.meeting_mode||'-'}</span></div>
                             </div>
-                            <div style="font-size:0.72rem;color:var(--neon-2);margin-top:3px;">${d} | ${m.meeting_type} | ${m.target_type}: ${m.target_name}</div>
-                            ${locHtml}
-                            ${teamsHtml}
+                            <div style="color:#555;"><i class="fas fa-chevron-right"></i></div>
                         </div>`;
                     }).join('');
                 }).catch(() => {
                     const stats = document.getElementById('teamMeetingStats');
-                    if(stats) stats.innerHTML = '<span style="color:#555;">Tidak dapat memuat data meeting.</span>';
+                    if(stats) stats.innerHTML = '<span style="color:#ff5a5a;">Tidak dapat memuat data meeting.</span>';
                 });
         }
 
