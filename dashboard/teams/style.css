@@ -102,7 +102,7 @@ body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; o
 .glass-card { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 20px; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 .glass-card:hover { border-color: var(--neon-main); transform: translateY(-5px); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
 
-.avatar-box { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; margin-bottom: 15px; border: 2px solid var(--neon-main); padding: 3px; position: relative; box-shadow: 0 0 20px var(--neon-glow); }
+.avatar-box { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; margin-bottom: 15px; position: relative; }
 .avatar-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .avatar-box i { font-size: 3rem; color: #333; line-height: 90px; background: #fff; width: 100%; height: 100%; display:block; }
 
@@ -150,7 +150,7 @@ body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; o
 .profile-left { flex: 1; text-align: center; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 16px; border: 1px solid var(--card-border); }
 .profile-right { flex: 2; display: flex; flex-direction: column; gap: 20px; }
 
-.detail-avatar { width: 140px; height: 140px; border-radius: 50%; border: 3px solid var(--neon-2); margin: 0 auto 15px; padding: 3px; box-shadow: 0 0 30px rgba(78, 253, 196, 0.3); }
+.detail-avatar { width: 140px; height: 140px; border-radius: 50%; margin: 0 auto 15px; position: relative; overflow: hidden; }
 .detail-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .detail-avatar i { font-size: 4rem; line-height: 130px; display:block; color:#fff; }
 .detail-name { font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 5px; }

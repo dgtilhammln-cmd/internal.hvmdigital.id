@@ -21,6 +21,7 @@ if(mysqli_num_rows($check) == 0) {
         jobdesk TEXT,
         education VARCHAR(150),
         photo VARCHAR(255),
+        id_card VARCHAR(255),
         whatsapp VARCHAR(20),
         domicile VARCHAR(100),
         email VARCHAR(100) UNIQUE,
@@ -29,6 +30,12 @@ if(mysqli_num_rows($check) == 0) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )";
     mysqli_query($conn, $sql);
+}
+
+// Auto-fix id_card column if not exists
+$chk_idcard = mysqli_query($conn, "SHOW COLUMNS FROM teams LIKE 'id_card'");
+if(mysqli_num_rows($chk_idcard) == 0) {
+    mysqli_query($conn, "ALTER TABLE teams ADD COLUMN id_card VARCHAR(255) AFTER photo");
 }
 
 // 3. AUTO ID
@@ -71,17 +78,19 @@ if(isset($_POST['save_team'])){
         $dom = mysqli_real_escape_string($conn, $_POST['domicile']);
         $email = mysqli_real_escape_string($conn, $_POST['email']);
         $role = $_POST['role'];
-        $photo = handlePhotoUpload($_FILES['photo']);
+        $photo = isset($_FILES['photo']) ? handlePhotoUpload($_FILES['photo']) : null;
+        $id_card = isset($_FILES['id_card']) ? handlePhotoUpload($_FILES['id_card']) : null;
 
         if($mode == 'add'){
             $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            $sql = "INSERT INTO teams (team_id, name, position, jobdesk, education, photo, whatsapp, domicile, email, password, role) 
-                    VALUES ('$id', '$name', '$pos', '$job', '$edu', '$photo', '$wa', '$dom', '$email', '$pass', '$role')";
+            $sql = "INSERT INTO teams (team_id, name, position, jobdesk, education, photo, id_card, whatsapp, domicile, email, password, role) 
+                    VALUES ('$id', '$name', '$pos', '$job', '$edu', '$photo', '$id_card', '$wa', '$dom', '$email', '$pass', '$role')";
             $msg = "Team berhasil ditambahkan!";
         } else {
             $photo_q = $photo ? ", photo='$photo'" : "";
+            $id_card_q = $id_card ? ", id_card='$id_card'" : "";
             $pass_q = !empty($_POST['password']) ? ", password='".password_hash($_POST['password'], PASSWORD_DEFAULT)."'" : "";
-            $sql = "UPDATE teams SET name='$name', position='$pos', jobdesk='$job', education='$edu', whatsapp='$wa', domicile='$dom', email='$email', role='$role' $pass_q $photo_q WHERE team_id='$id'";
+            $sql = "UPDATE teams SET name='$name', position='$pos', jobdesk='$job', education='$edu', whatsapp='$wa', domicile='$dom', email='$email', role='$role' $pass_q $photo_q $id_card_q WHERE team_id='$id'";
             $msg = "Data berhasil diupdate!";
         }
 
@@ -247,7 +256,8 @@ $res = mysqli_query($conn, $q);
                     <div class="form-group"><label>Pendidikan</label><input type="text" name="education" id="f_edu" class="form-input"></div>
                     <div class="form-group"><label>WhatsApp</label><input type="text" name="whatsapp" id="f_wa" class="form-input" required></div>
                     <div class="form-group"><label>Domisili</label><input type="text" name="domicile" id="f_dom" class="form-input"></div>
-                    <div class="form-group"><label>Foto</label><input type="file" name="photo" class="form-input"></div>
+                    <div class="form-group"><label>Foto Profil</label><input type="file" name="photo" class="form-input" accept="image/*"></div>
+                    <div class="form-group"><label>ID Card (Rasio 2233x3546)</label><input type="file" name="id_card" class="form-input" accept="image/*"></div>
                     
                     <div class="form-group full"><label>Job Description</label><textarea name="jobdesk" id="f_job" class="form-input" rows="4"></textarea></div>
                 </div>
@@ -418,13 +428,16 @@ $res = mysqli_query($conn, $q);
             document.getElementById('viewModal').classList.add('active');
             const img = data.photo ? `/uploads/teams/${data.photo}` : null;
             const avatarHtml = img ? `<img src="${img}">` : '<i class="fas fa-user-astronaut"></i>';
+            const idCardBtn = data.id_card ? `<a href="/uploads/teams/${data.id_card}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:rgba(161,255,90,0.1); color:#a1ff5a; padding:8px 16px; border-radius:10px; text-decoration:none; font-size:0.85rem; font-weight:700; border:1px solid rgba(161,255,90,0.3); margin-top:15px; transition:0.3s;" onmouseover="this.style.background='rgba(161,255,90,0.2)'" onmouseout="this.style.background='rgba(161,255,90,0.1)'"><i class="fas fa-id-card"></i> Lihat ID Card</a>` : '';
+            
             const html = `
                 <div class="profile-modal-container">
                     <div class="profile-left">
                         <div class="detail-avatar">${avatarHtml}</div>
                         <div class="detail-name">${data.name}</div>
-                        <div class="detail-role" style="color:var(--neon-2); font-weight:700;">${data.position}</div>
-                        <div class="info-grid" style="grid-template-columns:1fr; gap:10px; margin-top:20px;">
+                        <div class="detail-role" style="color:#a1ff5a; font-weight:800; font-size:0.8rem;">${data.position}</div>
+                        ${idCardBtn}
+                        <div class="info-grid" style="grid-template-columns:1fr; gap:10px; margin-top:25px;">
                             <div class="info-item"><span class="info-label">ID Team</span> <div class="info-value">${data.team_id}</div></div>
                             <div class="info-item"><span class="info-label">Role Access</span> <div class="info-value" style="color:#ff9f43;">${data.role.toUpperCase()}</div></div>
                         </div>
@@ -432,21 +445,33 @@ $res = mysqli_query($conn, $q);
                     <div class="profile-right" style="display:flex; flex-direction:column;">
                         <!-- TABS HEADER -->
                         <div style="display:flex; gap:20px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px; padding-bottom:5px;">
-                            <div id="tab-btn-profil" class="team-tab-btn" onclick="switchTeamTab('profil')" style="cursor:pointer; color:#a1ff5a; font-weight:700; font-size:0.9rem; padding:5px 0; border-bottom:2px solid #a1ff5a; transition:0.3s;">Profil & Jobdesc</div>
+                            <div id="tab-btn-profil" class="team-tab-btn" onclick="switchTeamTab('profil')" style="cursor:pointer; color:#a1ff5a; font-weight:700; font-size:0.9rem; padding:5px 0; border-bottom:2px solid #a1ff5a; transition:0.3s;">Profil Lengkap</div>
                             <div id="tab-btn-meeting" class="team-tab-btn" onclick="switchTeamTab('meeting')" style="cursor:pointer; color:#888; font-weight:700; font-size:0.9rem; padding:5px 0; border-bottom:2px solid transparent; transition:0.3s;">Riwayat Meeting</div>
                         </div>
 
                         <!-- TAB: PROFIL -->
                         <div id="t-tab-profil" style="display:block; flex:1; overflow-y:auto; padding-right:10px;">
                             <div class="info-grid" style="margin-bottom:20px;">
-                                <div class="info-item"><span class="info-label">Education</span> <div class="info-value">${data.education || '-'}</div></div>
-                                <div class="info-item"><span class="info-label">Domicile</span> <div class="info-value">${data.domicile || '-'}</div></div>
-                                <div class="info-item"><span class="info-label">WhatsApp</span> <div class="info-value">${data.whatsapp || '-'}</div></div>
-                                <div class="info-item"><span class="info-label">Email</span> <div class="info-value">${data.email || '-'}</div></div>
+                                <div class="info-item" style="display:flex;align-items:center;gap:15px;">
+                                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:#fff;"><i class="fas fa-envelope"></i></div>
+                                    <div><span class="info-label" style="margin-bottom:2px;">Email</span><div class="info-value" style="font-size:0.9rem;">${data.email}</div></div>
+                                </div>
+                                <div class="info-item" style="display:flex;align-items:center;gap:15px;">
+                                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(37,211,102,0.1);display:flex;align-items:center;justify-content:center;color:#25D366;"><i class="fab fa-whatsapp"></i></div>
+                                    <div><span class="info-label" style="margin-bottom:2px;">WhatsApp</span><div class="info-value" style="font-size:0.9rem;">${data.whatsapp}</div></div>
+                                </div>
+                                <div class="info-item" style="display:flex;align-items:center;gap:15px;">
+                                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,159,67,0.1);display:flex;align-items:center;justify-content:center;color:#ff9f43;"><i class="fas fa-graduation-cap"></i></div>
+                                    <div><span class="info-label" style="margin-bottom:2px;">Pendidikan</span><div class="info-value" style="font-size:0.9rem;">${data.education||'-'}</div></div>
+                                </div>
+                                <div class="info-item" style="display:flex;align-items:center;gap:15px;">
+                                    <div style="width:40px;height:40px;border-radius:10px;background:rgba(78,253,196,0.1);display:flex;align-items:center;justify-content:center;color:#4efdc4;"><i class="fas fa-map-marker-alt"></i></div>
+                                    <div><span class="info-label" style="margin-bottom:2px;">Domisili</span><div class="info-value" style="font-size:0.9rem;">${data.domicile||'-'}</div></div>
+                                </div>
                             </div>
                             <div class="job-section">
-                                <div class="job-title" style="color:var(--neon-1);"><i class="fas fa-briefcase" style="margin-right:6px;"></i>JOB DESCRIPTION</div>
-                                <div class="job-content" style="white-space:pre-wrap;">${data.jobdesk || 'Belum ada deskripsi pekerjaan.'}</div>
+                                <div class="job-title"><i class="fas fa-briefcase" style="margin-right:8px;"></i>Job Description / Tanggung Jawab</div>
+                                <div class="job-content">${data.jobdesk || '<span style="color:#666;font-style:italic;">Belum ada data jobdesk...</span>'}</div>
                             </div>
                         </div>
 
