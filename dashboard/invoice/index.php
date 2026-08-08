@@ -35,6 +35,15 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `invoices` (
     `updated_at`      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )");
 
+// Auto-create bank_accounts table
+mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `bank_accounts` (
+    `id`              INT AUTO_INCREMENT PRIMARY KEY,
+    `bank_name`       VARCHAR(100) NOT NULL,
+    `account_number`  VARCHAR(100) NOT NULL,
+    `account_name`    VARCHAR(255) NOT NULL,
+    `created_at`      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 // AJAX handlers
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
     header('Content-Type: application/json');
@@ -45,6 +54,32 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $q = mysqli_query($conn, "SELECT * FROM invoices ORDER BY inv_date DESC, created_at DESC");
         if($q) while($r = mysqli_fetch_assoc($q)) { $r['items'] = json_decode($r['items_json'] ?? '[]', true) ?: []; $rows[] = $r; }
         echo json_encode($rows); exit;
+    }
+
+    if($act === 'get_banks') {
+        $rows = [];
+        $q = mysqli_query($conn, "SELECT * FROM bank_accounts ORDER BY id ASC");
+        if($q) while($r = mysqli_fetch_assoc($q)) $rows[] = $r;
+        echo json_encode($rows); exit;
+    }
+
+    if($act === 'save_bank') {
+        $id = intval($_POST['id'] ?? 0);
+        $bank = mysqli_real_escape_string($conn, trim($_POST['bank_name'] ?? ''));
+        $acc = mysqli_real_escape_string($conn, trim($_POST['account_number'] ?? ''));
+        $name = mysqli_real_escape_string($conn, trim($_POST['account_name'] ?? ''));
+        if($id > 0) {
+            mysqli_query($conn, "UPDATE bank_accounts SET bank_name='$bank', account_number='$acc', account_name='$name' WHERE id=$id");
+        } else {
+            mysqli_query($conn, "INSERT INTO bank_accounts (bank_name, account_number, account_name) VALUES ('$bank','$acc','$name')");
+        }
+        echo json_encode(['ok'=>true]); exit;
+    }
+
+    if($act === 'delete_bank') {
+        $id = intval($_POST['id'] ?? 0);
+        mysqli_query($conn, "DELETE FROM bank_accounts WHERE id=$id");
+        echo json_encode(['ok'=>true]); exit;
     }
 
     if($act === 'get_companies') {
@@ -682,20 +717,29 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                 </div>
 
                 <div class="form-section">
-                    <div class="form-section-title"><i class="fas fa-university"></i> Info Pembayaran</div>
+                    <div class="form-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-university"></i> Info Pembayaran</span>
+                        <button type="button" onclick="openBankModal()" style="background:rgba(161,255,90,0.1); border:1px solid rgba(161,255,90,0.2); color:#a1ff5a; padding:6px 12px; border-radius:6px; font-size:0.75rem; cursor:pointer;"><i class="fas fa-cog"></i> Kelola Rekening PT</button>
+                    </div>
                     <div class="payment-info-grid">
                         <div>
                             <div class="form-group">
+                                <label>Pilih Rekening PT</label>
+                                <select class="form-input form-select" id="f_bankSelect" onchange="onBankSelect(this)">
+                                    <option value="">-- Pilih Rekening --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label>Bank Tujuan</label>
-                                <input type="text" class="form-input" id="f_bank" value="BANK BCA">
+                                <input type="text" class="form-input" id="f_bank" readonly style="color:#888; background:rgba(255,255,255,0.02);">
                             </div>
                             <div class="form-group">
                                 <label>No. Rekening</label>
-                                <input type="text" class="form-input" id="f_rekening" value="342-999-3629">
+                                <input type="text" class="form-input" id="f_rekening" readonly style="color:#888; background:rgba(255,255,255,0.02);">
                             </div>
                             <div class="form-group">
                                 <label>Atas Nama</label>
-                                <input type="text" class="form-input" id="f_atasNama" value="PT. ARAH SUKSES BERSAMA">
+                                <input type="text" class="form-input" id="f_atasNama" readonly style="color:#888; background:rgba(255,255,255,0.02);">
                             </div>
                         </div>
                         <div>
@@ -739,7 +783,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             </div>
                         </div>
                     </div>
-                    <div style="margin-top:14px;">
+                    <div style="margin-top:14px; display:none;">
                         <button type="button" onclick="savePaymentInfo()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#ccc;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.borderColor='rgba(255,255,255,0.4)';this.style.color='#fff';" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='#ccc';"><i class="fas fa-save"></i> Simpan Permanen (berlaku di semua invoice)</button>
                     </div>
                 </div>
@@ -801,9 +845,42 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 <!-- POPUP -->
 <div id="popup" class="popup"><i class="fas fa-check-circle"></i> <span id="popupMsg">Berhasil</span></div>
 
+<!-- BANK MODAL -->
+<div id="bankModal" class="modal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+            <h2 class="modal-title" style="font-size:1.1rem;"><i class="fas fa-university"></i> Kelola Rekening PT</h2>
+            <button class="close-modal" onclick="closeBankModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px;">
+                <input type="hidden" id="f_bankId" value="0">
+                <div class="form-group">
+                    <label>Bank Tujuan</label>
+                    <input type="text" class="form-input" id="f_bankName" placeholder="Contoh: BANK BCA">
+                </div>
+                <div class="form-group">
+                    <label>No. Rekening</label>
+                    <input type="text" class="form-input" id="f_bankAcc" placeholder="Contoh: 123-456-789">
+                </div>
+                <div class="form-group">
+                    <label>Atas Nama (PT)</label>
+                    <input type="text" class="form-input" id="f_bankPT" placeholder="Contoh: PT. BERSAMA">
+                </div>
+                <button type="button" onclick="saveBank()" style="background:var(--neon-main); color:#000; border:none; padding:8px 15px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.8rem; width:100%;"><i class="fas fa-save"></i> Simpan Rekening</button>
+                <button type="button" id="btnCancelBank" onclick="resetBankForm()" style="background:transparent; color:#888; border:1px solid #444; padding:8px 15px; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.8rem; width:100%; margin-top:8px; display:none;">Batal Edit</button>
+            </div>
+            
+            <div style="font-size:0.85rem; font-weight:700; color:#fff; margin-bottom:10px;">Daftar Rekening Tersimpan</div>
+            <div id="bankList" style="max-height:250px; overflow-y:auto; padding-right:5px; display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 let invoices = [];
 let allCompanies = { clients:[], prospects:[] };
+let allBanks = [];
 let editingId = null;
 let payType = 'Lunas';
 let centerLogoDataUrl = localStorage.getItem('invCenterLogo') || null;
@@ -847,10 +924,114 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('f_logoOpacity').value = centerLogoOpacity;
     document.getElementById('opacityVal').innerText = centerLogoOpacity;
-    loadSavedPaymentInfo();
+    loadBanks();
     loadCompanies();
     loadInvoices();
 });
+
+function loadBanks() {
+    const fd = new FormData(); fd.append('inv_ajax', 'get_banks');
+    fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
+        allBanks = data;
+        renderBankOptions();
+        renderBankList();
+    });
+}
+
+function renderBankOptions() {
+    const sel = document.getElementById('f_bankSelect');
+    sel.innerHTML = '<option value="">-- Pilih Rekening --</option>';
+    allBanks.forEach(b => {
+        sel.innerHTML += `<option value="${b.id}">${b.bank_name} - ${b.account_number} (${b.account_name})</option>`;
+    });
+}
+
+function onBankSelect(sel) {
+    const b = allBanks.find(x => x.id == sel.value);
+    if(b) {
+        document.getElementById('f_bank').value = b.bank_name;
+        document.getElementById('f_rekening').value = b.account_number;
+        document.getElementById('f_atasNama').value = b.account_name;
+    } else {
+        document.getElementById('f_bank').value = '';
+        document.getElementById('f_rekening').value = '';
+        document.getElementById('f_atasNama').value = '';
+    }
+}
+
+function openBankModal() { document.getElementById('bankModal').classList.add('active'); resetBankForm(); }
+function closeBankModal() { document.getElementById('bankModal').classList.remove('active'); }
+
+function resetBankForm() {
+    document.getElementById('f_bankId').value = '0';
+    document.getElementById('f_bankName').value = '';
+    document.getElementById('f_bankAcc').value = '';
+    document.getElementById('f_bankPT').value = '';
+    document.getElementById('btnCancelBank').style.display = 'none';
+}
+
+function renderBankList() {
+    const list = document.getElementById('bankList');
+    list.innerHTML = '';
+    if(allBanks.length===0) {
+        list.innerHTML = '<div style="font-size:0.75rem; color:#666; text-align:center; padding:10px;">Belum ada rekening</div>';
+        return;
+    }
+    allBanks.forEach(b => {
+        list.innerHTML += `
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:700; color:#fff; font-size:0.8rem; margin-bottom:2px;">${b.bank_name} - <span style="color:var(--neon-sec);">${b.account_number}</span></div>
+                    <div style="font-size:0.75rem; color:#888;">${b.account_name}</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" onclick="editBank(${b.id})" style="background:rgba(255,255,255,0.05); color:#a1ff5a; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-edit"></i></button>
+                    <button type="button" onclick="deleteBank(${b.id})" style="background:rgba(255,255,255,0.05); color:#ff6b6b; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function editBank(id) {
+    const b = allBanks.find(x => x.id == id);
+    if(!b) return;
+    document.getElementById('f_bankId').value = b.id;
+    document.getElementById('f_bankName').value = b.bank_name;
+    document.getElementById('f_bankAcc').value = b.account_number;
+    document.getElementById('f_bankPT').value = b.account_name;
+    document.getElementById('btnCancelBank').style.display = 'block';
+}
+
+function saveBank() {
+    const fd = new FormData();
+    fd.append('inv_ajax', 'save_bank');
+    fd.append('id', document.getElementById('f_bankId').value);
+    fd.append('bank_name', document.getElementById('f_bankName').value);
+    fd.append('account_number', document.getElementById('f_bankAcc').value);
+    fd.append('account_name', document.getElementById('f_bankPT').value);
+    
+    fetch('', { method:'POST', body:fd }).then(r=>r.json()).then(res => {
+        if(res.ok) {
+            showPopup('success', 'Rekening tersimpan!');
+            resetBankForm();
+            loadBanks();
+        }
+    });
+}
+
+function deleteBank(id) {
+    if(!confirm('Hapus rekening ini?')) return;
+    const fd = new FormData();
+    fd.append('inv_ajax', 'delete_bank');
+    fd.append('id', id);
+    fetch('', { method:'POST', body:fd }).then(r=>r.json()).then(res => {
+        if(res.ok) {
+            showPopup('success', 'Rekening dihapus!');
+            loadBanks();
+        }
+    });
+}
 
 function loadCompanies() {
     const fd = new FormData(); fd.append('inv_ajax', 'get_companies');
@@ -1065,9 +1246,10 @@ function resetForm(){
     document.getElementById('itemsBody').innerHTML='';
     recalcTotals();
     document.getElementById('ppnInput').value='11';
-    document.getElementById('f_bank').value='BANK BCA';
-    document.getElementById('f_rekening').value='342-999-3629';
-    document.getElementById('f_atasNama').value='PT. ARAH SUKSES BERSAMA';
+    document.getElementById('f_bankSelect').value='';
+    document.getElementById('f_bank').value='';
+    document.getElementById('f_rekening').value='';
+    document.getElementById('f_atasNama').value='';
     document.getElementById('f_sigName').value='Casandra';
     document.getElementById('f_sigRole').value='Finance Dept.';
     document.getElementById('f_contact').value='0851-6261-2373';
@@ -1089,6 +1271,12 @@ function editInvoice(id){
     document.getElementById('f_invDate').value = inv.date;
     document.getElementById('f_clientName').value = inv.client;
     document.getElementById('ppnInput').value = inv.ppn;
+    
+    // Auto-select bank if exists
+    document.getElementById('f_bankSelect').value = '';
+    const bMatch = allBanks.find(b => b.bank_name===inv.bank && b.account_number===inv.rekening);
+    if(bMatch) document.getElementById('f_bankSelect').value = bMatch.id;
+    
     document.getElementById('f_bank').value = inv.bank;
     document.getElementById('f_rekening').value = inv.rekening;
     document.getElementById('f_atasNama').value = inv.atasNama;
