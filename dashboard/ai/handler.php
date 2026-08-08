@@ -79,13 +79,14 @@ if($action === 'chat') {
         return $csv;
     }
 
-    $context_parts[] = getTableAsCSV($conn, "events", ['event_date', 'title', 'time_start', 'meeting_mode', 'location', 'target_name', 'teams_involved', 'status', 'log_hasil', 'detail'], "DATA MEETING / EVENTS", "ORDER BY event_date DESC LIMIT 30");
-    $context_parts[] = getTableAsCSV($conn, "teams", ['name', 'nama', 'position', 'posisi', 'role', 'whatsapp', 'email', 'domicile'], "DATA TEAM", "LIMIT 30");
-    $context_parts[] = getTableAsCSV($conn, "clients", ['company_name', 'name', 'pic', 'whatsapp', 'status', 'city', 'domain', 'services_data', 'service'], "DATA CLIENTS", "LIMIT 50");
-    $context_parts[] = getTableAsCSV($conn, "prospects", ['company_name', 'name', 'pic', 'status', 'city', 'deal_status', 'notes'], "DATA PROSPECTS", "ORDER BY id DESC LIMIT 50");
-    $context_parts[] = getTableAsCSV($conn, "invoices", ['inv_no', 'client_name', 'service_label', 'inv_date', 'total', 'status'], "DATA INVOICE", "ORDER BY inv_date DESC LIMIT 30");
-    $context_parts[] = getTableAsCSV($conn, "payments", ['payment_date', 'company_name', 'amount', 'service_type', 'payment_type', 'invoice_no'], "PEMASUKAN / PAYMENTS", "ORDER BY payment_date DESC LIMIT 30");
-    $context_parts[] = getTableAsCSV($conn, "spendings", ['type', 'vendor', 'detail', 'amount', 'payment_date', 'date'], "PENGELUARAN / SPENDINGS", "ORDER BY id DESC LIMIT 30");
+    $context_parts[] = getTableAsCSV($conn, "events", ['event_date', 'title', 'time_start', 'meeting_mode', 'location', 'target_name', 'teams_involved', 'status', 'log_hasil', 'detail'], "DATA MEETING / EVENTS", "ORDER BY event_date DESC LIMIT 40");
+    $context_parts[] = getTableAsCSV($conn, "teams", ['name', 'nama', 'position', 'posisi', 'role', 'whatsapp', 'email', 'domicile'], "DATA TEAM", "LIMIT 50");
+    // Prioritize active clients to ensure important client data (services_data) is never omitted
+    $context_parts[] = getTableAsCSV($conn, "clients", ['company_name', 'name', 'pic', 'whatsapp', 'status', 'city', 'domain', 'services_data', 'service'], "DATA CLIENTS", "ORDER BY status='Active' DESC, client_id DESC LIMIT 150");
+    $context_parts[] = getTableAsCSV($conn, "prospects", ['company_name', 'name', 'pic', 'status', 'city', 'deal_status', 'notes'], "DATA PROSPECTS", "ORDER BY id DESC LIMIT 60");
+    $context_parts[] = getTableAsCSV($conn, "invoices", ['inv_no', 'client_name', 'service_label', 'inv_date', 'total', 'status'], "DATA INVOICE", "ORDER BY inv_date DESC LIMIT 40");
+    $context_parts[] = getTableAsCSV($conn, "payments", ['payment_date', 'company_name', 'amount', 'service_type', 'payment_type', 'invoice_no'], "PEMASUKAN / PAYMENTS", "ORDER BY payment_date DESC LIMIT 40");
+    $context_parts[] = getTableAsCSV($conn, "spendings", ['type', 'vendor', 'detail', 'amount', 'payment_date', 'date'], "PENGELUARAN / SPENDINGS", "ORDER BY id DESC LIMIT 40");
 
     $context_parts = array_filter($context_parts);
 
