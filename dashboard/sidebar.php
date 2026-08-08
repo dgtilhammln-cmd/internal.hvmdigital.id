@@ -110,12 +110,17 @@ if($is_super_admin && isset($conn)) {
     box-shadow: 0 14px 40px rgba(161,255,90,0.5), 0 0 0 8px rgba(161,255,90,0.1);
     animation: none;
 }
-#ai-fab img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+#ai-fab img { width:100%; height:100%; object-fit:cover; border-radius:50%; position:absolute; inset:0; transition:opacity 0.2s; }
+#ai-fab .fab-inner { display:flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:50%; transition:opacity 0.2s; }
+#ai-fab .fab-icon-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; transition:opacity 0.25s, transform 0.25s; }
+#ai-fab .fab-icon-wrap.icon-layer { opacity:1; transform:scale(1); }
+#ai-fab .fab-icon-wrap.close-layer { opacity:0; transform:scale(0.5); }
+#ai-fab.open .fab-icon-wrap.icon-layer { opacity:0; transform:scale(0.5); }
+#ai-fab.open .fab-icon-wrap.close-layer { opacity:1; transform:scale(1); }
 #ai-fab .fab-icon { font-size:1.6rem; color:#000; }
-#ai-fab .fab-close { display:none; font-size:1.4rem; color:#000; }
-#ai-fab.open .fab-icon { display:none; }
-#ai-fab.open .fab-close { display:block; }
+#ai-fab .fab-icon-wrap.close-layer i { font-size:1.4rem; color:#000; }
 #ai-fab.open { background: linear-gradient(135deg, #ff6b6b, #ff9f43); animation:none; }
+#ai-fab.open img { opacity:0; pointer-events:none; }
 @keyframes fabPulse {
     0%,100% { box-shadow: 0 8px 32px rgba(161,255,90,0.35), 0 0 0 0 rgba(161,255,90,0.4); }
     50% { box-shadow: 0 8px 32px rgba(161,255,90,0.35), 0 0 0 12px rgba(161,255,90,0); }
@@ -282,6 +287,7 @@ if($is_super_admin && isset($conn)) {
     font-size: 0.85rem;
     outline: none;
     resize: none;
+    overflow: hidden;
     max-height: 100px;
     min-height: 40px;
     line-height: 1.4;
@@ -304,12 +310,18 @@ if($is_super_admin && isset($conn)) {
 <!-- Floating Button -->
 <button id="ai-fab" onclick="toggleAIChat()" title="AI Asisten HVM">
     <?php if($ai_icon_src): ?>
-        <img src="<?= $ai_icon_src ?>" alt="AI" id="fab-img">
-        <i class="fas fa-times fab-close"></i>
-    <?php else: ?>
-        <i class="fas fa-robot fab-icon"></i>
-        <i class="fas fa-times fab-close"></i>
+        <img src="<?= $ai_icon_src ?>" alt="AI">
     <?php endif; ?>
+    <!-- Icon layer (shown when closed) -->
+    <span class="fab-icon-wrap icon-layer">
+        <?php if(!$ai_icon_src): ?>
+            <i class="fas fa-robot fab-icon"></i>
+        <?php endif; ?>
+    </span>
+    <!-- Close layer (shown when open) -->
+    <span class="fab-icon-wrap close-layer">
+        <i class="fas fa-times"></i>
+    </span>
 </button>
 
 <!-- Chat Modal -->
