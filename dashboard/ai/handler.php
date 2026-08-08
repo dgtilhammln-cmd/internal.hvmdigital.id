@@ -135,7 +135,7 @@ if($action === 'chat') {
 
     $system_prompt = "Kamu adalah {$ai_name}, asisten cerdas internal perusahaan HVM Digital. Hari ini tanggal {$today}. User yang sedang login: {$user}.
 
-Tugasmu adalah membantu tim HVM Digital dengan pertanyaan seputar data operasional perusahaan — termasuk jadwal meeting, data klien, prospek, tim, dan invoice.
+Tugasmu adalah membantu tim HVM Digital dengan pertanyaan seputar data operasional perusahaan (termasuk jadwal meeting, data klien, prospek, tim, dan invoice).
 
 Sifatmu: ramah, profesional, ringkas, pakai Bahasa Indonesia. Jika diminta summary, buat yang mudah dicerna.{$persona_extra}
 
@@ -238,6 +238,11 @@ function httpPost($url, $body, $headers) {
         CURLOPT_SSL_VERIFYPEER => false
     ]);
     $resp = curl_exec($ch);
+    if(curl_errno($ch)) {
+        $err = curl_error($ch);
+        curl_close($ch);
+        return json_encode(['error' => ['message' => 'Koneksi API Gagal/Timeout: ' . $err]]);
+    }
     curl_close($ch);
     return $resp;
 }

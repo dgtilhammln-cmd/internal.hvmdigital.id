@@ -488,8 +488,8 @@ function handleChatKey(e) {
     if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
 }
 function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+    el.style.height = '40px';
+    el.style.height = Math.max(40, Math.min(el.scrollHeight, 100)) + 'px';
 }
 function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
