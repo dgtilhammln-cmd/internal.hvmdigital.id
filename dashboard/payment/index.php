@@ -387,9 +387,13 @@ if (isset($_GET['del_spend'])) {
 // VIEW DATA
 // ============================================================
 $view       = isset($_GET['view'])  ? $_GET['view']  : 'income';
-$search     = @mysqli_real_escape_string($conn, isset($_GET['q'])     ? $_GET['q']     : '');
+$search     = @mysqli_real_escape_string($conn, isset($_GET['q'])       ? $_GET['q']       : '');
 $date_start = isset($_GET['start']) ? $_GET['start'] : date('Y-m-01');
 $date_end   = isset($_GET['end'])   ? $_GET['end']   : date('Y-m-t');
+$filter_ptype = @mysqli_real_escape_string($conn, isset($_GET['ptype'])  ? $_GET['ptype']  : '');
+$filter_cat   = @mysqli_real_escape_string($conn, isset($_GET['cat'])    ? $_GET['cat']    : '');
+$filter_min   = isset($_GET['amin']) && is_numeric($_GET['amin']) ? (int)$_GET['amin'] : '';
+$filter_max   = isset($_GET['amax']) && is_numeric($_GET['amax']) ? (int)$_GET['amax'] : '';
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date_start)) $date_start = date('Y-m-01');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date_end))   $date_end   = date('Y-m-t');
 $ds = @mysqli_real_escape_string($conn,$date_start);
@@ -455,9 +459,17 @@ if ($qa) while ($r=mysqli_fetch_assoc($qa)) $audit_rows[] = $r;
 
 // Main query
 if ($view === 'income') {
-    $query = "SELECT * FROM payments WHERE (payment_id LIKE '%$search%' OR company_name LIKE '%$search%' OR email LIKE '%$search%') AND payment_date BETWEEN '$ds' AND '$de' ORDER BY payment_date DESC";
+    $extra_where = "";
+    if ($filter_ptype) $extra_where .= " AND payment_type='$filter_ptype'";
+    if ($filter_min !== '') $extra_where .= " AND amount >= '$filter_min'";
+    if ($filter_max !== '') $extra_where .= " AND amount <= '$filter_max'";
+    $query = "SELECT * FROM payments WHERE (payment_id LIKE '%$search%' OR company_name LIKE '%$search%' OR email LIKE '%$search%') AND payment_date BETWEEN '$ds' AND '$de' $extra_where ORDER BY payment_date DESC";
 } elseif ($view === 'expense') {
-    $query = "SELECT * FROM spendings WHERE (detail LIKE '%$search%' OR type LIKE '%$search%' OR vendor LIKE '%$search%') AND spending_date BETWEEN '$ds' AND '$de' ORDER BY spending_date DESC";
+    $extra_where = "";
+    if ($filter_cat) $extra_where .= " AND type='$filter_cat'";
+    if ($filter_min !== '') $extra_where .= " AND amount >= '$filter_min'";
+    if ($filter_max !== '') $extra_where .= " AND amount <= '$filter_max'";
+    $query = "SELECT * FROM spendings WHERE (detail LIKE '%$search%' OR type LIKE '%$search%' OR vendor LIKE '%$search%') AND spending_date BETWEEN '$ds' AND '$de' $extra_where ORDER BY spending_date DESC";
 } else {
     $query = "SELECT * FROM payments WHERE payment_date BETWEEN '$ds' AND '$de' ORDER BY payment_date DESC";
 }
@@ -621,19 +633,52 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                 <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-down"></i> Expense</button>
 
             </div>
-            <form method="GET" class="filter-group">
+            <form method="GET" class="filter-group" id="filterForm">
                 <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
-                <?php if ($view !== 'mutasi'): ?>
                 <div class="search-wrap">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" name="q" class="search-input" placeholder="Cari..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
+                    <input type="text" name="q" class="search-input" placeholder="Cari client, detail, ID..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
                 </div>
-                <?php endif; ?>
                 <input type="date" name="start" class="date-select" value="<?php echo $date_start; ?>" onchange="this.form.submit()">
                 <span class="date-sep">&#8594;</span>
                 <input type="date" name="end" class="date-select" value="<?php echo $date_end; ?>" onchange="this.form.submit()">
+                <?php if ($view === 'income'): ?>
+                <select name="ptype" class="date-select" style="min-width:140px;" onchange="this.form.submit()">
+                    <option value="">Semua Tipe</option>
+                    <option value="New Client" <?php if($filter_ptype==='New Client') echo 'selected'; ?>>New Client</option>
+                    <option value="Recurring" <?php if($filter_ptype==='Recurring') echo 'selected'; ?>>Recurring</option>
+                    <option value="Down Payment" <?php if($filter_ptype==='Down Payment') echo 'selected'; ?>>DP</option>
+                    <option value="Pelunasan" <?php if($filter_ptype==='Pelunasan') echo 'selected'; ?>>Pelunasan</option>
+                </select>
+                <?php elseif ($view === 'expense'): ?>
+                <select name="cat" class="date-select" style="min-width:140px;" onchange="this.form.submit()">
+                    <option value="">Semua Kategori</option>
+                    <option value="aset" <?php if($filter_cat==='aset') echo 'selected'; ?>>Aset / Inventaris</option>
+                    <option value="operasional" <?php if($filter_cat==='operasional') echo 'selected'; ?>>Operasional</option>
+                    <option value="fee" <?php if($filter_cat==='fee') echo 'selected'; ?>>Fee / Komisi</option>
+                    <option value="gaji" <?php if($filter_cat==='gaji') echo 'selected'; ?>>Gaji / Honor</option>
+                    <option value="software" <?php if($filter_cat==='software') echo 'selected'; ?>>Software</option>
+                    <option value="marketing" <?php if($filter_cat==='marketing') echo 'selected'; ?>>Marketing</option>
+                    <option value="pajak" <?php if($filter_cat==='pajak') echo 'selected'; ?>>Pajak</option>
+                    <option value="lainnya" <?php if($filter_cat==='lainnya') echo 'selected'; ?>>Lainnya</option>
+                </select>
+                <?php endif; ?>
+                <input type="number" name="amin" class="date-select" style="min-width:110px;" placeholder="Min Rp" value="<?php echo $filter_min; ?>" min="0">
+                <input type="number" name="amax" class="date-select" style="min-width:110px;" placeholder="Max Rp" value="<?php echo $filter_max; ?>" min="0">
+                <button type="submit" class="btn-icon" title="Filter" style="background:rgba(255,255,255,0.05);padding:8px 14px;border-radius:8px;"><i class="fas fa-filter"></i></button>
+                <?php $has_filter = ($search || $filter_ptype || $filter_cat || $filter_min!=='' || $filter_max!==''); ?>
+                <?php if ($has_filter): ?>
+                <a href="?view=<?php echo $view; ?>&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>" class="btn-icon" style="background:rgba(255,90,90,0.1);padding:8px 12px;border-radius:8px;color:#ff5a5a;text-decoration:none;" title="Reset Filter"><i class="fas fa-times"></i></a>
+                <?php endif; ?>
             </form>
-            <div style="display:flex;gap:10px;flex-shrink:0;">
+            <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+                <!-- Quick date shortcuts -->
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-icon" onclick="setDateRange('today')" title="Hari Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Hari Ini</button>
+                    <button class="btn-icon" onclick="setDateRange('week')" title="7 Hari" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">7 Hari</button>
+                    <button class="btn-icon" onclick="setDateRange('month')" title="Bulan Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Bulan Ini</button>
+                    <button class="btn-icon" onclick="setDateRange('year')" title="Tahun Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Tahun Ini</button>
+                </div>
                 <button class="btn-grad blue" onclick="openModal('downloadModal')"><i class="fas fa-download"></i> Export</button>
                 <?php if ($view==='income'): ?><button class="btn-grad" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> Add Income</button>
                 <?php elseif ($view==='expense'): ?><button class="btn-grad red" onclick="openModal('expenseModal')"><i class="fas fa-minus"></i> Add Expense</button><?php endif; ?>
@@ -813,7 +858,10 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
         </div>
     </div>
     <div class="form-group"><label>Tipe Pembayaran</label><select name="payment_type" id="edit_in_ptype" class="form-input"><option value="New Client">New Client</option><option value="Recurring">Recurring (Perpanjangan)</option><option value="Down Payment">Down Payment (DP)</option><option value="Pelunasan">Pelunasan</option></select></div>
-    <div class="form-group"><label>Nominal</label><input type="text" name="amount" id="edit_in_amount" class="form-input rupiah" required></div>
+    <div class="form-group"><label>Nominal</label>
+        <input type="text" id="edit_in_amount_display" class="form-input rupiah-display" data-raw="edit_in_amount_raw" required placeholder="Rp 0" autocomplete="off">
+        <input type="hidden" name="amount" id="edit_in_amount_raw">
+    </div>
     <div class="form-group"><label>Nomor Invoice (Opsional)</label><input type="text" name="invoice_no" id="edit_in_inv" class="form-input" placeholder="INV-202X-..."></div>
     <div class="form-group"><label>Bukti Baru (Opsional)</label><input type="file" name="proof_file" class="form-input"></div>
     <div class="form-group full"><label>Catatan</label><textarea name="notes" id="edit_in_notes" class="form-input" rows="3"></textarea></div>
@@ -834,7 +882,10 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
     <div class="form-group"><label>Kategori</label><select name="type" id="edit_ex_type" class="form-input"><option value="aset">Aset / Inventaris</option><option value="operasional">Operasional</option><option value="fee">Fee / Komisi</option><option value="gaji">Gaji / Honor</option><option value="software">Software / Subscription</option><option value="marketing">Marketing / Iklan</option><option value="pajak">Pajak / Retribusi</option><option value="lainnya">Lainnya</option></select></div>
     <div class="form-group"><label>Tanggal</label><input type="date" name="spending_date" id="edit_ex_date" class="form-input" required></div>
     <div class="form-group"><label>Vendor (Opsional)</label><input type="text" name="vendor" id="edit_ex_vendor" class="form-input"></div>
-    <div class="form-group"><label>Nominal</label><input type="text" name="amount" id="edit_ex_amount" class="form-input rupiah" required></div>
+    <div class="form-group"><label>Nominal</label>
+        <input type="text" id="edit_ex_amount_display" class="form-input rupiah-display" data-raw="edit_ex_amount_raw" required placeholder="Rp 0" autocomplete="off">
+        <input type="hidden" name="amount" id="edit_ex_amount_raw">
+    </div>
     <div class="form-group full"><label>Deskripsi</label><input type="text" name="detail" id="edit_ex_detail" class="form-input" required></div>
     <div class="form-group"><label>Bukti Baru (Opsional)</label><input type="file" name="proof_file" class="form-input"></div>
     <div class="form-group full"><label>Catatan</label><textarea name="notes" id="edit_ex_notes" class="form-input" rows="3"></textarea></div>
@@ -925,6 +976,31 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
 function openModal(id){ document.getElementById(id).classList.add('active'); if(id==='incomeModal') updateTransID(); }
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
+function setDateRange(range) {
+    var form = document.getElementById('filterForm');
+    if (!form) return;
+    var startEl = form.querySelector('[name="start"]');
+    var endEl = form.querySelector('[name="end"]');
+    var now = new Date();
+    var s, e = now.toISOString().slice(0,10);
+    if (range === 'today') {
+        s = e;
+    } else if (range === 'week') {
+        var w = new Date(now); w.setDate(now.getDate()-6);
+        s = w.toISOString().slice(0,10);
+    } else if (range === 'month') {
+        s = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'))+'-01';
+        var last = new Date(now.getFullYear(), now.getMonth()+1, 0);
+        e = last.toISOString().slice(0,10);
+    } else if (range === 'year') {
+        s = now.getFullYear()+'-01-01';
+        e = now.getFullYear()+'-12-31';
+    }
+    startEl.value = s;
+    endEl.value = e;
+    form.submit();
+}
+
 function confirmDelete(url, name, amount){
     document.getElementById('delDesc').innerHTML = 'Hapus <strong style="color:#fff">'+name+'</strong> senilai <strong style="color:var(--neon-red)">'+amount+'</strong>?<br><small style="color:#666">Tidak bisa dibatalkan.</small>';
     document.getElementById('delBtn').href = url;
@@ -988,7 +1064,9 @@ function editIncome(data) {
     document.getElementById('edit_in_company').value = data.company_name;
     document.getElementById('edit_in_email').value = data.email || '';
     document.getElementById('edit_in_ptype').value = data.payment_type;
-    document.getElementById('edit_in_amount').value = formatRupiah(data.amount.toString());
+    var rawAmt = parseRupiah(data.amount.toString());
+    document.getElementById('edit_in_amount_raw').value = rawAmt;
+    document.getElementById('edit_in_amount_display').value = rawAmt ? 'Rp '+parseInt(rawAmt,10).toLocaleString('id-ID') : '';
     document.getElementById('edit_in_inv').value = data.invoice_no || '';
     document.getElementById('edit_in_notes').value = data.notes || '';
     
@@ -1009,7 +1087,9 @@ function editExpense(data) {
     document.getElementById('edit_ex_type').value = data.type;
     document.getElementById('edit_ex_date').value = data.spending_date;
     document.getElementById('edit_ex_vendor').value = data.vendor || '';
-    document.getElementById('edit_ex_amount').value = formatRupiah(data.amount.toString());
+    var rawAmtEx = parseRupiah(data.amount.toString());
+    document.getElementById('edit_ex_amount_raw').value = rawAmtEx;
+    document.getElementById('edit_ex_amount_display').value = rawAmtEx ? 'Rp '+parseInt(rawAmtEx,10).toLocaleString('id-ID') : '';
     document.getElementById('edit_ex_detail').value = data.detail || '';
     document.getElementById('edit_ex_notes').value = data.notes || '';
     openModal('editExpenseModal');
@@ -1042,8 +1122,19 @@ function onClientInput(){
     if(val.length===0){ document.getElementById('wrap_mc').style.display='none'; document.getElementById('wrap_me').style.display='none'; }
 }
 
-function formatRupiah(v){ var n=v.replace(/[^0-9]/g,''); if(!n) return ''; return 'Rp '+parseInt(n,10).toLocaleString('id-ID'); }
-var ri=document.querySelectorAll('.rupiah');
+function formatRupiah(v){ var n=String(v).replace(/[^0-9]/g,''); if(!n) return ''; return 'Rp '+parseInt(n,10).toLocaleString('id-ID'); }
+function parseRupiah(v){ return String(v).replace(/[^0-9]/g,''); }
+// Event delegation: handles all .rupiah inputs including those inside modals
+document.addEventListener('input', function(e){
+    if(e.target && e.target.classList.contains('rupiah-display')){
+        var raw = e.target.value.replace(/[^0-9]/g,'');
+        e.target.value = raw ? 'Rp '+parseInt(raw,10).toLocaleString('id-ID') : '';
+        var hiddenId = e.target.getAttribute('data-raw');
+        if(hiddenId) document.getElementById(hiddenId).value = raw;
+    }
+});
+// Legacy: for old .rupiah inputs in Add modals (not edit)
+var ri=document.querySelectorAll('.rupiah:not(.rupiah-display)');
 for(var x=0;x<ri.length;x++) ri[x].addEventListener('input',function(){ this.value=formatRupiah(this.value); });
 
 function previewFile(input, pid, iid){
