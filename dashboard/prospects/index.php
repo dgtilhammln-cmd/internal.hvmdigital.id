@@ -24,9 +24,12 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `prospects` (
     `link_deck` TEXT DEFAULT NULL,
     `catatan` TEXT DEFAULT NULL,
     `status` ENUM('Cold','Warm','Hot','Closed') DEFAULT 'Cold',
+    `deal_status` ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )");
+
+fixCol($conn, 'prospects', 'deal_status', "ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL AFTER `status`");
 
 // 3. AJAX ACTIONS
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
@@ -44,13 +47,14 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $link_deck   = mysqli_real_escape_string($conn, trim($_POST['link_deck'] ?? ''));
         $catatan     = mysqli_real_escape_string($conn, trim($_POST['catatan'] ?? ''));
         $status      = mysqli_real_escape_string($conn, $_POST['status'] ?? 'Cold');
+        $deal_status = isset($_POST['deal_status']) && $_POST['deal_status'] ? "'".mysqli_real_escape_string($conn, $_POST['deal_status'])."'" : "NULL";
 
         if(empty($company)) { echo json_encode(['ok'=>false,'msg'=>'Nama perusahaan wajib diisi.']); exit; }
 
         if($id > 0) {
-            mysqli_query($conn, "UPDATE prospects SET company_name='$company', pic='$pic', jabatan='$jabatan', wa='$wa', alamat='$alamat', domain='$domain', link_deck='$link_deck', catatan='$catatan', status='$status' WHERE id=$id");
+            mysqli_query($conn, "UPDATE prospects SET company_name='$company', pic='$pic', jabatan='$jabatan', wa='$wa', alamat='$alamat', domain='$domain', link_deck='$link_deck', catatan='$catatan', status='$status', deal_status=$deal_status WHERE id=$id");
         } else {
-            mysqli_query($conn, "INSERT INTO prospects (company_name, pic, jabatan, wa, alamat, domain, link_deck, catatan, status) VALUES ('$company','$pic','$jabatan','$wa','$alamat','$domain','$link_deck','$catatan','$status')");
+            mysqli_query($conn, "INSERT INTO prospects (company_name, pic, jabatan, wa, alamat, domain, link_deck, catatan, status, deal_status) VALUES ('$company','$pic','$jabatan','$wa','$alamat','$domain','$link_deck','$catatan','$status',$deal_status)");
         }
         echo json_encode(['ok'=>true]);
         exit;
@@ -324,7 +328,12 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <a href="https://<?= htmlspecialchars($p['domain']) ?>" target="_blank" onclick="event.stopPropagation()" style="color:var(--teal); text-decoration:none;"><?= htmlspecialchars($p['domain']) ?></a>
                         <?php else: ?><span style="color:var(--muted);">-</span><?php endif; ?>
                     </td>
-                    <td><span class="badge <?= $badgeClass ?>"><?= $p['status'] ?></span></td>
+                    <td>
+                        <span class="badge <?= $badgeClass ?>"><?= $p['status'] ?></span>
+                        <?php if($p['deal_status']): ?>
+                            <span class="badge" style="background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2);"><?= $p['deal_status'] ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <div class="act-btns" onclick="event.stopPropagation()">
                             <?php if($p['wa']): ?>
@@ -390,6 +399,29 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <option value="Hot"><i class="fas fa-fire"></i> Hot</option>
                             <option value="Closed"><i class="fas fa-check-circle"></i> Closed</option>
                         </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-grp" style="grid-column:span 2;">
+                        <label>Hasil Akhir (Deal Status)</label>
+                        <div style="display:flex; gap:12px; margin-top:4px;">
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="f_deal_status" value="" checked>
+                                <span style="font-size:0.85rem;">Belum Ditentukan</span>
+                            </label>
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="f_deal_status" value="Deal">
+                                <span style="font-size:0.85rem; color:var(--green); font-weight:600;"><i class="fas fa-handshake"></i> Deal</span>
+                            </label>
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="f_deal_status" value="Gak Deal">
+                                <span style="font-size:0.85rem; color:var(--red); font-weight:600;"><i class="fas fa-times-circle"></i> Gak Deal</span>
+                            </label>
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="f_deal_status" value="Ghosting">
+                                <span style="font-size:0.85rem; color:#a55eea; font-weight:600;"><i class="fas fa-ghost"></i> Ghosting</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -469,6 +501,13 @@ function openModal(data = null) {
     document.getElementById('f_alamat').value = data ? (data.alamat||'') : '';
     document.getElementById('f_catatan').value = data ? (data.catatan||'') : '';
     document.getElementById('f_status').value = data ? (data.status||'Cold') : 'Cold';
+    
+    const dealRadios = document.getElementsByName('f_deal_status');
+    dealRadios[0].checked = true; // default belum ditentukan
+    if(data && data.deal_status) {
+        dealRadios.forEach(r => { if(r.value === data.deal_status) r.checked = true; });
+    }
+    
     document.getElementById('modalTitle').textContent = data ? 'Edit Prospek' : 'Tambah Prospek';
     
     // Render History Section
@@ -577,6 +616,11 @@ async function saveProspect() {
     fd.append('alamat', document.getElementById('f_alamat').value);
     fd.append('catatan', document.getElementById('f_catatan').value);
     fd.append('status', document.getElementById('f_status').value);
+    
+    let dealStat = '';
+    document.getElementsByName('f_deal_status').forEach(r => { if(r.checked) dealStat = r.value; });
+    fd.append('deal_status', dealStat);
+
     const res = await fetch('', { method:'POST', body:fd });
     const data = await res.json();
     if(data.ok) { closeModal(); showToast('Data berhasil disimpan!'); setTimeout(() => location.reload(), 800); }
