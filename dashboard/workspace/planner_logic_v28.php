@@ -102,8 +102,9 @@ if($mode == 'month') {
                 $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
                 $safeTime = $ev['time_start'];
                 
+                $evId = isset($ev['id']) ? intval($ev['id']) : 0;
                 // CLICK EVENT CHIP
-                $eventHtml .= "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail('$safeTitle', '$currentDate', '$safeTime', '$safeDesc', '$color')\">$title</div>";
+                $eventHtml .= "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail($evId, '$safeTitle', '$currentDate', '$safeTime', '$safeDesc', '$color')\">$title</div>";
             }
         }
 
@@ -143,7 +144,8 @@ elseif($mode == 'week') {
                 $safeTitle = htmlspecialchars($ev['title'], ENT_QUOTES);
                 $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
                 
-                echo "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color')\" style='margin-bottom:5px; padding:8px;'>
+                $evId2 = isset($ev['id']) ? intval($ev['id']) : 0;
+                echo "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail($evId2, '$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color')\" style='margin-bottom:5px; padding:8px;'>
                         <div style='font-size:0.6rem; opacity:0.8;'>{$ev['time_start']}</div>
                         <div>{$ev['title']}</div>
                       </div>";
@@ -170,7 +172,8 @@ elseif($mode == 'day') {
             $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
             $borderCol = ($color == 'blue') ? '#4efdc4' : (($color == 'purple') ? '#a55eea' : '#a1ff5a');
             
-            echo "<div class='cal-hour-row' onclick=\"showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color')\" style='display:flex; gap:15px; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); align-items:center; cursor:pointer;'>
+            $evId3 = isset($ev['id']) ? intval($ev['id']) : 0;
+            echo "<div class='cal-hour-row' onclick=\"showEventDetail($evId3, '$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color')\" style='display:flex; gap:15px; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); align-items:center; cursor:pointer;'>
                     <div class='cal-time' style='width:60px; font-weight:700; color:$borderCol;'>{$ev['time_start']}</div>
                     <div class='cal-task-area' style='flex:1; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border-left:3px solid $borderCol;'>
                         <div style='font-weight:700; color:#fff; font-size:1rem;'>{$ev['title']}</div>

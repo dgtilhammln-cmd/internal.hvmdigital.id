@@ -12,32 +12,81 @@ $u_data = mysqli_fetch_assoc($q_u);
 $full_name = $u_data['name'] ?? $user_logged;
 $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'] : null;
 
-    $cols = [
-        'meeting_type'   => "VARCHAR(100) DEFAULT NULL",
-        'meeting_mode'   => "VARCHAR(20) DEFAULT NULL",
-        'target_type'    => "VARCHAR(20) DEFAULT NULL",
-        'target_name'    => "VARCHAR(255) DEFAULT NULL",
-        'location'       => "TEXT DEFAULT NULL",
-        'target_id'      => "INT DEFAULT NULL",
-        'log_hasil'      => "TEXT DEFAULT NULL",
-        'teams_involved' => "TEXT DEFAULT NULL",
-    ];
-    foreach($cols as $col => $def){
-        $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
-        if(mysqli_num_rows($chk) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `$col` $def");
-    }
-    
-    // Quick Fix to Sync old target_ids
-    mysqli_query($conn, "UPDATE events e JOIN clients c ON e.target_name = c.company_name SET e.target_id = c.client_id WHERE e.target_type = 'Client' AND (e.target_id IS NULL OR e.target_id = 0)");
-    $chk_pros = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
-    if(mysqli_num_rows($chk_pros) > 0) {
-        mysqli_query($conn, "UPDATE events e JOIN prospects p ON e.target_name = p.company_name SET e.target_id = p.id WHERE e.target_type = 'Prospect' AND (e.target_id IS NULL OR e.target_id = 0)");
-    }
+// AUTO-FIX COLUMNS (always run)
+$_cols = [
+    'meeting_type'   => "VARCHAR(100) DEFAULT NULL",
+    'meeting_mode'   => "VARCHAR(20) DEFAULT NULL",
+    'target_type'    => "VARCHAR(20) DEFAULT NULL",
+    'target_name'    => "VARCHAR(255) DEFAULT NULL",
+    'location'       => "TEXT DEFAULT NULL",
+    'target_id'      => "INT DEFAULT NULL",
+    'log_hasil'      => "TEXT DEFAULT NULL",
+    'teams_involved' => "TEXT DEFAULT NULL",
+];
+foreach($_cols as $_col => $_def){
+    $_chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$_col'");
+    if(mysqli_num_rows($_chk) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `$_col` $_def");
+}
+// Sync target_id for old events
+mysqli_query($conn, "UPDATE events e JOIN clients c ON e.target_name = c.company_name SET e.target_id = c.client_id WHERE e.target_type = 'Client' AND (e.target_id IS NULL OR e.target_id = 0)");
+$_chk_pros = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
+if(mysqli_num_rows($_chk_pros) > 0) {
+    mysqli_query($conn, "UPDATE events e JOIN prospects p ON e.target_name = p.company_name SET e.target_id = p.id WHERE e.target_type = 'Prospect' AND (e.target_id IS NULL OR e.target_id = 0)");
+}
 
+// AJAX: GET EVENT
+if(isset($_GET['get_event']) && !empty($_GET['id'])) {
+    header('Content-Type: application/json');
+    $eid = intval($_GET['id']);
+    $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM events WHERE id=$eid"));
+    // Also fetch team list
+    $teams = [];
+    $qt = mysqli_query($conn, "SELECT name FROM teams ORDER BY name ASC");
+    while($t = mysqli_fetch_assoc($qt)) $teams[] = $t['name'];
+    echo json_encode(['event' => $row, 'teams' => $teams]);
+    exit;
+}
+
+// AJAX: UPDATE EVENT
+if(isset($_POST['update_event'])) {
+    header('Content-Type: application/json');
+    $eid       = intval($_POST['event_id']);
+    $meet_type = mysqli_real_escape_string($conn, $_POST['meeting_type'] ?? '');
+    $meet_mode = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
+    $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
+    $target_type = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
+    $event_date  = mysqli_real_escape_string($conn, $_POST['event_date'] ?? '');
+    $time_start  = mysqli_real_escape_string($conn, $_POST['time_start'] ?? '');
+    $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+    $log_hasil   = mysqli_real_escape_string($conn, $_POST['log_hasil'] ?? '');
+    $teams_str   = mysqli_real_escape_string($conn, implode(',', $_POST['teams_involved'] ?? []));
+    $title = $meet_type && $target_name ? "Meeting $meet_type $target_name" : mysqli_real_escape_string($conn, $_POST['title'] ?? '');
+    $detail = "[$meet_mode] $title" . ($location ? " | Lokasi: $location" : '');
+
+    $target_id = 0;
+    if($target_type === 'Client') { $q2=mysqli_query($conn,"SELECT client_id FROM clients WHERE company_name='$target_name' LIMIT 1"); if($r2=mysqli_fetch_assoc($q2)) $target_id=(int)$r2['client_id']; }
+    elseif($target_type === 'Prospect') { $q2=mysqli_query($conn,"SELECT id FROM prospects WHERE company_name='$target_name' LIMIT 1"); if($r2=mysqli_fetch_assoc($q2)) $target_id=(int)$r2['id']; }
+
+    mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id WHERE id=$eid");
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
+// AJAX: DELETE EVENT
+if(isset($_POST['delete_event'])) {
+    header('Content-Type: application/json');
+    $eid = intval($_POST['event_id']);
+    mysqli_query($conn, "DELETE FROM events WHERE id=$eid");
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
+// EVENT SAVE
+if(isset($_POST['save_event'])) {
     $title        = mysqli_real_escape_string($conn, $_POST['event_title'] ?? '');
     $date         = $_POST['event_date'] ?? date('Y-m-d');
     $start        = $_POST['time_start'] ?? '00:00';
-    $color        = mysqli_real_escape_string($conn, $_POST['event_color'] ?? 'blue');
+    $color        = mysqli_real_escape_string($conn, $_POST['event_color'] ?? 'green');
     $meet_type    = mysqli_real_escape_string($conn, $_POST['meeting_type'] ?? '');
     $meet_mode    = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
     $target_type  = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
@@ -55,11 +104,7 @@ $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'
         if($r_pro = mysqli_fetch_assoc($q_pro)) $target_id = (int)$r_pro['id'];
     }
 
-    // Auto-generate label
-    if($meet_type && $target_name) {
-        $title = "Meeting $meet_type $target_name";
-    }
-
+    if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
 
@@ -372,14 +417,15 @@ $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'
         </div>
     </div>
 
-    <!-- MODAL VIEW DETAIL (NEW) -->
+    <!-- MODAL DETAIL / EDIT EVENT -->
     <div class="modal-overlay" id="detailModal">
-        <div class="modal-content" style="background:#0c0c0e; border:1px solid rgba(255,255,255,0.07); width:500px; max-width:95%; padding:30px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative;">
-            <div class="modal-top-actions">
+        <div class="modal-content" style="background:#0c0c0e; border:1px solid rgba(255,255,255,0.1); width:600px; max-width:96%; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.9); position:relative; max-height:92vh; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center;">
+                <h2 id="detailModalTitle" style="color:#fff; font-size:1.1rem; font-weight:800;"><i class="fas fa-calendar-check" style="color:#a1ff5a; margin-right:8px;"></i>Detail Meeting</h2>
                 <button class="btn-close-x" onclick="closeModal('detailModal')">&times;</button>
             </div>
-            <h2 class="modal-title" style="color:#fff; margin-bottom:20px; font-size:1.3rem; font-weight:700;"><i class="fas fa-file-alt" style="margin-right:8px; color:#888;"></i>Project Detail</h2>
-            <div id="detailContent"></div>
+            <div id="detailContent" style="overflow-y:auto; padding:24px; flex:1;"></div>
+            <div id="detailFooter" style="padding:16px 24px; border-top:1px solid rgba(255,255,255,0.07); display:flex; justify-content:flex-end; gap:10px;"></div>
         </div>
     </div>
 
@@ -519,18 +565,157 @@ $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'
 
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-        // FUNGSI TAMPIL DETAIL (POP UP)
-        function showEventDetail(title, date, time, desc, color) {
+        // FUNGSI TAMPIL DETAIL + EDIT (menggunakan event ID)
+        function showEventDetail(eventId, title, date, time, desc, color) {
             const container = document.getElementById('detailContent');
-            const dateObj = new Date(date);
+            const footer    = document.getElementById('detailFooter');
+            const dateObj = new Date(date + 'T00:00:00');
             const dateNice = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            
+
+            // Tampilkan view dulu
             container.innerHTML = `
-                <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">NAMA PROJECT</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600; line-height:1.4;">${title}</div></div>
-                <div class="detail-row" style="margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:15px;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">WAKTU</span><div class="detail-val" style="font-size:1rem; color:#eaeaea; font-weight:600; line-height:1.4;">${dateNice} &bull; ${time || 'Seharian'}</div></div>
-                <div class="detail-row" style="border:none;"><span class="detail-label" style="font-size:0.65rem; color:#777; text-transform:uppercase; letter-spacing:2px; display:block; margin-bottom:6px; font-weight:700;">DETAIL LOG</span><div class="detail-desc" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:12px; color:#aaa; font-size:0.85rem; line-height:1.5;">${desc}</div></div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:5px;">JUDUL MEETING</div>
+                    <div style="font-size:1.05rem;color:#fff;font-weight:700;">${title}</div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:5px;">WAKTU</div>
+                    <div style="font-size:0.9rem;color:#ccc;">${dateNice} &bull; ${time || 'Seharian'}</div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:5px;">DETAIL LOG</div>
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${desc}</div>
+                </div>
+                <div id="extraEventDetail" style="color:#888;font-size:0.8rem;">Memuat detail...</div>
+            `;
+            footer.innerHTML = `
+                <button onclick="deleteEvent(${eventId})" style="background:rgba(255,90,90,0.1);border:1px solid rgba(255,90,90,0.3);color:#ff5a5a;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;"><i class="fas fa-trash"></i> Hapus</button>
+                <button onclick="openEditEvent(${eventId})" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-edit"></i> Edit Meeting</button>
             `;
             document.getElementById('detailModal').classList.add('active');
+
+            // Load extra detail via AJAX if id is valid
+            if(eventId > 0) {
+                fetch(`index.php?get_event=1&id=${eventId}`)
+                    .then(r => r.json())
+                    .then(res => {
+                        const ev = res.event;
+                        if(!ev) return;
+                        let extra = '';
+                        if(ev.meeting_type) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">JENIS & MODE</span><div style="margin-top:4px;">${ev.meeting_type} &bull; <span style="color:#4efdc4;">${ev.meeting_mode}</span></div></div>`;
+                        if(ev.target_name) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">PERUSAHAAN</span><div style="margin-top:4px;color:#fff;font-weight:600;">${ev.target_type}: ${ev.target_name}</div></div>`;
+                        if(ev.location) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">LOKASI</span><div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location)}" target="_blank" style="color:#ff9f43;text-decoration:none;">${ev.location} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></a></div></div>`;
+                        if(ev.teams_involved) { const tms=ev.teams_involved.split(',').filter(t=>t.trim()); if(tms.length>0) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">TIM HADIR</span><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${tms.map(t=>`<span style="font-size:0.72rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:2px 8px;border-radius:20px;">${t.trim()}</span>`).join('')}</div></div>`; }
+                        if(ev.log_hasil) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">LOG HASIL</span><div style="margin-top:4px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:10px;border-radius:8px;color:#ccc;font-size:0.83rem;white-space:pre-wrap;">${ev.log_hasil}</div></div>`;
+                        document.getElementById('extraEventDetail').innerHTML = extra || '';
+                    }).catch(()=>{ document.getElementById('extraEventDetail').innerHTML = ''; });
+            } else {
+                document.getElementById('extraEventDetail').innerHTML = '';
+            }
+        }
+
+        function deleteEvent(id) {
+            if(!confirm('Yakin hapus meeting ini?')) return;
+            const fd = new FormData();
+            fd.append('delete_event', 1);
+            fd.append('event_id', id);
+            fetch('index.php', {method:'POST', body:fd})
+                .then(r=>r.json())
+                .then(()=>{ closeModal('detailModal'); refreshPlanner(); })
+                .catch(()=>alert('Gagal hapus.'));
+        }
+
+        async function openEditEvent(id) {
+            const res = await fetch(`index.php?get_event=1&id=${id}`).then(r=>r.json());
+            const ev = res.event;
+            const teams = res.teams || [];
+            if(!ev) return;
+
+            document.getElementById('detailModalTitle').innerHTML = '<i class="fas fa-edit" style="color:#a1ff5a;margin-right:8px;"></i>Edit Meeting';
+            document.getElementById('detailContent').innerHTML = `
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Jenis Meeting</label>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;" id="editMeetTypes">
+                        ${['Prospek','Maintenance','After Sales','Internal','Presentasi'].map(mt=>`<label style="cursor:pointer;"><input type="radio" name="em_meet_type" value="${mt}" ${ev.meeting_type===mt?'checked':''} style="display:none;"><span class="meet-type-chip" style="${ev.meeting_type===mt?'background:rgba(161,255,90,0.2);border-color:rgba(161,255,90,0.6);color:#a1ff5a;':''}">${mt}</span></label>`).join('')}
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Tanggal</label>
+                        <input type="date" id="em_date" value="${ev.event_date}" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Jam</label>
+                        <input type="time" id="em_time" value="${ev.time_start}" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Mode</label>
+                    <div style="display:flex;gap:8px;">
+                        <label style="cursor:pointer;"><input type="radio" name="em_mode" value="Online" ${ev.meeting_mode!=='Offline'?'checked':''} style="display:none;"><span class="meet-mode-chip ${ev.meeting_mode!=='Offline'?'active':''}"><i class="fas fa-video"></i> Online</span></label>
+                        <label style="cursor:pointer;"><input type="radio" name="em_mode" value="Offline" ${ev.meeting_mode==='Offline'?'checked':''} style="display:none;"><span class="meet-mode-chip ${ev.meeting_mode==='Offline'?'active':''}"><i class="fas fa-map-marker-alt"></i> Offline</span></label>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Perusahaan</label>
+                    <input type="text" id="em_target_name" value="${ev.target_name||''}" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                    <input type="hidden" id="em_target_type" value="${ev.target_type||'Client'}">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Lokasi / Link Meeting</label>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="em_location" value="${ev.location||''}" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                        <button type="button" onclick="if(document.getElementById('em_location').value){window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(document.getElementById('em_location').value),'_blank');}" style="width:36px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#4efdc4;cursor:pointer;"><i class="fas fa-map-marked-alt"></i></button>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;"><i class="fas fa-users" style="margin-right:4px;"></i>Tim yang Hadir</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        ${teams.map(tm=>{ const checked=(ev.teams_involved||'').split(',').map(s=>s.trim()).includes(tm); return `<label style="cursor:pointer;display:flex;align-items:center;gap:5px;background:${checked?'rgba(161,255,90,0.1)':'rgba(255,255,255,0.04)'};border:1px solid ${checked?'rgba(161,255,90,0.4)':'rgba(255,255,255,0.08)'};border-radius:8px;padding:5px 10px;transition:0.2s;" class="team-check-label"><input type="checkbox" name="em_teams[]" value="${tm}" ${checked?'checked':''} style="display:none;" class="team-cb" onchange="updateTeamLabel(this)"><span style="font-size:0.8rem;color:#ccc;">${tm}</span></label>`; }).join('')}
+                    </div>
+                </div>
+                <div style="margin-bottom:6px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Log Hasil Meeting</label>
+                    <textarea id="em_log" rows="3" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:10px;font-family:inherit;resize:none;">${ev.log_hasil||''}</textarea>
+                </div>
+            `;
+            document.getElementById('detailFooter').innerHTML = `
+                <button onclick="showEventDetail(${id},'${ev.title}','${ev.event_date}','${ev.time_start}','${ev.detail||''}','${ev.color}')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;">← Kembali</button>
+                <button onclick="saveEditEvent(${id})" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-save"></i> Simpan</button>
+            `;
+            // Activate radio chips
+            document.querySelectorAll('#detailContent input[name=em_meet_type]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#editMeetTypes .meet-type-chip').forEach(s=>{s.style.background='';s.style.borderColor='';s.style.color='';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
+            document.querySelectorAll('#detailContent input[name=em_mode]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#detailContent .meet-mode-chip').forEach(s=>s.classList.remove('active')); this.nextElementSibling.classList.add('active'); }));
+        }
+
+        function saveEditEvent(id) {
+            const meet_type = document.querySelector('#detailContent input[name=em_meet_type]:checked')?.value || '';
+            const meet_mode = document.querySelector('#detailContent input[name=em_mode]:checked')?.value || 'Online';
+            const target_name = document.getElementById('em_target_name').value;
+            const target_type = document.getElementById('em_target_type').value;
+            const event_date  = document.getElementById('em_date').value;
+            const time_start  = document.getElementById('em_time').value;
+            const location    = document.getElementById('em_location').value;
+            const log_hasil   = document.getElementById('em_log').value;
+            const teams = Array.from(document.querySelectorAll('#detailContent input[name="em_teams[]"]:checked')).map(c=>c.value);
+
+            const fd = new FormData();
+            fd.append('update_event', 1);
+            fd.append('event_id', id);
+            fd.append('meeting_type', meet_type);
+            fd.append('meeting_mode', meet_mode);
+            fd.append('target_name', target_name);
+            fd.append('target_type', target_type);
+            fd.append('event_date', event_date);
+            fd.append('time_start', time_start);
+            fd.append('location', location);
+            fd.append('log_hasil', log_hasil);
+            teams.forEach(t => fd.append('teams_involved[]', t));
+
+            fetch('index.php', {method:'POST', body:fd})
+                .then(r=>r.json())
+                .then(res=>{ if(res.ok){ closeModal('detailModal'); refreshPlanner(); } })
+                .catch(()=>alert('Gagal simpan.'));
         }
 
         // 2. NEBULA AI & KEEP (Logika tetap sama)

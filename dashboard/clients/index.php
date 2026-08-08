@@ -140,7 +140,8 @@ if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
     if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
     $chk_ti = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'teams_involved'");
     if(mysqli_num_rows($chk_ti) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `teams_involved` TEXT DEFAULT NULL");
-    $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil, teams_involved FROM events WHERE target_id='$cli_id_esc' AND target_type='Client' ORDER BY event_date DESC");
+    $company_esc = mysqli_real_escape_string($conn, $client['company_name'] ?? '');
+    $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil, teams_involved FROM events WHERE (target_id='$cli_id_esc' AND target_type='Client') OR (target_type='Client' AND target_name='$company_esc') ORDER BY event_date DESC");
     if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
 
     // Invoice history (status Lunas)
