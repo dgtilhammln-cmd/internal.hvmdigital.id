@@ -627,21 +627,40 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
             </div>
         </div>
 
-        <div class="action-container">
-            <div class="tab-group">
-                <button class="tab-btn <?php echo ($view==='income')?'active':''; ?>" onclick="window.location='?view=income&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-up"></i> Income</button>
-                <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-down"></i> Expense</button>
-
-            </div>
-            <form method="GET" class="filter-group" id="filterForm">
-                <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
-                <div class="search-wrap">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" name="q" class="search-input" placeholder="Cari client, detail, ID..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
+        <div class="action-container" style="display:flex; flex-direction:column; gap:15px; background:var(--card); padding:15px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div class="tab-group" style="margin:0;">
+                    <button class="tab-btn <?php echo ($view==='income')?'active':''; ?>" onclick="window.location='?view=income&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-up"></i> Income</button>
+                    <button class="tab-btn expense <?php echo ($view==='expense')?'active':''; ?>" onclick="window.location='?view=expense&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>'"><i class="fas fa-arrow-down"></i> Expense</button>
                 </div>
-                <input type="date" name="start" class="date-select" value="<?php echo $date_start; ?>" onchange="this.form.submit()">
-                <span class="date-sep">&#8594;</span>
-                <input type="date" name="end" class="date-select" value="<?php echo $date_end; ?>" onchange="this.form.submit()">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn-grad blue" onclick="openModal('downloadModal')"><i class="fas fa-download"></i> Export</button>
+                    <?php if ($view==='income'): ?><button class="btn-grad" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> Add Income</button>
+                    <?php elseif ($view==='expense'): ?><button class="btn-grad red" onclick="openModal('expenseModal')"><i class="fas fa-minus"></i> Add Expense</button><?php endif; ?>
+                </div>
+            </div>
+            
+            <form method="GET" class="filter-group" id="filterForm" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; width:100%;">
+                <input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>">
+                
+                <div class="search-wrap" style="flex:1; min-width:200px;">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" name="q" class="search-input" placeholder="Cari client, detail, ID..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off" style="width:100%;">
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:5px; background:rgba(0,0,0,0.3); padding:4px; border-radius:8px; border:1px solid var(--border);">
+                    <input type="date" name="start" class="date-select" style="border:none; background:transparent;" value="<?php echo $date_start; ?>" onchange="this.form.submit()">
+                    <span class="date-sep" style="color:#666;">&#8594;</span>
+                    <input type="date" name="end" class="date-select" style="border:none; background:transparent;" value="<?php echo $date_end; ?>" onchange="this.form.submit()">
+                </div>
+                
+                <div style="display:flex; gap:4px; border-right:1px solid rgba(255,255,255,0.1); padding-right:10px; margin-right:5px;">
+                    <button type="button" class="btn-icon" onclick="setDateRange('today')" title="Hari Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Hari Ini</button>
+                    <button type="button" class="btn-icon" onclick="setDateRange('week')" title="7 Hari" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">7 Hari</button>
+                    <button type="button" class="btn-icon" onclick="setDateRange('month')" title="Bulan Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Bulan Ini</button>
+                    <button type="button" class="btn-icon" onclick="setDateRange('year')" title="Tahun Ini" style="background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#ccc;">Tahun Ini</button>
+                </div>
+
                 <?php if ($view === 'income'): ?>
                 <select name="ptype" class="date-select" style="min-width:140px;" onchange="this.form.submit()">
                     <option value="">Semua Tipe</option>
@@ -663,26 +682,16 @@ if ($qcl) while ($c=mysqli_fetch_assoc($qcl)) $clients_data[] = $c;
                     <option value="lainnya" <?php if($filter_cat==='lainnya') echo 'selected'; ?>>Lainnya</option>
                 </select>
                 <?php endif; ?>
-                <input type="number" name="amin" class="date-select" style="min-width:110px;" placeholder="Min Rp" value="<?php echo $filter_min; ?>" min="0">
-                <input type="number" name="amax" class="date-select" style="min-width:110px;" placeholder="Max Rp" value="<?php echo $filter_max; ?>" min="0">
-                <button type="submit" class="btn-icon" title="Filter" style="background:rgba(255,255,255,0.05);padding:8px 14px;border-radius:8px;"><i class="fas fa-filter"></i></button>
+                
+                <input type="number" name="amin" class="date-select" style="width:110px;" placeholder="Min Rp" value="<?php echo $filter_min; ?>" min="0">
+                <input type="number" name="amax" class="date-select" style="width:110px;" placeholder="Max Rp" value="<?php echo $filter_max; ?>" min="0">
+                
+                <button type="submit" class="btn-icon" title="Filter" style="background:rgba(255,255,255,0.1);padding:8px 14px;border-radius:8px;color:#fff;"><i class="fas fa-filter"></i></button>
                 <?php $has_filter = ($search || $filter_ptype || $filter_cat || $filter_min!=='' || $filter_max!==''); ?>
                 <?php if ($has_filter): ?>
-                <a href="?view=<?php echo $view; ?>&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>" class="btn-icon" style="background:rgba(255,90,90,0.1);padding:8px 12px;border-radius:8px;color:#ff5a5a;text-decoration:none;" title="Reset Filter"><i class="fas fa-times"></i></a>
+                <a href="?view=<?php echo $view; ?>&start=<?php echo $date_start; ?>&end=<?php echo $date_end; ?>" class="btn-icon" style="background:rgba(255,90,90,0.15);padding:8px 12px;border-radius:8px;color:#ff5a5a;text-decoration:none;" title="Reset Filter"><i class="fas fa-times"></i></a>
                 <?php endif; ?>
             </form>
-            <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-                <!-- Quick date shortcuts -->
-                <div style="display:flex;gap:4px;">
-                    <button class="btn-icon" onclick="setDateRange('today')" title="Hari Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Hari Ini</button>
-                    <button class="btn-icon" onclick="setDateRange('week')" title="7 Hari" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">7 Hari</button>
-                    <button class="btn-icon" onclick="setDateRange('month')" title="Bulan Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Bulan Ini</button>
-                    <button class="btn-icon" onclick="setDateRange('year')" title="Tahun Ini" style="background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:6px;font-size:.7rem;color:#888;">Tahun Ini</button>
-                </div>
-                <button class="btn-grad blue" onclick="openModal('downloadModal')"><i class="fas fa-download"></i> Export</button>
-                <?php if ($view==='income'): ?><button class="btn-grad" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> Add Income</button>
-                <?php elseif ($view==='expense'): ?><button class="btn-grad red" onclick="openModal('expenseModal')"><i class="fas fa-minus"></i> Add Expense</button><?php endif; ?>
-            </div>
         </div>
 
         <div class="table-card">

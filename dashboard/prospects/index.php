@@ -309,7 +309,7 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <?php if($p['link_deck']): ?>
                             <a href="<?= htmlspecialchars($p['link_deck']) ?>" target="_blank" class="act-btn" title="Deck"><i class="fas fa-file-powerpoint"></i></a>
                             <?php endif; ?>
-                            <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Edit"><i class="fas fa-pen"></i></button>
+                            <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Detail & Riwayat" style="background:rgba(161,255,90,0.1); color:var(--green);"><i class="fas fa-eye"></i></button>
                             <button class="act-btn del" onclick="deleteProspect(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
