@@ -61,19 +61,20 @@ if($action === 'chat') {
                 $first = false;
             }
             $csv .= implode("|", array_map(function($val) {
-                return str_replace(["\n","\r","|"], [" "," ","/"], (string)$val);
+                $s = str_replace(["\n","\r","|"], [" "," ","/"], (string)$val);
+                return mb_strlen($s) > 100 ? mb_substr($s, 0, 97) . '...' : $s;
             }, array_values($r))) . "\n";
         }
         return $csv;
     }
 
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM events ORDER BY event_date DESC LIMIT 50", "DATA MEETING / EVENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM teams LIMIT 50", "DATA TEAM");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM clients LIMIT 100", "DATA CLIENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM prospects ORDER BY id DESC LIMIT 100", "DATA PROSPECTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM invoices ORDER BY inv_date DESC LIMIT 50", "DATA INVOICE");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM payments ORDER BY payment_date DESC LIMIT 50", "PEMASUKAN / PAYMENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM spendings ORDER BY id DESC LIMIT 50", "PENGELUARAN / SPENDINGS");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM events ORDER BY event_date DESC LIMIT 30", "DATA MEETING / EVENTS");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM teams LIMIT 30", "DATA TEAM");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM clients LIMIT 50", "DATA CLIENTS");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM prospects ORDER BY id DESC LIMIT 50", "DATA PROSPECTS");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM invoices ORDER BY inv_date DESC LIMIT 30", "DATA INVOICE");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM payments ORDER BY payment_date DESC LIMIT 30", "PEMASUKAN / PAYMENTS");
+    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM spendings ORDER BY id DESC LIMIT 30", "PENGELUARAN / SPENDINGS");
 
     $context_parts = array_filter($context_parts);
 
