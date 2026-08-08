@@ -123,7 +123,7 @@ if($action === 'chat') {
             while($r = mysqli_fetch_assoc($q_inv)) {
                 $invList[] = sprintf("- INV#%s | Klien: %s | Layanan: %s | Tanggal: %s | Total: Rp%s | Status: %s",
                     $r['inv_no'], $r['client_name'], $r['service_label'], $r['inv_date'],
-                    number_format($r['total'],0,',','.'), $r['status']
+                    number_format((float)$r['total'],0,',','.'), $r['status']
                 );
             }
             $context_parts[] = "=== DATA INVOICE (50 terbaru) ===\n" . implode("\n", $invList);
