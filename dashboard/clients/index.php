@@ -415,7 +415,13 @@ if($allowed){
     --text-white:  #ffffff;
     --text-muted:  #a0a0a0;
 }
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
+/* Base */
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
 body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; overflow-x:hidden; }
 

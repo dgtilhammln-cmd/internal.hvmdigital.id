@@ -194,15 +194,29 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 .empty-state { text-align:center; padding:60px; color:var(--muted); }
 .empty-state i { font-size:3rem; margin-bottom:12px; opacity:0.3; display:block; }
 
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
 /* Modal */
 .modal-overlay { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:20px; }
 .modal-overlay.open { display:flex; }
 .modal-box { background:#0d0d0d; border:1px solid rgba(255,255,255,0.1); border-radius:20px; width:100%; max-width:620px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 40px 80px rgba(0,0,0,0.7); }
-.modal-head { display:flex; justify-content:space-between; align-items:center; padding:20px 24px; border-bottom:1px solid var(--border); }
-.modal-head h3 { font-size:1rem; font-weight:700; }
-.btn-close { background:rgba(255,255,255,0.06); border:none; color:#888; border-radius:8px; width:32px; height:32px; cursor:pointer; font-size:1.1rem; transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+.modal-head { display:flex; justify-content:space-between; align-items:center; padding:20px 24px 0 24px; }
+.modal-head h3 { font-size:1.1rem; font-weight:700; margin-bottom:15px; }
+.btn-close { background:rgba(255,255,255,0.06); border:none; color:#888; border-radius:8px; width:32px; height:32px; cursor:pointer; font-size:1.1rem; transition:all 0.2s; display:flex; align-items:center; justify-content:center; margin-bottom:15px; }
 .btn-close:hover { background:rgba(255,255,255,0.12); color:#fff; }
-.modal-body { padding:24px; overflow-y:auto; }
+.modal-body { overflow-y:auto; padding:0; flex:1; }
+
+.m-tabs { display:flex; gap:20px; border-bottom:1px solid var(--border); padding:0 24px; margin-bottom:20px; }
+.m-tab { background:none; border:none; color:var(--muted); padding:10px 0; font-size:0.85rem; font-weight:700; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+.m-tab:hover { color:#fff; }
+.m-tab.active { color:var(--green); border-bottom-color:var(--green); }
+
+.m-tab-content { display:none; padding:0 24px 20px; }
+.m-tab-content.active { display:block; }
 
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .form-grp { margin-bottom:14px; }
@@ -335,60 +349,73 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
             <button class="btn-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <input type="hidden" id="f_id">
-            <div class="form-row">
-                <div class="form-grp" style="grid-column:span 2;">
-                    <label>Nama Perusahaan *</label>
-                    <input type="text" id="f_company" placeholder="PT. Contoh Maju Bersama">
+            <div class="m-tabs" id="modalTabsGroup">
+                <button class="m-tab active" onclick="switchModalTab('data', this)"><i class="fas fa-building" style="margin-right:6px;"></i>Data Prospek</button>
+                <button class="m-tab" onclick="switchModalTab('meetings', this)" id="tab-btn-meetings" style="display:none;"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>Riwayat Meeting</button>
+                <button class="m-tab" onclick="switchModalTab('invoices', this)" id="tab-btn-invoices" style="display:none;"><i class="fas fa-file-invoice" style="margin-right:6px;"></i>Invoice (Lunas)</button>
+            </div>
+            
+            <!-- TAB 1: DATA -->
+            <div id="mTab-data" class="m-tab-content active">
+                <input type="hidden" id="f_id">
+                <div class="form-row">
+                    <div class="form-grp" style="grid-column:span 2;">
+                        <label>Nama Perusahaan *</label>
+                        <input type="text" id="f_company" placeholder="PT. Contoh Maju Bersama">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-grp">
+                        <label>PIC (Person In Charge)</label>
+                        <input type="text" id="f_pic" placeholder="Nama kontak">
+                    </div>
+                    <div class="form-grp">
+                        <label>Jabatan</label>
+                        <input type="text" id="f_jabatan" placeholder="Marketing Manager">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-grp">
+                        <label>No. WhatsApp</label>
+                        <input type="text" id="f_wa" placeholder="08xxxxxxxxxx">
+                    </div>
+                    <div class="form-grp">
+                        <label>Status Pipeline</label>
+                        <select id="f_status">
+                            <option value="Cold"><i class="fas fa-snowflake"></i> Cold</option>
+                            <option value="Warm"><i class="fas fa-sun"></i> Warm</option>
+                            <option value="Hot"><i class="fas fa-fire"></i> Hot</option>
+                            <option value="Closed"><i class="fas fa-check-circle"></i> Closed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-grp">
+                        <label>Domain / Website</label>
+                        <input type="text" id="f_domain" placeholder="contoh.com">
+                    </div>
+                    <div class="form-grp">
+                        <label>Link Deck / Proposal</label>
+                        <input type="text" id="f_deck" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-grp">
+                    <label>Alamat</label>
+                    <input type="text" id="f_alamat" placeholder="Jl. Contoh No. 1, Kota">
+                </div>
+                <div class="form-grp">
+                    <label>Catatan</label>
+                    <textarea id="f_catatan" rows="3" placeholder="Catatan meeting, kebutuhan, dll..."></textarea>
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-grp">
-                    <label>PIC (Person In Charge)</label>
-                    <input type="text" id="f_pic" placeholder="Nama kontak">
-                </div>
-                <div class="form-grp">
-                    <label>Jabatan</label>
-                    <input type="text" id="f_jabatan" placeholder="Marketing Manager">
-                </div>
+
+            <!-- TAB 2: MEETINGS -->
+            <div id="mTab-meetings" class="m-tab-content">
+                <div id="pMeetingsList"></div>
             </div>
-            <div class="form-row">
-                <div class="form-grp">
-                    <label>No. WhatsApp</label>
-                    <input type="text" id="f_wa" placeholder="08xxxxxxxxxx">
-                </div>
-                <div class="form-grp">
-                    <label>Status Pipeline</label>
-                    <select id="f_status">
-                        <option value="Cold"><i class="fas fa-snowflake"></i> Cold</option>
-                        <option value="Warm"><i class="fas fa-sun"></i> Warm</option>
-                        <option value="Hot"><i class="fas fa-fire"></i> Hot</option>
-                        <option value="Closed"><i class="fas fa-check-circle"></i> Closed</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-grp">
-                    <label>Domain / Website</label>
-                    <input type="text" id="f_domain" placeholder="contoh.com">
-                </div>
-                <div class="form-grp">
-                    <label>Link Deck / Proposal</label>
-                    <input type="text" id="f_deck" placeholder="https://...">
-                </div>
-            </div>
-            <div class="form-grp">
-                <label>Alamat</label>
-                <input type="text" id="f_alamat" placeholder="Jl. Contoh No. 1, Kota">
-            </div>
-            <div class="form-grp">
-                <label>Catatan</label>
-                <textarea id="f_catatan" rows="3" placeholder="Catatan meeting, kebutuhan, dll..."></textarea>
-            </div>
-            <div id="prospectHistorySection" style="display:none; margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
-                <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:12px;"><i class="fas fa-calendar-check" style="color:var(--green); margin-right:6px;"></i> Riwayat Meeting</div>
-                <div id="pMeetingsList" style="margin-bottom:20px;"></div>
-                <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:12px;"><i class="fas fa-file-invoice" style="color:var(--orange); margin-right:6px;"></i> Invoice Dikirim (LUNAS)</div>
+
+            <!-- TAB 3: INVOICES -->
+            <div id="mTab-invoices" class="m-tab-content">
                 <div id="pInvoicesList"></div>
             </div>
         </div>
@@ -435,9 +462,13 @@ function openModal(data = null) {
     // Render History Section
     const histSec = document.getElementById('prospectHistorySection');
     if(data && data.id) {
-        histSec.style.display = 'block';
-        
+        // reset tabs
+        switchModalTab('data', document.querySelector('.m-tab'));
+    
         // Meetings
+        document.getElementById('tab-btn-meetings').style.display = 'block';
+        document.getElementById('tab-btn-invoices').style.display = 'block';
+
         const pMeet = document.getElementById('pMeetingsList');
         pMeet.innerHTML = '';
         if(data.meetings && data.meetings.length>0) {
@@ -464,7 +495,7 @@ function openModal(data = null) {
                 `;
             });
         } else {
-            pMeet.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;">Belum ada riwayat meeting.</div>';
+            pMeet.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;padding:20px;text-align:center;">Belum ada riwayat meeting.</div>';
         }
 
         // Invoices
@@ -485,14 +516,23 @@ function openModal(data = null) {
                 `;
             });
         } else {
-            pInv.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;">Belum ada invoice.</div>';
+            pInv.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;padding:20px;text-align:center;">Belum ada invoice.</div>';
         }
     } else {
-        histSec.style.display = 'none';
+        document.getElementById('tab-btn-meetings').style.display = 'none';
+        document.getElementById('tab-btn-invoices').style.display = 'none';
+        switchModalTab('data', document.querySelector('.m-tab'));
     }
 
     document.getElementById('prospectModal').classList.add('open');
     setTimeout(() => document.getElementById('f_company').focus(), 100);
+}
+
+function switchModalTab(tabId, btnEl) {
+    document.querySelectorAll('.m-tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.m-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('mTab-' + tabId).classList.add('active');
+    btnEl.classList.add('active');
 }
 
 function closeModal() { document.getElementById('prospectModal').classList.remove('open'); }

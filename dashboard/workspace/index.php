@@ -26,6 +26,13 @@ if(isset($_POST['save_event'])){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
         if(mysqli_num_rows($chk) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `$col` $def");
     }
+    
+    // Quick Fix to Sync old target_ids
+    mysqli_query($conn, "UPDATE events e JOIN clients c ON e.target_name = c.company_name SET e.target_id = c.client_id WHERE e.target_type = 'Client' AND (e.target_id IS NULL OR e.target_id = 0)");
+    $chk_pros = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
+    if(mysqli_num_rows($chk_pros) > 0) {
+        mysqli_query($conn, "UPDATE events e JOIN prospects p ON e.target_name = p.company_name SET e.target_id = p.id WHERE e.target_type = 'Prospect' AND (e.target_id IS NULL OR e.target_id = 0)");
+    }
 
     $title       = mysqli_real_escape_string($conn, $_POST['event_title'] ?? '');
     $date        = $_POST['event_date'] ?? date('Y-m-d');
@@ -37,6 +44,15 @@ if(isset($_POST['save_event'])){
     $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
 
+    $target_id = 0;
+    if($target_type === 'Client') {
+        $q_cli = mysqli_query($conn, "SELECT client_id FROM clients WHERE company_name='$target_name' LIMIT 1");
+        if($r_cli = mysqli_fetch_assoc($q_cli)) $target_id = (int)$r_cli['client_id'];
+    } elseif($target_type === 'Prospect') {
+        $q_pro = mysqli_query($conn, "SELECT id FROM prospects WHERE company_name='$target_name' LIMIT 1");
+        if($r_pro = mysqli_fetch_assoc($q_pro)) $target_id = (int)$r_pro['id'];
+    }
+
     // Auto-generate label: e.g. "Meeting Prospek PT XX"
     if($meet_type && $target_name) {
         $title = "Meeting $meet_type $target_name";
@@ -45,7 +61,7 @@ if(isset($_POST['save_event'])){
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
 
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location')");
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location, target_id) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location', $target_id)");
     header("Location: index.php"); exit;
 }
 ?>
