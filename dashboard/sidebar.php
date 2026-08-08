@@ -478,7 +478,7 @@ async function sendAIMessage(msg) {
         } catch(pe) {
             hideTyping();
             console.error("Raw response:", raw);
-            addMessage('ai', 'Error Parse: ' + escHtml(raw.substring(0,100)), true);
+            addMessage('ai', 'Error Parse: ' + escHtml(raw.substring(0,300)), true);
         }
     } catch(e) {
         hideTyping();

@@ -6,6 +6,9 @@ if(!isset($_SESSION['admin']) || ($_SESSION['role'] ?? '') !== 'super_admin'){
 }
 
 header('Content-Type: application/json');
+set_time_limit(120); // Prevent PHP from timing out before cURL
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 $action = $_POST['action'] ?? '';
 
@@ -190,9 +193,9 @@ Gunakan data di atas untuk menjawab pertanyaan user dengan akurat. Jika data tid
     $result = callAI($provider, $api_key, $model, $messages, $system_prompt);
 
     if(isset($result['error'])) {
-        echo json_encode(['error'=>$result['error']]);
+        echo json_encode(['error'=>$result['error']], JSON_INVALID_UTF8_SUBSTITUTE);
     } else {
-        echo json_encode(['reply'=>$result['content'], 'model'=>$model, 'name'=>$ai_name]);
+        echo json_encode(['reply'=>$result['content'], 'model'=>$model, 'name'=>$ai_name], JSON_INVALID_UTF8_SUBSTITUTE);
     }
     exit;
 }
@@ -218,6 +221,7 @@ function callAI($provider, $api_key, $model, $messages, $system_prompt) {
             'Content-Type: application/json'
         ]);
         $d = json_decode($resp, true);
+        if(!$d) return ['error' => 'Invalid API response dari Groq/OpenAI: ' . substr($resp, 0, 150)];
         if(isset($d['error'])) return ['error' => $d['error']['message'] ?? ($provider === 'groq' ? 'Groq error' : 'OpenAI error')];
         return ['content' => $d['choices'][0]['message']['content'] ?? ''];
 
