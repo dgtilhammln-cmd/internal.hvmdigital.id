@@ -52,16 +52,12 @@ if($action === 'chat') {
     // Meetings / Events
     $chk = mysqli_query($conn, "SHOW TABLES LIKE 'events'");
     if($chk && mysqli_num_rows($chk) > 0) {
-        $q_ev = mysqli_query($conn, "SELECT title, event_date, time_start, meeting_type, meeting_mode, location, target_name, target_type, teams_involved, log_hasil, status FROM events ORDER BY event_date DESC LIMIT 50");
+        $q_ev = mysqli_query($conn, "SELECT * FROM events ORDER BY event_date DESC LIMIT 50");
         if($q_ev && mysqli_num_rows($q_ev) > 0) {
             $evList = [];
             while($r = mysqli_fetch_assoc($q_ev)) {
-                $evList[] = sprintf("- [%s] %s | %s %s | Mode: %s | Lokasi: %s | Target: %s (%s) | Tim: %s | Status: %s | Log: %s",
-                    $r['event_date'], $r['title'], $r['time_start']??'', $r['meeting_type']??'',
-                    $r['meeting_mode']??'-', $r['location']??'-',
-                    $r['target_name']??'-', $r['target_type']??'-',
-                    $r['teams_involved']??'-', $r['status']??'-',
-                    $r['log_hasil']??'Belum ada log'
+                $evList[] = sprintf("- [%s] %s | %s | %s",
+                    $r['event_date']??'-', $r['title']??'-', $r['time_start']??'', $r['detail']??($r['log_hasil']??'')
                 );
             }
             $context_parts[] = "=== DATA MEETING / EVENTS (50 terbaru) ===\n" . implode("\n", $evList);
@@ -71,13 +67,14 @@ if($action === 'chat') {
     // Teams
     $chk2 = mysqli_query($conn, "SHOW TABLES LIKE 'teams'");
     if($chk2 && mysqli_num_rows($chk2) > 0) {
-        $q_tm = mysqli_query($conn, "SELECT name, position, role, whatsapp, email, domicile FROM teams ORDER BY name ASC");
+        $q_tm = mysqli_query($conn, "SELECT * FROM teams LIMIT 50");
         if($q_tm && mysqli_num_rows($q_tm) > 0) {
             $tmList = [];
             while($r = mysqli_fetch_assoc($q_tm)) {
-                $tmList[] = sprintf("- %s | Posisi: %s | Role: %s | WA: %s | Email: %s | Domisili: %s",
-                    $r['name'], $r['position'], $r['role'], $r['whatsapp'], $r['email'], $r['domicile']??'-'
-                );
+                $name = $r['name'] ?? $r['nama'] ?? '-';
+                $pos = $r['position'] ?? $r['posisi'] ?? '-';
+                $role = $r['role'] ?? '-';
+                $tmList[] = sprintf("- %s | Posisi: %s | Role: %s", $name, $pos, $role);
             }
             $context_parts[] = "=== DATA TEAM ===\n" . implode("\n", $tmList);
         }
@@ -86,14 +83,14 @@ if($action === 'chat') {
     // Clients
     $chk3 = mysqli_query($conn, "SHOW TABLES LIKE 'clients'");
     if($chk3 && mysqli_num_rows($chk3) > 0) {
-        $q_cl = mysqli_query($conn, "SELECT company_name, pic, pic_position, whatsapp, status, city, domain FROM clients ORDER BY company_name ASC LIMIT 100");
+        $q_cl = mysqli_query($conn, "SELECT * FROM clients LIMIT 100");
         if($q_cl && mysqli_num_rows($q_cl) > 0) {
             $clList = [];
             while($r = mysqli_fetch_assoc($q_cl)) {
-                $clList[] = sprintf("- %s | PIC: %s (%s) | WA: %s | Status: %s | Kota: %s | Domain: %s",
-                    $r['company_name'], $r['pic']??'-', $r['pic_position']??'-',
-                    $r['whatsapp']??'-', $r['status']??'-', $r['city']??'-', $r['domain']??'-'
-                );
+                $cname = $r['company_name'] ?? $r['name'] ?? '-';
+                $cpic = $r['pic'] ?? '-';
+                $cstat = $r['status'] ?? '-';
+                $clList[] = sprintf("- %s | PIC: %s | Status: %s", $cname, $cpic, $cstat);
             }
             $context_parts[] = "=== DATA CLIENTS (100 terbaru) ===\n" . implode("\n", $clList);
         }
@@ -102,16 +99,14 @@ if($action === 'chat') {
     // Prospects
     $chk4 = mysqli_query($conn, "SHOW TABLES LIKE 'prospects'");
     if($chk4 && mysqli_num_rows($chk4) > 0) {
-        $cols = mysqli_query($conn, "SHOW COLUMNS FROM prospects LIKE 'deal_status'");
-        $deal_col = ($cols && mysqli_num_rows($cols) > 0) ? ', deal_status' : '';
-        $q_pr = mysqli_query($conn, "SELECT company_name, pic, status, city$deal_col FROM prospects ORDER BY id DESC LIMIT 100");
+        $q_pr = mysqli_query($conn, "SELECT * FROM prospects ORDER BY id DESC LIMIT 100");
         if($q_pr && mysqli_num_rows($q_pr) > 0) {
             $prList = [];
             while($r = mysqli_fetch_assoc($q_pr)) {
-                $deal = isset($r['deal_status']) ? ' | Deal Status: '.($r['deal_status']?:'Belum Ditentukan') : '';
-                $prList[] = sprintf("- %s | PIC: %s | Pipeline: %s | Kota: %s%s",
-                    $r['company_name'], $r['pic']??'-', $r['status']??'-', $r['city']??'-', $deal
-                );
+                $pname = $r['company_name'] ?? $r['name'] ?? '-';
+                $pstat = $r['status'] ?? '-';
+                $deal = isset($r['deal_status']) ? ' | Deal: '.$r['deal_status'] : '';
+                $prList[] = sprintf("- %s | Status: %s%s", $pname, $pstat, $deal);
             }
             $context_parts[] = "=== DATA PROSPECTS (100 terbaru) ===\n" . implode("\n", $prList);
         }
@@ -120,13 +115,13 @@ if($action === 'chat') {
     // Invoices
     $chk5 = mysqli_query($conn, "SHOW TABLES LIKE 'invoices'");
     if($chk5 && mysqli_num_rows($chk5) > 0) {
-        $q_inv = mysqli_query($conn, "SELECT inv_no, client_name, service_label, inv_date, total, status FROM invoices ORDER BY inv_date DESC LIMIT 50");
+        $q_inv = mysqli_query($conn, "SELECT * FROM invoices ORDER BY inv_date DESC LIMIT 50");
         if($q_inv && mysqli_num_rows($q_inv) > 0) {
             $invList = [];
             while($r = mysqli_fetch_assoc($q_inv)) {
                 $invList[] = sprintf("- INV#%s | Klien: %s | Layanan: %s | Tanggal: %s | Total: Rp%s | Status: %s",
-                    $r['inv_no'], $r['client_name'], $r['service_label'], $r['inv_date'],
-                    number_format((float)$r['total'],0,',','.'), $r['status']
+                    $r['inv_no']??'-', $r['client_name']??'-', $r['service_label']??'-', $r['inv_date']??'-',
+                    isset($r['total']) ? number_format((float)$r['total'],0,',','.') : '0', $r['status']??'-'
                 );
             }
             $context_parts[] = "=== DATA INVOICE (50 terbaru) ===\n" . implode("\n", $invList);
@@ -136,13 +131,14 @@ if($action === 'chat') {
     // Payments (Keuangan Masuk)
     $chk6 = mysqli_query($conn, "SHOW TABLES LIKE 'payments'");
     if($chk6 && mysqli_num_rows($chk6) > 0) {
-        $q_pay = mysqli_query($conn, "SELECT company_name, amount, payment_date, service_type, payment_type, invoice_no FROM payments ORDER BY payment_date DESC LIMIT 50");
+        $q_pay = mysqli_query($conn, "SELECT * FROM payments ORDER BY payment_date DESC LIMIT 50");
         if($q_pay && mysqli_num_rows($q_pay) > 0) {
             $payList = [];
             while($r = mysqli_fetch_assoc($q_pay)) {
-                $payList[] = sprintf("- %s | Klien: %s | Jumlah: Rp%s | Layanan: %s | Tipe: %s | INV: %s",
-                    $r['payment_date'], $r['company_name']??'-', number_format((float)$r['amount'],0,',','.'),
-                    $r['service_type']??'-', $r['payment_type']??'-', $r['invoice_no']??'-'
+                $payList[] = sprintf("- %s | Klien: %s | Jumlah: Rp%s | Tipe: %s",
+                    $r['payment_date']??'-', $r['company_name']??'-', 
+                    isset($r['amount']) ? number_format((float)$r['amount'],0,',','.') : '0',
+                    $r['payment_type']??'-'
                 );
             }
             $context_parts[] = "=== PEMASUKAN / PAYMENTS (50 terbaru) ===\n" . implode("\n", $payList);
@@ -152,13 +148,13 @@ if($action === 'chat') {
     // Spendings (Pengeluaran)
     $chk7 = mysqli_query($conn, "SHOW TABLES LIKE 'spendings'");
     if($chk7 && mysqli_num_rows($chk7) > 0) {
-        $q_sp = mysqli_query($conn, "SELECT type, detail, amount, vendor FROM spendings ORDER BY id DESC LIMIT 50");
+        $q_sp = mysqli_query($conn, "SELECT * FROM spendings ORDER BY id DESC LIMIT 50");
         if($q_sp && mysqli_num_rows($q_sp) > 0) {
             $spList = [];
             while($r = mysqli_fetch_assoc($q_sp)) {
                 $spList[] = sprintf("- Tipe: %s | Vendor: %s | Detail: %s | Jumlah: Rp%s",
                     $r['type']??'-', $r['vendor']??'-', $r['detail']??'-',
-                    number_format((float)$r['amount'],0,',','.')
+                    isset($r['amount']) ? number_format((float)$r['amount'],0,',','.') : '0'
                 );
             }
             $context_parts[] = "=== PENGELUARAN / SPENDINGS (50 terbaru) ===\n" . implode("\n", $spList);
