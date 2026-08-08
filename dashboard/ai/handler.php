@@ -170,19 +170,23 @@ exit;
 
 // ─── UNIVERSAL AI CALLER ─────────────────────────────────────
 function callAI($provider, $api_key, $model, $messages, $system_prompt) {
-    if($provider === 'openai') {
+    // OpenAI-compatible providers (OpenAI + Groq)
+    if($provider === 'openai' || $provider === 'groq') {
+        $base_url = ($provider === 'groq')
+            ? 'https://api.groq.com/openai/v1/chat/completions'
+            : 'https://api.openai.com/v1/chat/completions';
         $payload = [
             'model'    => $model,
             'messages' => array_merge([['role'=>'system','content'=>$system_prompt]], $messages),
             'max_tokens' => 1200,
             'temperature' => 0.7
         ];
-        $resp = httpPost('https://api.openai.com/v1/chat/completions', json_encode($payload), [
+        $resp = httpPost($base_url, json_encode($payload), [
             'Authorization: Bearer ' . $api_key,
             'Content-Type: application/json'
         ]);
         $d = json_decode($resp, true);
-        if(isset($d['error'])) return ['error' => $d['error']['message'] ?? 'OpenAI error'];
+        if(isset($d['error'])) return ['error' => $d['error']['message'] ?? ($provider === 'groq' ? 'Groq error' : 'OpenAI error')];
         return ['content' => $d['choices'][0]['message']['content'] ?? ''];
 
     } elseif($provider === 'gemini') {

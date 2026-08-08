@@ -154,6 +154,7 @@ $persona  = $settings['ai_persona'] ?? '';
                     <label>Pilih Provider</label>
                     <div class="provider-tabs">
                         <button type="button" class="provider-tab <?= $provider==='openai'?'active':'' ?>" onclick="setProvider('openai',this)"><i class="fas fa-brain"></i> OpenAI</button>
+                        <button type="button" class="provider-tab <?= $provider==='groq'?'active':'' ?>" onclick="setProvider('groq',this)"><i class="fas fa-bolt"></i> Groq</button>
                         <button type="button" class="provider-tab <?= $provider==='gemini'?'active':'' ?>" onclick="setProvider('gemini',this)"><i class="fas fa-gem"></i> Google Gemini</button>
                         <button type="button" class="provider-tab <?= $provider==='anthropic'?'active':'' ?>" onclick="setProvider('anthropic',this)"><i class="fas fa-feather"></i> Anthropic</button>
                     </div>
@@ -162,9 +163,17 @@ $persona  = $settings['ai_persona'] ?? '';
 
                 <div class="form-group">
                     <label>Model</label>
-                    <input type="text" name="ai_model" id="ai_model" class="form-input" value="<?= htmlspecialchars($model) ?>" placeholder="cth: gpt-4o">
+                    <input type="text" name="ai_model" id="ai_model" class="form-input" value="<?= htmlspecialchars($model) ?>" placeholder="cth: llama-3.3-70b-versatile">
                     <div class="model-hint" id="model_hint">
-                        OpenAI: <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>gpt-3.5-turbo</code>
+                        <?php
+                        $hints = [
+                            'openai'    => 'OpenAI: <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>gpt-3.5-turbo</code>',
+                            'groq'      => 'Groq: <code>llama-3.3-70b-versatile</code>, <code>llama-3.1-8b-instant</code>, <code>mixtral-8x7b-32768</code>, <code>gemma2-9b-it</code>',
+                            'gemini'    => 'Gemini: <code>gemini-1.5-pro</code>, <code>gemini-1.5-flash</code>, <code>gemini-2.0-flash</code>',
+                            'anthropic' => 'Anthropic: <code>claude-3-5-sonnet-20241022</code>, <code>claude-3-haiku-20240307</code>',
+                        ];
+                        echo $hints[$provider] ?? $hints['openai'];
+                        ?>
                     </div>
                 </div>
             </div>
@@ -242,10 +251,11 @@ $persona  = $settings['ai_persona'] ?? '';
 <script>
 const modelHints = {
     openai:    'OpenAI: <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>gpt-3.5-turbo</code>',
+    groq:      'Groq: <code>llama-3.3-70b-versatile</code>, <code>llama-3.1-8b-instant</code>, <code>mixtral-8x7b-32768</code>, <code>gemma2-9b-it</code>',
     gemini:    'Google Gemini: <code>gemini-1.5-pro</code>, <code>gemini-1.5-flash</code>, <code>gemini-2.0-flash</code>',
     anthropic: 'Anthropic: <code>claude-3-5-sonnet-20241022</code>, <code>claude-3-haiku-20240307</code>'
 };
-const modelDefaults = { openai:'gpt-4o', gemini:'gemini-2.0-flash', anthropic:'claude-3-5-sonnet-20241022' };
+const modelDefaults = { openai:'gpt-4o', groq:'llama-3.3-70b-versatile', gemini:'gemini-2.0-flash', anthropic:'claude-3-5-sonnet-20241022' };
 
 function setProvider(p, el) {
     document.getElementById('ai_provider').value = p;
