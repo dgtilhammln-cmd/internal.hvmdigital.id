@@ -217,9 +217,12 @@ $res = mysqli_query($conn, $q);
                     <div class="t-role"><?php echo htmlspecialchars($row['position']); ?></div>
                     
                     <div class="card-btns">
-                        <button class="btn-act" onclick='viewDetail(<?php echo json_encode($row); ?>)'>Detail</button>
-                        <button class="btn-act" onclick='checkAccess("edit", <?php echo json_encode($row); ?>)'>Edit</button>
-                        <button class="btn-act btn-del" onclick='checkAccess("delete", <?php echo json_encode($row); ?>)'>Hapus</button>
+                        <button class="btn-act" onclick='viewDetail(<?php echo json_encode($row); ?>)' title="Detail Profil"><i class="fas fa-id-badge"></i></button>
+                        <button class="btn-act" onclick='checkAccess("edit", <?php echo json_encode($row); ?>)' title="Edit Data"><i class="fas fa-edit"></i></button>
+                        <?php if($row['id_card']): ?>
+                        <button class="btn-act" onclick='viewIdCard("<?php echo $row['id_card']; ?>")' title="Lihat ID Card"><i class="fas fa-address-card"></i></button>
+                        <?php endif; ?>
+                        <button class="btn-act btn-del" onclick='checkAccess("delete", <?php echo json_encode($row); ?>)' title="Hapus"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
                 <?php endwhile; ?>
@@ -312,6 +315,16 @@ $res = mysqli_query($conn, $q);
                 <button class="close-btn" onclick="closeModal('meetingDetailModal')">&times;</button>
             </div>
             <div id="meetingDetailContent" style="padding-top:10px;"></div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL ID CARD -->
+    <div class="modal-overlay" id="idCardModal">
+        <div class="modal-content medium" style="background:transparent; border:none; box-shadow:none; padding:0; display:flex; justify-content:center; align-items:center;">
+            <div style="position:relative; max-width:90vw; max-height:90vh;">
+                <button class="close-btn" onclick="closeModal('idCardModal')" style="position:absolute; top:-40px; right:0; color:#fff; background:rgba(255,255,255,0.1); width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:10;"><i class="fas fa-times"></i></button>
+                <img id="idCardImage" src="" style="max-width:100%; max-height:90vh; border-radius:20px; object-fit:contain; box-shadow:0 20px 60px rgba(0,0,0,0.9);">
+            </div>
         </div>
     </div>
 
@@ -428,7 +441,6 @@ $res = mysqli_query($conn, $q);
             document.getElementById('viewModal').classList.add('active');
             const img = data.photo ? `/uploads/teams/${data.photo}` : null;
             const avatarHtml = img ? `<img src="${img}">` : '<i class="fas fa-user-astronaut"></i>';
-            const idCardBtn = data.id_card ? `<a href="/uploads/teams/${data.id_card}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:rgba(161,255,90,0.1); color:#a1ff5a; padding:8px 16px; border-radius:10px; text-decoration:none; font-size:0.85rem; font-weight:700; border:1px solid rgba(161,255,90,0.3); margin-top:15px; transition:0.3s;" onmouseover="this.style.background='rgba(161,255,90,0.2)'" onmouseout="this.style.background='rgba(161,255,90,0.1)'"><i class="fas fa-id-card"></i> Lihat ID Card</a>` : '';
             
             const html = `
                 <div class="profile-modal-container">
@@ -436,7 +448,6 @@ $res = mysqli_query($conn, $q);
                         <div class="detail-avatar">${avatarHtml}</div>
                         <div class="detail-name">${data.name}</div>
                         <div class="detail-role" style="color:#a1ff5a; font-weight:800; font-size:0.8rem;">${data.position}</div>
-                        ${idCardBtn}
                         <div class="info-grid" style="grid-template-columns:1fr; gap:10px; margin-top:25px;">
                             <div class="info-item"><span class="info-label">ID Team</span> <div class="info-value">${data.team_id}</div></div>
                             <div class="info-item"><span class="info-label">Role Access</span> <div class="info-value" style="color:#ff9f43;">${data.role.toUpperCase()}</div></div>
@@ -494,26 +505,39 @@ $res = mysqli_query($conn, $q);
                     if(!stats || !list) return;
                     teamMeetingsData = res.meetings || [];
                     
-                    stats.innerHTML = `<i class="fas fa-chart-line" style="margin-right:6px; color:#a1ff5a;"></i>Total: <strong style="color:#fff;">${res.count} meeting</strong> dihadiri`;
-                    
-                    if(teamMeetingsData.length === 0) {
-                        list.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.85rem;text-align:center;padding:20px;">Belum pernah hadir di meeting manapun.</div>';
-                        return;
+                    if(res.count > 0) {
+                        document.getElementById('tab-btn-meeting').innerText = 'Riwayat Meeting (' + res.count + ')';
+                        stats.innerHTML = `<i class="fas fa-chart-line" style="margin-right:6px; color:#a1ff5a;"></i>Total: <strong style="color:#fff;">${res.count} meeting</strong> dihadiri`;
+                        
+                        let listHtml = '';
+                        res.meetings.forEach((m, idx) => {
+                            const d = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                            const pName = (m.target_name && m.target_name.length > 20) ? m.target_name.substring(0,20)+'...' : (m.target_name||'Internal');
+                            const modeCol = (m.meeting_mode==='Offline') ? 'var(--neon-2)' : 'var(--neon-main)';
+                            listHtml += `
+                                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'" onclick="viewMeetingDetail(${idx})">
+                                    <div>
+                                        <div style="font-weight:700; font-size:0.9rem; margin-bottom:4px; color:#fff;">${m.title}</div>
+                                        <div style="font-size:0.75rem; color:#888;">${d} &bull; ${m.time_start||'-'} &bull; <span style="color:${modeCol};">${m.meeting_mode||'-'}</span></div>
+                                    </div>
+                                    <div style="font-size:0.75rem; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:12px; color:#ccc;">${pName}</div>
+                                </div>
+                            `;
+                        });
+                        list.innerHTML = listHtml;
+                    } else {
+                        stats.innerHTML = '';
+                        list.innerHTML = '<div style="color:#666; font-style:italic; font-size:0.85rem; text-align:center; padding:20px;">Belum ada riwayat meeting.</div>';
                     }
-                    list.innerHTML = teamMeetingsData.map((m, idx) => {
-                        const d = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
-                        return `<div onclick="viewMeetingDetail(${idx})" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(161,255,90,0.05)';this.style.borderColor='rgba(161,255,90,0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.02)';this.style.borderColor='rgba(255,255,255,0.06)';">
-                            <div style="flex:1;">
-                                <div style="font-weight:700;font-size:0.9rem;color:#fff;margin-bottom:4px;">${m.title}</div>
-                                <div style="font-size:0.75rem;color:#aaa;">${d} &bull; ${m.time_start||''} &bull; <span style="color:#4efdc4;">${m.meeting_mode||'-'}</span></div>
-                            </div>
-                            <div style="color:#555;"><i class="fas fa-chevron-right"></i></div>
-                        </div>`;
-                    }).join('');
                 }).catch(() => {
                     const stats = document.getElementById('teamMeetingStats');
                     if(stats) stats.innerHTML = '<span style="color:#ff5a5a;">Tidak dapat memuat data meeting.</span>';
                 });
+        }
+        
+        function viewIdCard(fileName) {
+            document.getElementById('idCardImage').src = `/uploads/teams/${fileName}`;
+            document.getElementById('idCardModal').classList.add('active');
         }
 
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }

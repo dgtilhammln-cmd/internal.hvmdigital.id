@@ -100,7 +100,7 @@ body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; o
 /* GRID CARDS */
 .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; animation: fadeIn 0.8s ease; }
 .glass-card { background: rgba(20, 20, 20, 0.4); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 20px; padding: 30px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-.glass-card:hover { border-color: var(--neon-main); transform: translateY(-5px); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+.glass-card:hover { transform: translateY(-5px); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
 
 .avatar-box { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; margin-bottom: 15px; position: relative; }
 .avatar-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
@@ -128,7 +128,7 @@ body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; o
 }
 .modal-overlay.active { display: flex; animation: zoomIn 0.3s; }
 
-.modal-content { background: #0a0a0a; border: 1px solid var(--neon-main); border-radius: 24px; overflow-y: auto; box-shadow: 0 0 60px var(--neon-glow); padding: 40px; position: relative; }
+.modal-content { background: #0a0a0a; border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.8); padding: 40px; position: relative; }
 .modal-content.wide { width: 900px; max-width: 95%; max-height: 90vh; }
 .modal-content.medium { width: 500px; max-width: 90%; }
 .modal-content.form-mode { width: 600px; max-width: 90%; max-height: 90vh; }
