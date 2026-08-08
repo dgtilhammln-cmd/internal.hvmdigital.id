@@ -78,7 +78,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             $chk_ttype = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_type'");
             if(mysqli_num_rows($chk_ttype) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_type` ENUM('Client','Prospect') DEFAULT NULL");
 
-            $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE target_id=$id AND target_type='Prospect' ORDER BY event_date DESC");
+            $chk_teams = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'teams_involved'");
+            if(mysqli_num_rows($chk_teams) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `teams_involved` TEXT DEFAULT NULL");
+
+            $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil, teams_involved FROM events WHERE target_id=$id AND target_type='Prospect' ORDER BY event_date DESC");
             if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
             $row['meetings'] = $meetings;
 
@@ -401,7 +404,10 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                 </div>
                 <div class="form-grp">
                     <label>Alamat</label>
-                    <input type="text" id="f_alamat" placeholder="Jl. Contoh No. 1, Kota">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="f_alamat" placeholder="Jl. Contoh No. 1, Kota" style="flex:1;">
+                        <button type="button" onclick="openMaps('f_alamat')" title="Buka di Google Maps" style="width:42px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--teal); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.1rem; transition:0.2s;" onmouseover="this.style.background='rgba(78,253,196,0.1)';this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='var(--teal)';"><i class="fas fa-map-marked-alt"></i></button>
+                    </div>
                 </div>
                 <div class="form-grp">
                     <label>Catatan</label>
@@ -446,6 +452,12 @@ function filterStatus(st) {
     window.location = url;
 }
 
+function openMaps(inputId) {
+    const val = document.getElementById(inputId).value.trim();
+    if(!val) return showToast('Alamat masih kosong!', true);
+    window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(val), '_blank');
+}
+
 function openModal(data = null) {
     document.getElementById('f_id').value = data ? data.id : '';
     document.getElementById('f_company').value = data ? (data.company_name||'') : '';
@@ -477,13 +489,17 @@ function openModal(data = null) {
                 const timeStr = m.time_start || '';
                 let logHtml = m.log_hasil ? `<div style="font-size:0.75rem;color:#ccc;background:rgba(255,255,255,0.03);padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;margin-bottom:8px;">${m.log_hasil}</div>` : `<div style="font-size:0.75rem;color:#666;font-style:italic;margin-bottom:8px;">Belum ada log/catatan.</div>`;
                 const editBtn = `<button type="button" onclick="editMeetingLog(${m.id})" style="padding:4px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--green);border-radius:4px;font-size:0.7rem;cursor:pointer;"><i class="fas fa-edit"></i> Edit Log Hasil</button>`;
+                const locHtml = m.location ? `<div style="font-size:0.72rem;color:#aaa;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><i class="fas fa-map-marker-alt" style="color:var(--orange);flex-shrink:0;"></i><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}" target="_blank" style="color:#aaa;text-decoration:none;flex:1;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='#aaa'">${m.location}</a></div>` : '';
+                const teamsHtml = m.teams_involved ? `<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;">${m.teams_involved.split(',').filter(t=>t.trim()).map(t=>`<span style="font-size:0.68rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:2px 8px;border-radius:20px;font-weight:600;"><i class="fas fa-user" style="margin-right:3px;font-size:0.6rem;"></i>${t.trim()}</span>`).join('')}</div>` : '';
                 pMeet.innerHTML += `
                     <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                             <div style="font-weight:700;font-size:0.85rem;color:#fff;">${m.title}</div>
                             <div style="font-size:0.75rem;color:var(--muted);">${m.meeting_mode}</div>
                         </div>
-                        <div style="font-size:0.75rem;color:var(--teal);margin-bottom:10px;">${dateStr} ${timeStr} | ${m.meeting_type}</div>
+                        <div style="font-size:0.75rem;color:var(--teal);margin-bottom:8px;">${dateStr} ${timeStr} | ${m.meeting_type}</div>
+                        ${locHtml}
+                        ${teamsHtml}
                         ${logHtml}
                         ${editBtn}
                         <div id="log-edit-form-${m.id}" style="display:none;margin-top:8px;">

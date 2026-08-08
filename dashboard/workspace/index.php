@@ -12,15 +12,15 @@ $u_data = mysqli_fetch_assoc($q_u);
 $full_name = $u_data['name'] ?? $user_logged;
 $profile_img = ($u_data && $u_data['photo']) ? '/uploads/teams/'.$u_data['photo'] : null;
 
-// EVENT SAVE
-if(isset($_POST['save_event'])){
-    // Auto-add columns if missing
     $cols = [
         'meeting_type'   => "VARCHAR(100) DEFAULT NULL",
         'meeting_mode'   => "VARCHAR(20) DEFAULT NULL",
         'target_type'    => "VARCHAR(20) DEFAULT NULL",
         'target_name'    => "VARCHAR(255) DEFAULT NULL",
-        'location'       => "TEXT DEFAULT NULL"
+        'location'       => "TEXT DEFAULT NULL",
+        'target_id'      => "INT DEFAULT NULL",
+        'log_hasil'      => "TEXT DEFAULT NULL",
+        'teams_involved' => "TEXT DEFAULT NULL",
     ];
     foreach($cols as $col => $def){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
@@ -34,15 +34,17 @@ if(isset($_POST['save_event'])){
         mysqli_query($conn, "UPDATE events e JOIN prospects p ON e.target_name = p.company_name SET e.target_id = p.id WHERE e.target_type = 'Prospect' AND (e.target_id IS NULL OR e.target_id = 0)");
     }
 
-    $title       = mysqli_real_escape_string($conn, $_POST['event_title'] ?? '');
-    $date        = $_POST['event_date'] ?? date('Y-m-d');
-    $start       = $_POST['time_start'] ?? '00:00';
-    $color       = mysqli_real_escape_string($conn, $_POST['event_color'] ?? 'blue');
-    $meet_type   = mysqli_real_escape_string($conn, $_POST['meeting_type'] ?? '');
-    $meet_mode   = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
-    $target_type = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
-    $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
-    $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+    $title        = mysqli_real_escape_string($conn, $_POST['event_title'] ?? '');
+    $date         = $_POST['event_date'] ?? date('Y-m-d');
+    $start        = $_POST['time_start'] ?? '00:00';
+    $color        = mysqli_real_escape_string($conn, $_POST['event_color'] ?? 'blue');
+    $meet_type    = mysqli_real_escape_string($conn, $_POST['meeting_type'] ?? '');
+    $meet_mode    = mysqli_real_escape_string($conn, $_POST['meeting_mode'] ?? 'Online');
+    $target_type  = mysqli_real_escape_string($conn, $_POST['target_type'] ?? '');
+    $target_name  = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
+    $location     = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+    $teams_raw    = $_POST['teams_involved'] ?? [];
+    $teams_str    = mysqli_real_escape_string($conn, implode(',', $teams_raw));
 
     $target_id = 0;
     if($target_type === 'Client') {
@@ -53,7 +55,7 @@ if(isset($_POST['save_event'])){
         if($r_pro = mysqli_fetch_assoc($q_pro)) $target_id = (int)$r_pro['id'];
     }
 
-    // Auto-generate label: e.g. "Meeting Prospek PT XX"
+    // Auto-generate label
     if($meet_type && $target_name) {
         $title = "Meeting $meet_type $target_name";
     }
@@ -61,7 +63,7 @@ if(isset($_POST['save_event'])){
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
 
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location, target_id) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location', $target_id)");
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, location, target_id, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$location', $target_id, '$teams_str')");
     header("Location: index.php"); exit;
 }
 ?>
@@ -325,10 +327,35 @@ if(isset($_POST['save_event'])){
                     </div>
                 </div>
 
+                <!-- TEAM YANG IKUT MEETING -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:8px;"><i class="fas fa-users" style="margin-right:4px;"></i>Tim yang Hadir</label>
+                    <div id="teamCheckboxList" style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <?php
+                        $qt = mysqli_query($conn, "SELECT team_id, name, photo FROM teams ORDER BY name ASC");
+                        while($tm = mysqli_fetch_assoc($qt)):
+                            $photo_url = $tm['photo'] ? '/uploads/teams/'.$tm['photo'] : null;
+                        ?>
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:6px 10px; transition:0.2s;" class="team-check-label">
+                            <input type="checkbox" name="teams_involved[]" value="<?= htmlspecialchars($tm['name']) ?>" style="display:none;" class="team-cb" onchange="updateTeamLabel(this)">
+                            <?php if($photo_url): ?>
+                                <img src="<?= $photo_url ?>" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">
+                            <?php else: ?>
+                                <span style="width:22px;height:22px;border-radius:50%;background:rgba(161,255,90,0.15);display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:#a1ff5a;font-weight:700;"><?= strtoupper(substr($tm['name'],0,1)) ?></span>
+                            <?php endif; ?>
+                            <span style="font-size:0.8rem;color:#ccc;"><?= htmlspecialchars($tm['name']) ?></span>
+                        </label>
+                        <?php endwhile; ?>
+                    </div>
+                </div>
+
                 <!-- LOKASI -->
                 <div class="form-group" id="locationField" style="margin-bottom:14px;">
                     <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;" id="locationLabel">Link Meeting (Google Meet / Zoom)</label>
-                    <input type="text" name="location" class="form-input" id="locationInput" placeholder="https://meet.google.com/...">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" name="location" class="form-input" id="locationInput" placeholder="https://meet.google.com/..." style="flex:1;">
+                        <button type="button" id="mapsBtnMeeting" onclick="openMapsFromInput()" title="Buka di Maps" style="display:none; width:42px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#4efdc4; font-size:1.1rem; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='rgba(78,253,196,0.1)'"; onmouseout="this.style.background='rgba(255,255,255,0.05)'"><i class="fas fa-map-marked-alt"></i></button>
+                    </div>
                 </div>
 
                 <!-- PREVIEW JUDUL -->
@@ -435,13 +462,33 @@ if(isset($_POST['save_event'])){
             document.getElementById('chip-offline').classList.toggle('active', mode === 'Offline');
             const lbl = document.getElementById('locationLabel');
             const inp = document.getElementById('locationInput');
+            const mapsBtn = document.getElementById('mapsBtnMeeting');
             if(mode === 'Offline') {
                 lbl.textContent = 'Lokasi / Alamat Meeting';
                 inp.placeholder = 'Jl. Contoh No. 1, Kota...';
+                if(mapsBtn) mapsBtn.style.display = 'flex';
             } else {
                 lbl.textContent = 'Link Meeting (Google Meet / Zoom)';
                 inp.placeholder = 'https://meet.google.com/...';
+                if(mapsBtn) mapsBtn.style.display = 'none';
             }
+        }
+
+        function updateTeamLabel(cb) {
+            const label = cb.closest('.team-check-label');
+            if(cb.checked) {
+                label.style.background = 'rgba(161,255,90,0.1)';
+                label.style.borderColor = 'rgba(161,255,90,0.4)';
+            } else {
+                label.style.background = 'rgba(255,255,255,0.04)';
+                label.style.borderColor = 'rgba(255,255,255,0.08)';
+            }
+        }
+
+        function openMapsFromInput() {
+            const val = document.getElementById('locationInput').value.trim();
+            if(!val) return;
+            window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(val), '_blank');
         }
 
         function switchTargetType(type) {

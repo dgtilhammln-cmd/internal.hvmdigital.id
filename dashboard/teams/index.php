@@ -131,7 +131,23 @@ if(isset($_POST['send_broadcast'])){
     header("Location: index.php"); exit;
 }
 
-// 6. FETCH DATA
+// 6. AJAX: TEAM MEETING HISTORY
+if(isset($_GET['get_meetings']) && !empty($_GET['name'])) {
+    header('Content-Type: application/json');
+    $name_esc = mysqli_real_escape_string($conn, $_GET['name']);
+    $meetings = [];
+    $chk_ti = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'teams_involved'");
+    if(mysqli_num_rows($chk_ti) > 0) {
+        $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
+        if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
+        $q_m = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, target_name, target_type, teams_involved, log_hasil FROM events WHERE FIND_IN_SET('$name_esc', teams_involved) > 0 ORDER BY event_date DESC");
+        while($r = mysqli_fetch_assoc($q_m)) $meetings[] = $r;
+    }
+    echo json_encode(['count' => count($meetings), 'meetings' => $meetings]);
+    exit;
+}
+
+// 7. FETCH DATA
 $search = $_GET['q'] ?? '';
 $q = "SELECT * FROM teams WHERE name LIKE '%$search%' OR team_id LIKE '%$search%' ORDER BY team_id DESC";
 $res = mysqli_query($conn, $q);
@@ -356,10 +372,47 @@ $res = mysqli_query($conn, $q);
                             <div class="job-title">JOB DESCRIPTION</div>
                             <div class="job-content">${data.jobdesk}</div>
                         </div>
+                        <div class="job-section" style="margin-top:16px;">
+                            <div class="job-title" style="color:var(--neon-1);"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>RIWAYAT MEETING</div>
+                            <div id="teamMeetingStats" style="font-size:0.82rem;color:#888;margin-bottom:8px;">Memuat...</div>
+                            <div id="teamMeetingList"></div>
+                        </div>
                     </div>
                 </div>
             `;
             document.getElementById('viewContent').innerHTML = html;
+            
+            // Load meeting history via AJAX
+            fetch(`?get_meetings=1&name=${encodeURIComponent(data.name)}`)
+                .then(r => r.json())
+                .then(res => {
+                    const stats = document.getElementById('teamMeetingStats');
+                    const list = document.getElementById('teamMeetingList');
+                    if(!stats || !list) return;
+                    stats.innerHTML = `Total: <strong style="color:var(--neon-1);">${res.count} meeting</strong> dihadiri`;
+                    if(res.meetings.length === 0) {
+                        list.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.8rem;">Belum pernah hadir di meeting manapun.</div>';
+                        return;
+                    }
+                    list.innerHTML = res.meetings.map(m => {
+                        const d = new Date(m.event_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+                        const locHtml = m.location ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}" target="_blank" style="font-size:0.7rem;color:#888;text-decoration:none;display:block;margin-top:3px;" onmouseover="this.style.color='var(--neon-2)'" onmouseout="this.style.color='#888'"><i class="fas fa-map-marker-alt" style="margin-right:3px;color:var(--neon-orange);"></i>${m.location}</a>` : '';
+                        const teamsArr = (m.teams_involved||'').split(',').filter(t=>t.trim());
+                        const teamsHtml = teamsArr.length > 0 ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${teamsArr.map(t=>`<span style="font-size:0.64rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:1px 6px;border-radius:20px;">${t.trim()}</span>`).join('')}</div>` : '';
+                        return `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                                <div style="font-weight:700;font-size:0.82rem;color:#fff;flex:1;">${m.title}</div>
+                                <div style="font-size:0.68rem;color:#666;white-space:nowrap;">${m.meeting_mode}</div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--neon-2);margin-top:3px;">${d} | ${m.meeting_type} | ${m.target_type}: ${m.target_name}</div>
+                            ${locHtml}
+                            ${teamsHtml}
+                        </div>`;
+                    }).join('');
+                }).catch(() => {
+                    const stats = document.getElementById('teamMeetingStats');
+                    if(stats) stats.innerHTML = '<span style="color:#555;">Tidak dapat memuat data meeting.</span>';
+                });
         }
 
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
