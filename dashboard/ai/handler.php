@@ -50,9 +50,19 @@ if($action === 'chat') {
     $user  = $_SESSION['admin'];
 
     // Helper for compressed CSV context
-    function getTableAsCSV($conn, $query, $title) {
-        $q = mysqli_query($conn, $query);
+    function getTableAsCSV($conn, $table, $allowed_cols, $title, $orderByLimit) {
+        $q_cols = mysqli_query($conn, "SHOW COLUMNS FROM $table");
+        if(!$q_cols) return "";
+        $avail = [];
+        while($r = mysqli_fetch_assoc($q_cols)) $avail[] = $r['Field'];
+        
+        $select_cols = array_intersect($allowed_cols, $avail);
+        if(empty($select_cols)) return "";
+        $select_str = implode(",", $select_cols);
+        
+        $q = mysqli_query($conn, "SELECT $select_str FROM $table $orderByLimit");
         if(!$q || mysqli_num_rows($q) == 0) return "";
+        
         $csv = "=== $title ===\n";
         $first = true;
         while($r = mysqli_fetch_assoc($q)) {
@@ -62,19 +72,20 @@ if($action === 'chat') {
             }
             $csv .= implode("|", array_map(function($val) {
                 $s = str_replace(["\n","\r","|"], [" "," ","/"], (string)$val);
-                return mb_strlen($s) > 100 ? mb_substr($s, 0, 97) . '...' : $s;
+                // Truncate only very long texts to protect tokens, 300 is enough for JSON arrays
+                return mb_strlen($s) > 300 ? mb_substr($s, 0, 297) . '...' : $s;
             }, array_values($r))) . "\n";
         }
         return $csv;
     }
 
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM events ORDER BY event_date DESC LIMIT 30", "DATA MEETING / EVENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM teams LIMIT 30", "DATA TEAM");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM clients LIMIT 50", "DATA CLIENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM prospects ORDER BY id DESC LIMIT 50", "DATA PROSPECTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM invoices ORDER BY inv_date DESC LIMIT 30", "DATA INVOICE");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM payments ORDER BY payment_date DESC LIMIT 30", "PEMASUKAN / PAYMENTS");
-    $context_parts[] = getTableAsCSV($conn, "SELECT * FROM spendings ORDER BY id DESC LIMIT 30", "PENGELUARAN / SPENDINGS");
+    $context_parts[] = getTableAsCSV($conn, "events", ['event_date', 'title', 'time_start', 'meeting_mode', 'location', 'target_name', 'teams_involved', 'status', 'log_hasil', 'detail'], "DATA MEETING / EVENTS", "ORDER BY event_date DESC LIMIT 30");
+    $context_parts[] = getTableAsCSV($conn, "teams", ['name', 'nama', 'position', 'posisi', 'role', 'whatsapp', 'email', 'domicile'], "DATA TEAM", "LIMIT 30");
+    $context_parts[] = getTableAsCSV($conn, "clients", ['company_name', 'name', 'pic', 'whatsapp', 'status', 'city', 'domain', 'services_data', 'service'], "DATA CLIENTS", "LIMIT 50");
+    $context_parts[] = getTableAsCSV($conn, "prospects", ['company_name', 'name', 'pic', 'status', 'city', 'deal_status', 'notes'], "DATA PROSPECTS", "ORDER BY id DESC LIMIT 50");
+    $context_parts[] = getTableAsCSV($conn, "invoices", ['inv_no', 'client_name', 'service_label', 'inv_date', 'total', 'status'], "DATA INVOICE", "ORDER BY inv_date DESC LIMIT 30");
+    $context_parts[] = getTableAsCSV($conn, "payments", ['payment_date', 'company_name', 'amount', 'service_type', 'payment_type', 'invoice_no'], "PEMASUKAN / PAYMENTS", "ORDER BY payment_date DESC LIMIT 30");
+    $context_parts[] = getTableAsCSV($conn, "spendings", ['type', 'vendor', 'detail', 'amount', 'payment_date', 'date'], "PENGELUARAN / SPENDINGS", "ORDER BY id DESC LIMIT 30");
 
     $context_parts = array_filter($context_parts);
 
