@@ -204,24 +204,31 @@ if($is_super_admin && isset($conn)) {
 }
 .ai-messages::-webkit-scrollbar { width: 4px; }
 .ai-messages::-webkit-scrollbar-thumb { background:#222; border-radius:10px; }
-.msg-row { display: flex; gap: 8px; animation: msgIn 0.25s ease; }
+.msg-row { display: flex; gap: 8px; animation: msgIn 0.25s ease; align-items: flex-end; }
 .msg-row.user { flex-direction: row-reverse; }
 @keyframes msgIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
 .msg-avatar-sm {
     width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;
-    overflow: hidden;
+    overflow: hidden; margin-bottom: 16px;
 }
 .msg-avatar-sm.ai-av { background: linear-gradient(135deg,#a1ff5a,#4efdc4); color:#000; }
 .msg-avatar-sm.ai-av img { width:100%; height:100%; object-fit:cover; }
 .msg-avatar-sm.user-av { background: rgba(255,255,255,0.1); color:#aaa; }
+.msg-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+}
+.msg-row.user .msg-content-wrapper { align-items: flex-end; }
 .msg-bubble {
-    max-width: 78%;
+    width: fit-content;
     padding: 10px 14px;
     border-radius: 16px;
     font-size: 0.83rem;
     line-height: 1.55;
-    word-break: break-word;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 .msg-bubble.ai {
     background: rgba(255,255,255,0.05);
@@ -356,7 +363,7 @@ if($is_super_admin && isset($conn)) {
     </div>
 
     <div class="ai-input-area">
-        <textarea id="aiMessageInput" placeholder="Tanya apa saja tentang data perusahaan..." rows="1"
+        <textarea id="aiMessageInput" placeholder="Tanya data apa saja..." rows="1"
             onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
         <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">
             <i class="fas fa-paper-plane"></i>
@@ -397,7 +404,7 @@ function addMessage(role, html, isError=false) {
     const bubClass = isAI ? (isError ? 'error' : 'ai') : 'user';
     row.innerHTML = `
         <div class="msg-avatar-sm ${avClass}">${avContent}</div>
-        <div>
+        <div class="msg-content-wrapper">
             <div class="msg-bubble ${bubClass}">${html}</div>
             <div class="msg-time">${now}</div>
         </div>`;
@@ -414,7 +421,7 @@ function showTyping() {
     const avContent = <?= $ai_icon_src ? "true" : "false" ?> ? `<img src="<?= $ai_icon_src ?>">` : '<i class="fas fa-robot"></i>';
     row.innerHTML = `
         <div class="msg-avatar-sm ai-av">${avContent}</div>
-        <div><div class="msg-bubble ai" style="padding:12px 16px;">
+        <div class="msg-content-wrapper"><div class="msg-bubble ai" style="padding:12px 16px;">
             <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
         </div></div>`;
     msgs.appendChild(row);
@@ -451,24 +458,31 @@ async function sendAIMessage(msg) {
         fd.append('history', JSON.stringify(aiHistory.slice(-10)));
 
         const r = await fetch('/dashboard/ai/handler.php', { method:'POST', body:fd });
-        const d = await r.json();
-        hideTyping();
+        const raw = await r.text();
+        try {
+            const d = JSON.parse(raw);
+            hideTyping();
 
-        if(d.error) {
-            addMessage('ai', '<i class="fas fa-exclamation-triangle"></i> ' + escHtml(d.error), true);
-        } else {
-            const reply = d.reply || '';
-            const formatted = reply
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;">$1</code>')
-                .replace(/\n/g, '<br>');
-            addMessage('ai', formatted);
-            aiHistory.push({ role:'assistant', content: reply });
+            if(d.error) {
+                addMessage('ai', '<i class="fas fa-exclamation-triangle"></i> ' + escHtml(d.error), true);
+            } else {
+                const reply = d.reply || '';
+                const formatted = reply
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/`(.*?)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;">$1</code>')
+                    .replace(/\n/g, '<br>');
+                addMessage('ai', formatted);
+                aiHistory.push({ role:'assistant', content: reply });
+            }
+        } catch(pe) {
+            hideTyping();
+            console.error("Raw response:", raw);
+            addMessage('ai', 'Error Parse: ' + escHtml(raw.substring(0,100)), true);
         }
     } catch(e) {
         hideTyping();
-        addMessage('ai', 'Gagal terhubung ke server. Coba lagi.', true);
+        addMessage('ai', 'Gagal terhubung ke server (Network error).', true);
     }
 
     aiTyping = false;

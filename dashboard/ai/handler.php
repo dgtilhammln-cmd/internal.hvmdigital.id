@@ -130,12 +130,44 @@ if($action === 'chat') {
         }
     }
 
+    // Payments (Keuangan Masuk)
+    $chk6 = mysqli_query($conn, "SHOW TABLES LIKE 'payments'");
+    if($chk6 && mysqli_num_rows($chk6) > 0) {
+        $q_pay = mysqli_query($conn, "SELECT company_name, amount, payment_date, service_type, payment_type, invoice_no FROM payments ORDER BY payment_date DESC LIMIT 50");
+        if($q_pay && mysqli_num_rows($q_pay) > 0) {
+            $payList = [];
+            while($r = mysqli_fetch_assoc($q_pay)) {
+                $payList[] = sprintf("- %s | Klien: %s | Jumlah: Rp%s | Layanan: %s | Tipe: %s | INV: %s",
+                    $r['payment_date'], $r['company_name']??'-', number_format((float)$r['amount'],0,',','.'),
+                    $r['service_type']??'-', $r['payment_type']??'-', $r['invoice_no']??'-'
+                );
+            }
+            $context_parts[] = "=== PEMASUKAN / PAYMENTS (50 terbaru) ===\n" . implode("\n", $payList);
+        }
+    }
+
+    // Spendings (Pengeluaran)
+    $chk7 = mysqli_query($conn, "SHOW TABLES LIKE 'spendings'");
+    if($chk7 && mysqli_num_rows($chk7) > 0) {
+        $q_sp = mysqli_query($conn, "SELECT type, detail, amount, vendor FROM spendings ORDER BY id DESC LIMIT 50");
+        if($q_sp && mysqli_num_rows($q_sp) > 0) {
+            $spList = [];
+            while($r = mysqli_fetch_assoc($q_sp)) {
+                $spList[] = sprintf("- Tipe: %s | Vendor: %s | Detail: %s | Jumlah: Rp%s",
+                    $r['type']??'-', $r['vendor']??'-', $r['detail']??'-',
+                    number_format((float)$r['amount'],0,',','.')
+                );
+            }
+            $context_parts[] = "=== PENGELUARAN / SPENDINGS (50 terbaru) ===\n" . implode("\n", $spList);
+        }
+    }
+
     $db_context = implode("\n\n", $context_parts);
     $persona_extra = $persona ? "\n\nInstruksi tambahan: $persona" : '';
 
     $system_prompt = "Kamu adalah {$ai_name}, asisten cerdas internal perusahaan HVM Digital. Hari ini tanggal {$today}. User yang sedang login: {$user}.
 
-Tugasmu adalah membantu tim HVM Digital dengan pertanyaan seputar data operasional perusahaan (termasuk jadwal meeting, data klien, prospek, tim, dan invoice).
+Tugasmu adalah membantu tim HVM Digital dengan pertanyaan seputar data operasional perusahaan (termasuk jadwal meeting, data klien, prospek, tim, keuangan masuk/keluar, dan invoice).
 
 Sifatmu: ramah, profesional, ringkas, pakai Bahasa Indonesia. Jika diminta summary, buat yang mudah dicerna.{$persona_extra}
 
