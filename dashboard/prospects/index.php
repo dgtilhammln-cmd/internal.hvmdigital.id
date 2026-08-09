@@ -106,12 +106,24 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
 // 4. LOAD DATA
 $search = trim($_GET['s'] ?? '');
 $status_filter = trim($_GET['st'] ?? '');
+$period_filter = trim($_GET['period'] ?? '');
 $where = "1=1";
 if($search) $where .= " AND (company_name LIKE '%".mysqli_real_escape_string($conn,$search)."%' OR pic LIKE '%".mysqli_real_escape_string($conn,$search)."%' OR domain LIKE '%".mysqli_real_escape_string($conn,$search)."%')";
 if($status_filter) $where .= " AND status='".mysqli_real_escape_string($conn,$status_filter)."'";
-$q = mysqli_query($conn, "SELECT * FROM prospects WHERE $where ORDER BY FIELD(status,'Hot','Warm','Cold','Closed'), created_at DESC");
+// Period filter (by last activity/updated_at)
+$period_days = 0;
+if($period_filter === '3d') $period_days = 3;
+elseif($period_filter === '7d') $period_days = 7;
+elseif($period_filter === '30d') $period_days = 30;
+if($period_days > 0) $where .= " AND updated_at >= DATE_SUB(NOW(), INTERVAL $period_days DAY)";
+$q = mysqli_query($conn, "SELECT * FROM prospects WHERE $where ORDER BY FIELD(status,'Hot','Warm','Cold','Closed'), updated_at DESC");
 $prospects = [];
 while($row = mysqli_fetch_assoc($q)) $prospects[] = $row;
+
+// Fetch last visit date from events per prospect
+$last_visit_map = [];
+$q_lv = mysqli_query($conn, "SELECT target_id, MAX(event_date) as last_date FROM events WHERE target_type='Prospect' AND target_id IS NOT NULL GROUP BY target_id");
+if($q_lv) while($lv = mysqli_fetch_assoc($q_lv)) $last_visit_map[$lv['target_id']] = $lv['last_date'];
 
 $counts = ['all'=>0,'Cold'=>0,'Warm'=>0,'Hot'=>0,'Closed'=>0];
 $q_c = mysqli_query($conn, "SELECT status, COUNT(*) as c FROM prospects GROUP BY status");
@@ -145,7 +157,9 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 .glow-1 { top:-100px; left:40px; width:500px; height:500px; background:var(--green); }
 .glow-2 { bottom:-100px; right:40px; width:400px; height:400px; background:var(--teal); }
 
-.main-content { padding:32px 40px; max-width:1400px; margin:0 auto; }
+.main-content { padding:32px 40px; margin-left:120px; }
+@media (min-width:769px) { .main-content { margin-left:120px; } }
+@media (max-width:768px) { .main-content { margin-left:0; padding:20px 16px 110px; } }
 
 /* Page header */
 .page-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }
@@ -166,30 +180,39 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 .s-closed .val { color:var(--muted); }
 
 /* Search & filter */
-.toolbar { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.toolbar { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
 .search-wrap { position:relative; flex:1; min-width:200px; }
 .search-wrap i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:0.85rem; }
 .search-input { width:100%; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:10px; padding:10px 14px 10px 38px; font-family:inherit; font-size:0.85rem; outline:none; transition:border-color 0.2s; }
-.search-input:focus { border-color:rgba(161,255,90,0.3); }
+.search-input:focus { border-color:rgba(255,255,255,0.25); }
 .search-input::placeholder { color:var(--muted); }
+.period-chips { display:flex; gap:8px; flex-wrap:wrap; }
+.period-chip { padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:0.72rem; font-weight:700; cursor:pointer; transition:all 0.2s; letter-spacing:0.3px; }
+.period-chip:hover { border-color:rgba(255,255,255,0.3); color:#fff; }
+.period-chip.active { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35); color:#fff; }
 
 /* Table */
-.table-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
-.ptable { width:100%; border-collapse:collapse; }
-.ptable thead tr { background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); }
-.ptable th { padding:13px 16px; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); text-align:left; }
+.table-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; overflow-x:auto; }
+.ptable { width:100%; border-collapse:collapse; min-width:700px; }
+.ptable thead tr { background:rgba(255,255,255,0.025); border-bottom:1px solid var(--border); }
+.ptable th { padding:11px 16px; font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); text-align:left; white-space:nowrap; }
 .ptable tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; cursor:pointer; }
 .ptable tbody tr:last-child { border-bottom:none; }
 .ptable tbody tr:hover { background:rgba(255,255,255,0.03); }
-.ptable td { padding:14px 16px; font-size:0.82rem; vertical-align:middle; }
+.ptable td { padding:12px 16px; font-size:0.82rem; vertical-align:middle; }
 .company-name { font-weight:700; color:#fff; }
 .company-sub  { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+.last-visit-tag { font-size:0.72rem; color:#94a3b8; }
+.last-visit-tag.recent { color:#4efdc4; }
+.last-visit-tag.none { color:#555; font-style:italic; }
 
 .badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:0.68rem; font-weight:700; letter-spacing:0.3px; }
 .b-hot    { background:rgba(255,107,107,0.1); color:var(--red); border:1px solid rgba(255,107,107,0.2); }
 .b-warm   { background:rgba(252,163,17,0.1); color:var(--orange); border:1px solid rgba(252,163,17,0.2); }
 .b-cold   { background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); }
 .b-closed { background:rgba(255,255,255,0.05); color:var(--muted); border:1px solid #333; }
+/* Stat card active — pakai putih bukan hijau */
+.stat-card:hover, .stat-card.active { border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.06); }
 
 .act-btns { display:flex; gap:6px; }
 .act-btn { width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.78rem; transition:all 0.2s; background:rgba(255,255,255,0.05); color:#aaa; }
@@ -292,6 +315,12 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
             <i class="fas fa-search"></i>
             <input type="text" class="search-input" id="searchInput" placeholder="Cari nama perusahaan, PIC, domain..." value="<?= htmlspecialchars($search) ?>" oninput="debounceSearch(this.value)">
         </div>
+        <div class="period-chips">
+            <div class="period-chip <?= !$period_filter?'active':'' ?>" onclick="filterPeriod('')">Semua</div>
+            <div class="period-chip <?= $period_filter==='3d'?'active':'' ?>" onclick="filterPeriod('3d')">3 Hari</div>
+            <div class="period-chip <?= $period_filter==='7d'?'active':'' ?>" onclick="filterPeriod('7d')">7 Hari</div>
+            <div class="period-chip <?= $period_filter==='30d'?'active':'' ?>" onclick="filterPeriod('30d')">30 Hari</div>
+        </div>
     </div>
 
     <!-- TABLE -->
@@ -302,36 +331,48 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     <th>Perusahaan / PIC</th>
                     <th>Kontak</th>
                     <th>Domain</th>
+                    <th>Terakhir Visit</th>
                     <th>Status</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
             <?php if(empty($prospects)): ?>
-                <tr><td colspan="5" class="empty-state">
+                <tr><td colspan="6" class="empty-state">
                     <i class="fas fa-binoculars"></i>
                     <div>Belum ada data prospek.</div>
                     <div style="font-size:0.8rem;margin-top:6px;">Klik "Tambah Prospek" untuk mulai menambahkan.</div>
                 </td></tr>
-            <?php else: foreach($prospects as $p): 
+            <?php else: foreach($prospects as $p):
                 $badgeClass = 'b-'.strtolower($p['status']);
                 $waLink = $p['wa'] ? 'https://wa.me/'.preg_replace('/[^0-9]/','',$p['wa']) : '#';
+                $lv_date = $last_visit_map[$p['id']] ?? null;
+                $lv_class = 'none';
+                $lv_text = 'Belum ada visit';
+                if($lv_date) {
+                    $lv_diff = (new DateTime())->diff(new DateTime($lv_date));
+                    $lv_days = $lv_diff->days;
+                    $lv_fmt = (new DateTime($lv_date))->format('d M Y');
+                    $lv_class = $lv_days <= 7 ? 'recent' : '';
+                    $lv_text = $lv_fmt . ($lv_days == 0 ? ' (hari ini)' : ($lv_days == 1 ? ' (kemarin)' : " ($lv_days hari lalu)"));
+                }
             ?>
                 <tr onclick="editProspect(<?= $p['id'] ?>)">
                     <td>
                         <div class="company-name"><?= htmlspecialchars($p['company_name']) ?></div>
-                        <?php if($p['pic']): ?><div class="company-sub"><i class="fas fa-user" style="margin-right:4px;"></i><?= htmlspecialchars($p['pic']) ?><?= $p['jabatan'] ? ' · '.$p['jabatan'] : '' ?></div><?php endif; ?>
+                        <?php if($p['pic']): ?><div class="company-sub"><i class="fas fa-user" style="margin-right:4px;"></i><?= htmlspecialchars($p['pic']) ?><?= $p['jabatan'] ? ' &middot; '.$p['jabatan'] : '' ?></div><?php endif; ?>
                     </td>
                     <td style="color:var(--muted); font-size:0.8rem;"><?= htmlspecialchars($p['wa'] ?: '-') ?></td>
                     <td style="font-size:0.8rem;">
                         <?php if($p['domain']): ?>
-                            <a href="https://<?= htmlspecialchars($p['domain']) ?>" target="_blank" onclick="event.stopPropagation()" style="color:var(--teal); text-decoration:none;"><?= htmlspecialchars($p['domain']) ?></a>
+                            <a href="https://<?= htmlspecialchars($p['domain']) ?>" target="_blank" onclick="event.stopPropagation()" style="color:#94a3b8; text-decoration:none;" onmouseover="this.style.color='#4efdc4'" onmouseout="this.style.color='#94a3b8'"><?= htmlspecialchars($p['domain']) ?></a>
                         <?php else: ?><span style="color:var(--muted);">-</span><?php endif; ?>
                     </td>
+                    <td><span class="last-visit-tag <?= $lv_class ?>"><i class="fas fa-calendar-check" style="margin-right:4px;opacity:0.7;"></i><?= $lv_text ?></span></td>
                     <td>
                         <span class="badge <?= $badgeClass ?>"><?= $p['status'] ?></span>
                         <?php if($p['deal_status']): ?>
-                            <span class="badge" style="background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2);"><?= $p['deal_status'] ?></span>
+                            <span class="badge" style="background:rgba(255,255,255,0.07); color:#ccc; border-color:rgba(255,255,255,0.15);"><?= $p['deal_status'] ?></span>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -342,7 +383,7 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <?php if($p['link_deck']): ?>
                             <a href="<?= htmlspecialchars($p['link_deck']) ?>" target="_blank" class="act-btn" title="Deck"><i class="fas fa-file-powerpoint"></i></a>
                             <?php endif; ?>
-                            <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Detail & Riwayat" style="background:rgba(161,255,90,0.1); color:var(--green);"><i class="fas fa-eye"></i></button>
+                            <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Detail &amp; Riwayat"><i class="fas fa-eye"></i></button>
                             <button class="act-btn del" onclick="deleteProspect(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
@@ -404,22 +445,22 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                 <div class="form-row">
                     <div class="form-grp" style="grid-column:span 2;">
                         <label>Hasil Akhir (Deal Status)</label>
-                        <div style="display:flex; gap:12px; margin-top:4px;">
-                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="f_deal_status" value="" checked>
-                                <span style="font-size:0.85rem;">Belum Ditentukan</span>
+                        <div style="display:flex; gap:10px; margin-top:4px;" id="dealStatusGroup">
+                            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
+                                <input type="radio" name="f_deal_status" value="" checked style="display:none;" onchange="updateDealChips()">
+                                <span style="font-size:0.75rem; color:#aaa; font-weight:600;"><i class="fas fa-minus-circle" style="margin-right:6px;"></i>Belum Ditentukan</span>
                             </label>
-                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="f_deal_status" value="Deal">
-                                <span style="font-size:0.85rem; color:var(--green); font-weight:600;"><i class="fas fa-handshake"></i> Deal</span>
+                            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
+                                <input type="radio" name="f_deal_status" value="Deal" style="display:none;" onchange="updateDealChips()">
+                                <span style="font-size:0.75rem; color:var(--green); font-weight:600;"><i class="fas fa-handshake" style="margin-right:6px;"></i>Deal</span>
                             </label>
-                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="f_deal_status" value="Gak Deal">
-                                <span style="font-size:0.85rem; color:var(--red); font-weight:600;"><i class="fas fa-times-circle"></i> Gak Deal</span>
+                            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
+                                <input type="radio" name="f_deal_status" value="Gak Deal" style="display:none;" onchange="updateDealChips()">
+                                <span style="font-size:0.75rem; color:var(--red); font-weight:600;"><i class="fas fa-times-circle" style="margin-right:6px;"></i>Gak Deal</span>
                             </label>
-                            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="f_deal_status" value="Ghosting">
-                                <span style="font-size:0.85rem; color:#a55eea; font-weight:600;"><i class="fas fa-ghost"></i> Ghosting</span>
+                            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
+                                <input type="radio" name="f_deal_status" value="Ghosting" style="display:none;" onchange="updateDealChips()">
+                                <span style="font-size:0.75rem; color:#a55eea; font-weight:600;"><i class="fas fa-ghost" style="margin-right:6px;"></i>Ghosting</span>
                             </label>
                         </div>
                     </div>
@@ -484,6 +525,13 @@ function filterStatus(st) {
     window.location = url;
 }
 
+function filterPeriod(p) {
+    const url = new URL(window.location);
+    if(p) url.searchParams.set('period', p);
+    else url.searchParams.delete('period');
+    window.location = url;
+}
+
 function openMaps(inputId) {
     const val = document.getElementById(inputId).value.trim();
     if(!val) return showToast('Alamat masih kosong!', true);
@@ -510,6 +558,8 @@ function openModal(data = null) {
     
     document.getElementById('modalTitle').textContent = data ? 'Edit Prospek' : 'Tambah Prospek';
     
+    updateDealChips();
+
     // Render History Section
     const histSec = document.getElementById('prospectHistorySection');
     if(data && data.id) {
@@ -642,9 +692,26 @@ function showToast(msg, isErr = false) {
     t.textContent = msg;
     t.style.borderColor = isErr ? 'var(--red)' : 'var(--green)';
     t.style.color = isErr ? 'var(--red)' : 'var(--green)';
-    t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 2800);
+    t.classList.add('show');
+    setTimeout(() => { t.classList.remove('show'); }, 3000);
 }
+
+function updateDealChips() {
+    const chips = document.querySelectorAll('.deal-chip');
+    chips.forEach(chip => {
+        const input = chip.querySelector('input');
+        if (input.checked) {
+            if(input.value === 'Deal') { chip.style.background = 'rgba(161,255,90,0.1)'; chip.style.borderColor = 'var(--green)'; }
+            else if(input.value === 'Gak Deal') { chip.style.background = 'rgba(255,107,107,0.1)'; chip.style.borderColor = 'var(--red)'; }
+            else if(input.value === 'Ghosting') { chip.style.background = 'rgba(165,94,234,0.1)'; chip.style.borderColor = '#a55eea'; }
+            else { chip.style.background = 'rgba(255,255,255,0.05)'; chip.style.borderColor = '#888'; }
+        } else {
+            chip.style.background = 'transparent';
+            chip.style.borderColor = 'rgba(255,255,255,0.1)';
+        }
+    });
+}
+updateDealChips();
 
 function editMeetingLog(id) {
     document.getElementById(`log-edit-form-${id}`).style.display = 'block';

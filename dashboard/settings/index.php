@@ -75,23 +75,24 @@ $persona  = $settings['ai_persona'] ?? '';
         :root { --bg:#050505; --card:rgba(20,20,20,0.7); --border:rgba(255,255,255,0.07); --green:#a1ff5a; --cyan:#4efdc4; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
         body { background:var(--bg); color:#fff; min-height:100vh; display:flex; }
-        .main-content { flex:1; padding:40px; margin-left:110px; }
+        .main-content { flex:1; padding:40px; margin-left:120px; }
+        @media(min-width:769px) { .main-content { margin-left:120px; } }
         @media(max-width:768px) { .main-content { margin-left:0; padding:20px 20px 120px; } }
         .page-header { margin-bottom:35px; }
         .page-header h1 { font-size:2rem; font-weight:800; background:linear-gradient(135deg,#fff,#aaa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
         .page-header p { color:#555; font-size:0.9rem; margin-top:6px; }
-        .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:900px; }
+        .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
         @media(max-width:768px) { .settings-grid { grid-template-columns:1fr; } }
         .settings-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:28px; backdrop-filter:blur(20px); }
         .settings-card.full { grid-column:1/-1; }
-        .card-title { font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--green); margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+        .card-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#888; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
         .form-group { margin-bottom:18px; }
         .form-group label { display:block; font-size:0.72rem; font-weight:600; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
         .form-input {
             width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
             border-radius:12px; color:#fff; font-family:inherit; font-size:0.9rem; outline:none; transition:0.2s;
         }
-        .form-input:focus { border-color:var(--green); background:rgba(161,255,90,0.04); }
+        .form-input:focus { border-color:rgba(255,255,255,0.3); background:rgba(255,255,255,0.04); }
         .form-input option { background:#111; color:#fff; }
         textarea.form-input { min-height:100px; resize:vertical; }
         .input-password-wrap { position:relative; }
@@ -106,8 +107,8 @@ $persona  = $settings['ai_persona'] ?? '';
         }
         .btn-save:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(161,255,90,0.3); }
         .alert-success {
-            background:rgba(161,255,90,0.08); border:1px solid rgba(161,255,90,0.3);
-            color:var(--green); padding:12px 16px; border-radius:12px;
+            background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.15);
+            color:#ccc; padding:12px 16px; border-radius:12px;
             margin-bottom:20px; font-size:0.85rem; font-weight:600;
             display:flex; align-items:center; gap:8px;
         }
@@ -117,7 +118,7 @@ $persona  = $settings['ai_persona'] ?? '';
             background:transparent; color:#666; cursor:pointer; font-size:0.8rem; font-weight:700;
             transition:0.2s; font-family:inherit;
         }
-        .provider-tab.active { background:rgba(161,255,90,0.1); border-color:var(--green); color:var(--green); }
+        .provider-tab.active { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.3); color:#fff; }
         .model-hint { font-size:0.72rem; color:#444; margin-top:5px; }
         .model-hint code { color:var(--cyan); background:rgba(78,253,196,0.08); padding:1px 6px; border-radius:4px; }
         .test-result { margin-top:10px; font-size:0.8rem; padding:10px; border-radius:8px; display:none; }
