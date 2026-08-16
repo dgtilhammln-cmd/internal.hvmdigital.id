@@ -791,7 +791,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             </div>
 
             <!-- ══ TARGETS DECK ══ -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; animation: fadeIn 0.8s ease;">
+            <div class="top-deck">
                 
                 <!-- REVENUE TARGET CARD -->
                 <div class="target-premium-card tier-<?php echo $tier; ?>"
@@ -852,7 +852,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                 <span class="ms-label">40jt</span>
                                 <span class="ms-tag">Reached</span>
                             </div>
-                        </div>
                         </div>
                     </div>
                 </div>
