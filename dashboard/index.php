@@ -640,7 +640,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .cal-event.purple { background: #a55eea; color: #fff; }
         .cal-event.green { background: #a1ff5a; color: #000; }
         .cal-event.red { background: #ff5a5a; color: #fff; }
-        .cal-grid-day { display: flex; flex-direction: column; gap: 10px; }
+        /* Week columns: same proportional height as month */
+        .cal-week-col { background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--card-border); min-height: 350px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; }
+        .cal-week-col:hover { background: rgba(255,255,255,0.05); border-color: var(--neon-main); }
+        .cal-week-col .cal-week-header.today { background: rgba(161,255,90,0.1) !important; }
+        /* Day view: same card height */
+        .cal-grid-day { display: flex; flex-direction: column; gap: 10px; min-height: 350px; padding: 20px; }
         .cal-hour-row { display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--card-border); align-items: center; }
         .cal-time { width: 60px; font-weight: 700; color: var(--neon-main); }
         .cal-task-area { flex: 1; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; }
@@ -1528,6 +1533,17 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
         
         window.addEventListener('load', function() { refreshPlanner(); });
+
+        // Shortcut Menu Toggle
+        function toggleShortcutMenu() {
+            const dd = document.getElementById('shortcutDropdown');
+            if(dd) dd.classList.toggle('active');
+        }
+        document.addEventListener('click', function(e) {
+            const wrap = document.getElementById('shortcutMenuWrap');
+            const dd = document.getElementById('shortcutDropdown');
+            if(wrap && dd && !wrap.contains(e.target)) dd.classList.remove('active');
+        });
     </script>
 </body>
 </html>
