@@ -59,6 +59,28 @@ if (strpos($r_chk['Type'], 'Cold') !== false) {
 
 fixCol($conn, 'prospects', 'deal_status', "ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL AFTER `status`");
 
+// ═══ BULK AUTO-SYNC: Prospek Deal → Client ═══
+// Setiap kali halaman dimuat, cek semua prospek Deal yang belum tersinkronisasi
+$q_bulk = mysqli_query($conn, "SELECT * FROM prospects WHERE status='Deal' AND (is_synced IS NULL OR is_synced=0)");
+while($pb = mysqli_fetch_assoc($q_bulk)) {
+    // Cek apakah nama perusahaan sudah ada di clients
+    $cname_esc = mysqli_real_escape_string($conn, $pb['company_name']);
+    $q_exist = mysqli_query($conn, "SELECT client_id FROM clients WHERE company_name='$cname_esc' LIMIT 1");
+    if(mysqli_num_rows($q_exist) == 0) {
+        // Belum ada → insert ke clients
+        $new_cid   = uniqid('cli_');
+        $pic_esc   = mysqli_real_escape_string($conn, $pb['pic'] ?? '');
+        $jab_esc   = mysqli_real_escape_string($conn, $pb['jabatan'] ?? '');
+        $wa_esc    = mysqli_real_escape_string($conn, $pb['wa'] ?? '');
+        $alam_esc  = mysqli_real_escape_string($conn, $pb['alamat'] ?? '');
+        $note_esc  = mysqli_real_escape_string($conn, $pb['catatan'] ?? '');
+        mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$new_cid', '$cname_esc', '$pic_esc', '$jab_esc', '$wa_esc', '$alam_esc', '$note_esc', 'Active', '[]', '[]')");
+    }
+    // Tandai sudah tersinkronisasi
+    $pid = intval($pb['id']);
+    mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$pid");
+}
+
 // 3. AJAX ACTIONS
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
