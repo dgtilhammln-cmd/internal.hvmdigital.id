@@ -299,6 +299,40 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 }
 .btn-email:hover { background:var(--neon-sec); color:#000; box-shadow:0 0 20px rgba(78,253,196,0.5); }
 
+/* SHORTCUT MENU */
+.shortcut-menu { position:relative; }
+.shortcut-btn {
+    padding:9px 16px; border-radius:50px; font-weight:700; font-size:0.82rem;
+    text-decoration:none; display:flex; align-items:center; gap:7px; transition:0.3s;
+    border:1.5px solid var(--neon-sec); background:rgba(78,253,196,0.1); color:var(--neon-sec);
+    cursor:pointer; white-space:nowrap;
+}
+.shortcut-btn:hover { background:var(--neon-sec); color:#000; box-shadow:0 0 20px rgba(78,253,196,0.5); }
+.shortcut-dropdown {
+    position:absolute; top:calc(100% + 10px); right:0;
+    background:#0a0a0a; border:1px solid var(--card-border);
+    border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.9);
+    z-index:999; display:none; min-width:200px; overflow:hidden;
+}
+.shortcut-dropdown.active { display:block; animation:scaleIn 0.2s ease; }
+.shortcut-dropdown-header {
+    padding:12px 18px; border-bottom:1px solid var(--card-border);
+    font-size:0.72rem; color:var(--text-muted); letter-spacing:2px; font-weight:700; text-transform:uppercase;
+}
+.shortcut-item {
+    display:flex; align-items:center; gap:12px;
+    padding:13px 18px; text-decoration:none; color:#fff;
+    transition:0.2s; border-bottom:1px solid rgba(255,255,255,0.04);
+    font-size:0.85rem; font-weight:600;
+}
+.shortcut-item:last-child { border-bottom:none; }
+.shortcut-item:hover { background:rgba(255,255,255,0.05); color:var(--neon-sec); }
+.shortcut-item i { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.9rem; flex-shrink:0; }
+.si-green { background:rgba(161,255,90,0.15); color:var(--neon-main); }
+.si-cyan { background:rgba(78,253,196,0.15); color:var(--neon-sec); }
+.si-gold { background:rgba(255,215,0,0.15); color:#ffd700; }
+.si-red { background:rgba(255,90,90,0.15); color:var(--neon-red); }
+
 .btn-workspace {
     padding:10px 20px; border-radius:50px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border);
     color:#fff; font-weight:600; font-size:0.85rem; text-decoration:none; display:flex; align-items:center; gap:8px; transition:0.3s;
@@ -682,9 +716,31 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     <a href="/dashboard/chatbot-wa/" class="btn-ai btn-wa">
                         <i class="fab fa-whatsapp"></i><span>WA Bot</span>
                     </a>
-                    <a href="/email-marketing/" class="btn-ai btn-email">
-                        <i class="fas fa-paper-plane"></i><span>AI Email</span>
-                    </a>
+                    <!-- Shortcut Menu -->
+                    <div class="shortcut-menu" id="shortcutMenuWrap">
+                        <button class="shortcut-btn" onclick="toggleShortcutMenu()">
+                            <i class="fas fa-grip-vertical"></i><span>Menu Cepat</span><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i>
+                        </button>
+                        <div class="shortcut-dropdown" id="shortcutDropdown">
+                            <div class="shortcut-dropdown-header">⚡ Akses Cepat</div>
+                            <a href="/recap2025/" class="shortcut-item">
+                                <i class="fas fa-chart-bar si-green"></i>
+                                <span>Recap 2025</span>
+                            </a>
+                            <a href="/dashboard/invoice/" class="shortcut-item">
+                                <i class="fas fa-file-invoice si-cyan"></i>
+                                <span>Invoice</span>
+                            </a>
+                            <a href="/dashboard/clients/" class="shortcut-item">
+                                <i class="fas fa-users si-gold"></i>
+                                <span>Klien</span>
+                            </a>
+                            <a href="/email-marketing/" class="shortcut-item">
+                                <i class="fas fa-paper-plane si-red"></i>
+                                <span>AI Email</span>
+                            </a>
+                        </div>
+                    </div>
 
                     <a href="/dashboard/workspace/" class="btn-workspace">
                         <i class="fas fa-briefcase"></i> <span>Workspace</span>
