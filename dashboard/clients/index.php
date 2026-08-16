@@ -1169,7 +1169,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
         <!-- CLIENT GRID -->
         <div class="client-grid">
             <?php while($row = mysqli_fetch_assoc($result)): ?>
-            <div class="glass-card">
+            <div class="glass-card" data-client-id="<?php echo $row['client_id']; ?>">
                 <div class="card-logo-wrap">
                     <?php if(!empty($row['logo_path'])): ?>
                         <img src="<?php echo htmlspecialchars($row['logo_path']); ?>" class="card-logo" alt="logo">
@@ -1956,6 +1956,25 @@ document.addEventListener('DOMContentLoaded',()=>{
             const f=ev.dataTransfer.files[0];
             if(f){ const dt=new DataTransfer(); dt.items.add(f); document.getElementById('logoInput').files=dt.files; previewLogo(document.getElementById('logoInput')); }
         });
+    }
+
+    // Auto-open edit modal if redirected from prospect Deal sync
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoEdit = urlParams.get('edit');
+    const autoHighlight = urlParams.get('highlight');
+    if(autoEdit) {
+        const banner = document.createElement('div');
+        banner.innerHTML = `<i class="fas fa-check-circle" style="margin-right:8px;"></i>Prospek berhasil dikonversi! Lengkapi data client di bawah ini.`;
+        banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(161,255,90,0.15),rgba(78,253,196,0.1));border:1px solid rgba(161,255,90,0.4);color:#a1ff5a;padding:14px 24px;border-radius:14px;font-size:0.88rem;font-weight:600;z-index:99999;backdrop-filter:blur(12px);white-space:nowrap;box-shadow:0 8px 32px rgba(161,255,90,0.15);';
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 5000);
+        setTimeout(() => { if(typeof editDetail === 'function') editDetail(autoEdit); }, 700);
+    }
+    if(autoHighlight) {
+        setTimeout(() => {
+            const card = document.querySelector('[data-client-id="' + autoHighlight + '"]');
+            if(card) { card.scrollIntoView({behavior:'smooth',block:'center'}); card.style.outline = '2px solid rgba(161,255,90,0.7)'; setTimeout(()=>card.style.outline='',3500); }
+        }, 900);
     }
 
     const dz = document.getElementById('docDropZone');

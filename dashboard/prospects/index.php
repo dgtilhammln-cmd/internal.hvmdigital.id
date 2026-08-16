@@ -80,12 +80,29 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
 
         if(empty($company)) { echo json_encode(['ok'=>false,'msg'=>'Nama perusahaan wajib diisi.']); exit; }
 
+        $new_id = 0;
         if($id > 0) {
             mysqli_query($conn, "UPDATE prospects SET company_name='$company', pic='$pic', jabatan='$jabatan', wa='$wa', alamat='$alamat', domain='$domain', link_deck='$link_deck', catatan='$catatan', status='$status', tier='$tier', deal_status=$deal_status WHERE id=$id");
+            $new_id = $id;
         } else {
             mysqli_query($conn, "INSERT INTO prospects (company_name, pic, jabatan, wa, alamat, domain, link_deck, catatan, status, tier, deal_status) VALUES ('$company','$pic','$jabatan','$wa','$alamat','$domain','$link_deck','$catatan','$status','$tier',$deal_status)");
+            $new_id = mysqli_insert_id($conn);
         }
-        echo json_encode(['ok'=>true]);
+
+        // Auto-sync to clients if status is Deal and not yet synced
+        $client_id_new = null;
+        if($status === 'Deal') {
+            $q_syn = mysqli_query($conn, "SELECT is_synced FROM prospects WHERE id=$new_id");
+            $r_syn = mysqli_fetch_assoc($q_syn);
+            if(!$r_syn['is_synced']) {
+                $client_id_new = uniqid('cli_');
+                $notes_esc = mysqli_real_escape_string($conn, $_POST['catatan'] ?? '');
+                mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$client_id_new', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes_esc', 'Active', '[]', '[]')");
+                mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$new_id");
+            }
+        }
+
+        echo json_encode(['ok'=>true, 'auto_synced'=> ($client_id_new ? true : false), 'client_id'=> $client_id_new]);
         exit;
     }
 
@@ -765,8 +782,20 @@ async function saveProspect() {
 
     const res = await fetch('', { method:'POST', body:fd });
     const data = await res.json();
-    if(data.ok) { closeModal(); showToast('Data berhasil disimpan!'); setTimeout(() => location.reload(), 800); }
-    else showToast(data.msg || 'Gagal menyimpan!', true);
+    if(data.ok) {
+        closeModal();
+        if(data.auto_synced && data.client_id) {
+            showToast('Deal! Data otomatis ditambahkan ke Clients. Mengalihkan...');
+            setTimeout(() => {
+                window.location = '/dashboard/clients/?highlight=' + data.client_id + '&edit=' + data.client_id;
+            }, 1200);
+        } else {
+            showToast('Data berhasil disimpan!');
+            setTimeout(() => location.reload(), 800);
+        }
+    } else {
+        showToast(data.msg || 'Gagal menyimpan!', true);
+    }
 }
 
 async function deleteProspect(id, name) {
