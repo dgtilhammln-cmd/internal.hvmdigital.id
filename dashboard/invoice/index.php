@@ -475,6 +475,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     background: #000000;
     color: #ffffff;
     width: 794px;       /* A4 at 96dpi */
+    min-height: 1122px; /* Force A4 height so bottom isn't white */
     max-width: 100%;
     font-family: 'Montserrat', sans-serif;
     border-radius: 0;
