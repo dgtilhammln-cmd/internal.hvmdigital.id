@@ -52,12 +52,15 @@ function goToSlide(n) {
         nextEl.classList.remove('passed');
         nextEl.classList.add('active');
         triggerCounters(nextEl);
+        if (currentSlide === 4) {
+            renderGrowthChart();
+        }
     }, 400);
 }
 
 function triggerCounters(slide) {
-    slide.querySelectorAll('.counter-num, .counter-simple').forEach(c => {
-        animateValue(c, 0, parseInt(c.getAttribute('data-val')), 2000);
+    slide.querySelectorAll('.counter').forEach(c => {
+        animateValue(c, 0, parseInt(c.getAttribute('data-val') || 0), 2000);
     });
 }
 
@@ -78,9 +81,76 @@ function toggleMute() {
     else { audio.pause(); volBtn.className = 'fas fa-volume-mute'; }
 }
 
+let growthChartInstance = null;
+function renderGrowthChart() {
+    if(growthChartInstance) return; // already rendered
+    const ctx = document.getElementById('growthChart').getContext('2d');
+    
+    // Gradient fill
+    let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(78, 253, 196, 0.5)');
+    gradient.addColorStop(1, 'rgba(78, 253, 196, 0.0)');
+
+    growthChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: chartData,
+                borderColor: '#4efdc4',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointBackgroundColor: '#a1ff5a',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 3000,
+                easing: 'easeOutQuart'
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                    ticks: { color: 'rgba(255,255,255,0.6)', font: { family: 'Montserrat', size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                    ticks: { 
+                        color: 'rgba(255,255,255,0.6)', 
+                        font: { family: 'Montserrat', size: 10 },
+                        callback: function(value) { return 'Rp ' + (value / 1000000) + 'M'; }
+                    },
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    titleFont: { family: 'Montserrat', size: 13 },
+                    bodyFont: { family: 'Montserrat', size: 12 },
+                    callbacks: {
+                        label: function(context) {
+                            return 'Rp ' + new Intl.NumberFormat('id-ID').format(context.raw);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 // SHARE FUNCTION
 function downloadStory() {
-    const element = document.querySelector("#storyCapture");
+    const element = document.querySelector("#storyCard"); // Fix selector to the actual card ID
     const originalBorder = element.style.border;
     element.style.border = "none"; // Hide border for clean image
 

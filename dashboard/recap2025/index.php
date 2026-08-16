@@ -40,6 +40,15 @@ $top_service = $svc_data['service_type'] ?? "General";
 $q_cl = mysqli_query($conn, "SELECT company_name, SUM(amount) as total FROM payments WHERE payment_date >= '2025-10-01' GROUP BY company_name ORDER BY total DESC LIMIT 1");
 $cl_data = mysqli_fetch_assoc($q_cl);
 $top_client = $cl_data['company_name'] ?? "No Data";
+
+// 6. Monthly Trend
+$q_trend = mysqli_query($conn, "SELECT DATE_FORMAT(payment_date, '%b %y') as m_label, SUM(amount) as total FROM payments WHERE payment_date >= '2025-10-01' GROUP BY YEAR(payment_date), MONTH(payment_date) ORDER BY YEAR(payment_date), MONTH(payment_date)");
+$trend_labels = [];
+$trend_data = [];
+while($r = mysqli_fetch_assoc($q_trend)){
+    $trend_labels[] = $r['m_label'];
+    $trend_data[] = $r['total'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -51,6 +60,11 @@ $top_client = $cl_data['company_name'] ?? "No Data";
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartLabels = <?php echo json_encode($trend_labels); ?>;
+        const chartData = <?php echo json_encode($trend_data); ?>;
+    </script>
 </head>
 <body>
 
@@ -118,8 +132,20 @@ $top_client = $cl_data['company_name'] ?? "No Data";
             </div>
         </div>
 
-        <!-- SLIDE 4: HIGHLIGHTS -->
+        <!-- SLIDE 4: GROWTH CHART -->
         <div class="slide" id="slide4">
+            <h2 class="subtitle">GROWTH TRAJECTORY</h2>
+            <div class="glass-card" style="width: 100%; max-width: 800px; padding: 20px; box-sizing: border-box;">
+                <canvas id="growthChart" height="250"></canvas>
+            </div>
+            <div class="nav-bottom">
+                <button class="nav-btn" onclick="prevSlide()"><i class="fas fa-arrow-left"></i></button>
+                <button class="nav-btn" onclick="nextSlide()"><i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+
+        <!-- SLIDE 5: HIGHLIGHTS -->
+        <div class="slide" id="slide5">
             <h2 class="subtitle">THE HIGHLIGHTS</h2>
             <div class="grid-stats">
                 <div class="stat-box" style="border-color:#ffd700;">
@@ -145,8 +171,8 @@ $top_client = $cl_data['company_name'] ?? "No Data";
             </div>
         </div>
 
-        <!-- SLIDE 5: SHARE STORY -->
-        <div class="slide" id="slide5">
+        <!-- SLIDE 6: SHARE STORY -->
+        <div class="slide" id="slide6">
             <div class="share-container">
                 <!-- STORY CARD (DOM to Image) -->
                 <div id="storyCard" class="story-wrapper">

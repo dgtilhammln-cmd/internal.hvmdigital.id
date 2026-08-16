@@ -22,6 +22,9 @@ body {
     width: 100vw; 
     overflow: hidden; 
     position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* BACKGROUND COSMOS */
@@ -33,7 +36,14 @@ body {
 }
 
 /* SLIDES CONTAINER */
-.slides-wrapper { width: 100%; height: 100%; position: relative; perspective: 1000px; }
+.slides-wrapper { 
+    width: 100%; 
+    height: 100%; 
+    max-width: 1200px;
+    max-height: 900px;
+    position: relative; 
+    perspective: 1000px; 
+}
 .slide { 
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
     display: flex; flex-direction: column; justify-content: center; align-items: center;
