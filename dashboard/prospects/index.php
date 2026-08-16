@@ -23,11 +23,28 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `prospects` (
     `domain` VARCHAR(255) DEFAULT NULL,
     `link_deck` TEXT DEFAULT NULL,
     `catatan` TEXT DEFAULT NULL,
-    `status` ENUM('Cold','Warm','Hot','Closed') DEFAULT 'Cold',
+    `tier` ENUM('B2B Kecil','B2B Menengah','B2B Besar') DEFAULT 'B2B Kecil',
+    `status` ENUM('Prospecting','Follow Up','Negotiation','Deal','Lost') DEFAULT 'Prospecting',
+    `is_synced` TINYINT(1) DEFAULT 0,
     `deal_status` ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )");
+
+fixCol($conn, 'prospects', 'tier', "ENUM('B2B Kecil','B2B Menengah','B2B Besar') DEFAULT 'B2B Kecil' AFTER catatan");
+fixCol($conn, 'prospects', 'is_synced', "TINYINT(1) DEFAULT 0 AFTER status");
+
+// Auto-migrate old statuses
+$q_chk = mysqli_query($conn, "SHOW COLUMNS FROM prospects LIKE 'status'");
+$r_chk = mysqli_fetch_assoc($q_chk);
+if (strpos($r_chk['Type'], 'Cold') !== false) {
+    mysqli_query($conn, "ALTER TABLE prospects MODIFY COLUMN status ENUM('Cold','Warm','Hot','Closed','Prospecting','Follow Up','Negotiation','Deal','Lost') DEFAULT 'Prospecting'");
+    mysqli_query($conn, "UPDATE prospects SET status='Prospecting' WHERE status='Cold'");
+    mysqli_query($conn, "UPDATE prospects SET status='Follow Up' WHERE status='Warm'");
+    mysqli_query($conn, "UPDATE prospects SET status='Negotiation' WHERE status='Hot'");
+    mysqli_query($conn, "UPDATE prospects SET status='Deal' WHERE status='Closed'");
+    mysqli_query($conn, "ALTER TABLE prospects MODIFY COLUMN status ENUM('Prospecting','Follow Up','Negotiation','Deal','Lost') DEFAULT 'Prospecting'");
+}
 
 fixCol($conn, 'prospects', 'deal_status', "ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL AFTER `status`");
 
@@ -46,15 +63,16 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $domain      = mysqli_real_escape_string($conn, trim($_POST['domain'] ?? ''));
         $link_deck   = mysqli_real_escape_string($conn, trim($_POST['link_deck'] ?? ''));
         $catatan     = mysqli_real_escape_string($conn, trim($_POST['catatan'] ?? ''));
-        $status      = mysqli_real_escape_string($conn, $_POST['status'] ?? 'Cold');
+        $status      = mysqli_real_escape_string($conn, $_POST['status'] ?? 'Prospecting');
+        $tier        = mysqli_real_escape_string($conn, $_POST['tier'] ?? 'B2B Kecil');
         $deal_status = isset($_POST['deal_status']) && $_POST['deal_status'] ? "'".mysqli_real_escape_string($conn, $_POST['deal_status'])."'" : "NULL";
 
         if(empty($company)) { echo json_encode(['ok'=>false,'msg'=>'Nama perusahaan wajib diisi.']); exit; }
 
         if($id > 0) {
-            mysqli_query($conn, "UPDATE prospects SET company_name='$company', pic='$pic', jabatan='$jabatan', wa='$wa', alamat='$alamat', domain='$domain', link_deck='$link_deck', catatan='$catatan', status='$status', deal_status=$deal_status WHERE id=$id");
+            mysqli_query($conn, "UPDATE prospects SET company_name='$company', pic='$pic', jabatan='$jabatan', wa='$wa', alamat='$alamat', domain='$domain', link_deck='$link_deck', catatan='$catatan', status='$status', tier='$tier', deal_status=$deal_status WHERE id=$id");
         } else {
-            mysqli_query($conn, "INSERT INTO prospects (company_name, pic, jabatan, wa, alamat, domain, link_deck, catatan, status, deal_status) VALUES ('$company','$pic','$jabatan','$wa','$alamat','$domain','$link_deck','$catatan','$status',$deal_status)");
+            mysqli_query($conn, "INSERT INTO prospects (company_name, pic, jabatan, wa, alamat, domain, link_deck, catatan, status, tier, deal_status) VALUES ('$company','$pic','$jabatan','$wa','$alamat','$domain','$link_deck','$catatan','$status','$tier',$deal_status)");
         }
         echo json_encode(['ok'=>true]);
         exit;
@@ -64,6 +82,28 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $id = intval($_POST['id'] ?? 0);
         mysqli_query($conn, "DELETE FROM prospects WHERE id=$id");
         echo json_encode(['ok'=>true]);
+        exit;
+    }
+
+    if($act === 'sync_client') {
+        $id = intval($_POST['id'] ?? 0);
+        $q = mysqli_query($conn, "SELECT * FROM prospects WHERE id=$id AND is_synced=0");
+        $row = mysqli_fetch_assoc($q);
+        if($row) {
+            $client_id = uniqid('cli_');
+            $company = mysqli_real_escape_string($conn, $row['company_name']);
+            $pic = mysqli_real_escape_string($conn, $row['pic']);
+            $jabatan = mysqli_real_escape_string($conn, $row['jabatan']);
+            $wa = mysqli_real_escape_string($conn, $row['wa']);
+            $alamat = mysqli_real_escape_string($conn, $row['alamat']);
+            $notes = mysqli_real_escape_string($conn, $row['catatan']);
+            
+            mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$client_id', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes', 'Active', '[]', '[]')");
+            mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$id");
+            echo json_encode(['ok'=>true, 'client_id'=>$client_id]);
+        } else {
+            echo json_encode(['ok'=>false, 'msg'=>'Gagal sinkronisasi atau sudah disinkronkan.']);
+        }
         exit;
     }
 
@@ -81,6 +121,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             
             $chk_ttype = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_type'");
             if(mysqli_num_rows($chk_ttype) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_type` ENUM('Client','Prospect') DEFAULT NULL");
+
 
             $chk_teams = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'teams_involved'");
             if(mysqli_num_rows($chk_teams) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `teams_involved` TEXT DEFAULT NULL");
@@ -116,7 +157,7 @@ if($period_filter === '3d') $period_days = 3;
 elseif($period_filter === '7d') $period_days = 7;
 elseif($period_filter === '30d') $period_days = 30;
 if($period_days > 0) $where .= " AND updated_at >= DATE_SUB(NOW(), INTERVAL $period_days DAY)";
-$q = mysqli_query($conn, "SELECT * FROM prospects WHERE $where ORDER BY FIELD(status,'Hot','Warm','Cold','Closed'), updated_at DESC");
+$q = mysqli_query($conn, "SELECT * FROM prospects WHERE $where ORDER BY FIELD(status,'Negotiation','Follow Up','Prospecting','Deal','Lost'), updated_at DESC");
 $prospects = [];
 while($row = mysqli_fetch_assoc($q)) $prospects[] = $row;
 
@@ -125,9 +166,12 @@ $last_visit_map = [];
 $q_lv = mysqli_query($conn, "SELECT target_id, MAX(event_date) as last_date FROM events WHERE target_type='Prospect' AND target_id IS NOT NULL GROUP BY target_id");
 if($q_lv) while($lv = mysqli_fetch_assoc($q_lv)) $last_visit_map[$lv['target_id']] = $lv['last_date'];
 
-$counts = ['all'=>0,'Cold'=>0,'Warm'=>0,'Hot'=>0,'Closed'=>0];
+$counts = ['all'=>0,'Prospecting'=>0,'Follow Up'=>0,'Negotiation'=>0,'Deal'=>0,'Lost'=>0];
+$tier_counts = ['B2B Kecil'=>0,'B2B Menengah'=>0,'B2B Besar'=>0];
 $q_c = mysqli_query($conn, "SELECT status, COUNT(*) as c FROM prospects GROUP BY status");
-while($r = mysqli_fetch_assoc($q_c)) { $counts[$r['status']] = $r['c']; $counts['all'] += $r['c']; }
+while($r = mysqli_fetch_assoc($q_c)) { $counts[$r['status']] = ($counts[$r['status']] ?? 0) + $r['c']; $counts['all'] += $r['c']; }
+$q_t = mysqli_query($conn, "SELECT tier, COUNT(*) as c FROM prospects GROUP BY tier");
+while($r = mysqli_fetch_assoc($q_t)) { $tier_counts[$r['tier']] = $r['c']; }
 ?>
 <?php include '../sidebar.php'; ?>
 <!DOCTYPE html>
@@ -289,24 +333,35 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
     <div class="stat-row">
         <div class="stat-card <?= !$status_filter?'active':'' ?>" onclick="filterStatus('')">
             <div class="val"><?= $counts['all'] ?></div>
-            <div class="lbl">Total</div>
+            <div class="lbl">Semua</div>
         </div>
-        <div class="stat-card s-hot <?= $status_filter=='Hot'?'active':'' ?>" onclick="filterStatus('Hot')">
-            <div class="val"><?= $counts['Hot'] ?></div>
-            <div class="lbl"><i class="fas fa-fire"></i> Hot</div>
+        <div class="stat-card s-hot <?= $status_filter=='Negotiation'?'active':'' ?>" onclick="filterStatus('Negotiation')">
+            <div class="val"><?= $counts['Negotiation'] ?? 0 ?></div>
+            <div class="lbl"><i class="fas fa-handshake"></i> Negosiasi</div>
         </div>
-        <div class="stat-card s-warm <?= $status_filter=='Warm'?'active':'' ?>" onclick="filterStatus('Warm')">
-            <div class="val"><?= $counts['Warm'] ?></div>
-            <div class="lbl"><i class="fas fa-sun"></i> Warm</div>
+        <div class="stat-card s-warm <?= $status_filter=='Follow Up'?'active':'' ?>" onclick="filterStatus('Follow Up')">
+            <div class="val"><?= $counts['Follow Up'] ?? 0 ?></div>
+            <div class="lbl"><i class="fas fa-phone-alt"></i> Follow Up</div>
         </div>
-        <div class="stat-card s-cold <?= $status_filter=='Cold'?'active':'' ?>" onclick="filterStatus('Cold')">
-            <div class="val"><?= $counts['Cold'] ?></div>
-            <div class="lbl"><i class="fas fa-snowflake"></i> Cold</div>
+        <div class="stat-card s-cold <?= $status_filter=='Prospecting'?'active':'' ?>" onclick="filterStatus('Prospecting')">
+            <div class="val"><?= $counts['Prospecting'] ?? 0 ?></div>
+            <div class="lbl"><i class="fas fa-crosshairs"></i> Prospecting</div>
         </div>
-        <div class="stat-card s-closed <?= $status_filter=='Closed'?'active':'' ?>" onclick="filterStatus('Closed')">
-            <div class="val"><?= $counts['Closed'] ?></div>
-            <div class="lbl"><i class="fas fa-check-circle"></i> Closed</div>
+        <div class="stat-card s-closed <?= $status_filter=='Deal'?'active':'' ?>" onclick="filterStatus('Deal')">
+            <div class="val"><?= $counts['Deal'] ?? 0 ?></div>
+            <div class="lbl"><i class="fas fa-check-circle"></i> Deal</div>
         </div>
+        <div class="stat-card" style="border-color:rgba(255,90,90,0.3);" <?= $status_filter=='Lost'?'active':'' ?> onclick="filterStatus('Lost')">
+            <div class="val" style="color:#ff5a5a;"><?= $counts['Lost'] ?? 0 ?></div>
+            <div class="lbl" style="color:#ff5a5a;"><i class="fas fa-times-circle"></i> Lost</div>
+        </div>
+    </div>
+    <!-- TIER CHIPS -->
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <span style="font-size:0.72rem;color:#666;line-height:28px;font-weight:700;">SKALA B2B:</span>
+        <span class="badge" style="background:rgba(78,253,196,0.08);border-color:rgba(78,253,196,0.25);color:#4efdc4;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building-shield" style="margin-right:4px;"></i>Kecil: <?= $tier_counts['B2B Kecil'] ?></span>
+        <span class="badge" style="background:rgba(252,163,17,0.08);border-color:rgba(252,163,17,0.25);color:#fca311;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building" style="margin-right:4px;"></i>Menengah: <?= $tier_counts['B2B Menengah'] ?></span>
+        <span class="badge" style="background:rgba(161,255,90,0.08);border-color:rgba(161,255,90,0.25);color:#a1ff5a;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-city" style="margin-right:4px;"></i>Besar: <?= $tier_counts['B2B Besar'] ?></span>
     </div>
 
     <!-- TOOLBAR -->
@@ -332,7 +387,7 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     <th>Kontak</th>
                     <th>Domain</th>
                     <th>Terakhir Visit</th>
-                    <th>Status</th>
+                    <th>Tier / Status</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -370,9 +425,17 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     </td>
                     <td><span class="last-visit-tag <?= $lv_class ?>"><i class="fas fa-calendar-check" style="margin-right:4px;opacity:0.7;"></i><?= $lv_text ?></span></td>
                     <td>
-                        <span class="badge <?= $badgeClass ?>"><?= $p['status'] ?></span>
-                        <?php if($p['deal_status']): ?>
-                            <span class="badge" style="background:rgba(255,255,255,0.07); color:#ccc; border-color:rgba(255,255,255,0.15);"><?= $p['deal_status'] ?></span>
+                        <?php
+                        $tier_val = $p['tier'] ?? 'B2B Kecil';
+                        $tier_colors = ['B2B Kecil'=>'#4efdc4','B2B Menengah'=>'#fca311','B2B Besar'=>'#a1ff5a'];
+                        $tier_color = $tier_colors[$tier_val] ?? '#888';
+                        $status_colors = ['Prospecting'=>'b-cold','Follow Up'=>'b-warm','Negotiation'=>'b-hot','Deal'=>'b-closed','Lost'=>'b-lost'];
+                        $sBadge = $status_colors[$p['status']] ?? 'b-cold';
+                        ?>
+                        <span class="badge" style="background:rgba(<?= implode(',',sscanf($tier_color,'#%02x%02x%02x')) ?>,0.1);border-color:<?= $tier_color ?>33;color:<?= $tier_color ?>;font-size:0.65rem;"><?= $tier_val ?></span>
+                        <br><span class="badge <?= $sBadge ?>" style="margin-top:4px;"><?= $p['status'] ?></span>
+                        <?php if($p['is_synced']): ?>
+                            <span class="badge" style="background:rgba(78,253,196,0.06);color:#4efdc4;border-color:rgba(78,253,196,0.2);font-size:0.62rem;margin-top:2px;"><i class="fas fa-check"></i> Synced</span>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -384,6 +447,9 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <a href="<?= htmlspecialchars($p['link_deck']) ?>" target="_blank" class="act-btn" title="Deck"><i class="fas fa-file-powerpoint"></i></a>
                             <?php endif; ?>
                             <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Detail &amp; Riwayat"><i class="fas fa-eye"></i></button>
+                            <?php if($p['status'] === 'Deal' && !$p['is_synced']): ?>
+                            <button class="act-btn" style="color:#4efdc4;border-color:rgba(78,253,196,0.3);" onclick="syncToClient(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Sinkron ke Client"><i class="fas fa-user-plus"></i></button>
+                            <?php endif; ?>
                             <button class="act-btn del" onclick="deleteProspect(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
@@ -435,10 +501,19 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     <div class="form-grp">
                         <label>Status Pipeline</label>
                         <select id="f_status">
-                            <option value="Cold"><i class="fas fa-snowflake"></i> Cold</option>
-                            <option value="Warm"><i class="fas fa-sun"></i> Warm</option>
-                            <option value="Hot"><i class="fas fa-fire"></i> Hot</option>
-                            <option value="Closed"><i class="fas fa-check-circle"></i> Closed</option>
+                            <option value="Prospecting">🎯 Prospecting</option>
+                            <option value="Follow Up">📞 Follow Up</option>
+                            <option value="Negotiation">🤝 Negosiasi</option>
+                            <option value="Deal">✅ Deal</option>
+                            <option value="Lost">❌ Lost</option>
+                        </select>
+                    </div>
+                    <div class="form-grp">
+                        <label>Skala B2B</label>
+                        <select id="f_tier">
+                            <option value="B2B Kecil">🏠 B2B Kecil (UKM)</option>
+                            <option value="B2B Menengah">🏢 B2B Menengah</option>
+                            <option value="B2B Besar">🏙️ B2B Besar (Enterprise)</option>
                         </select>
                     </div>
                 </div>
@@ -548,7 +623,8 @@ function openModal(data = null) {
     document.getElementById('f_deck').value = data ? (data.link_deck||'') : '';
     document.getElementById('f_alamat').value = data ? (data.alamat||'') : '';
     document.getElementById('f_catatan').value = data ? (data.catatan||'') : '';
-    document.getElementById('f_status').value = data ? (data.status||'Cold') : 'Cold';
+    document.getElementById('f_status').value = data ? (data.status||'Prospecting') : 'Prospecting';
+    document.getElementById('f_tier').value = data ? (data.tier||'B2B Kecil') : 'B2B Kecil';
     
     const dealRadios = document.getElementsByName('f_deal_status');
     dealRadios[0].checked = true; // default belum ditentukan
@@ -666,6 +742,7 @@ async function saveProspect() {
     fd.append('alamat', document.getElementById('f_alamat').value);
     fd.append('catatan', document.getElementById('f_catatan').value);
     fd.append('status', document.getElementById('f_status').value);
+    fd.append('tier', document.getElementById('f_tier').value);
     
     let dealStat = '';
     document.getElementsByName('f_deal_status').forEach(r => { if(r.checked) dealStat = r.value; });
@@ -685,6 +762,23 @@ async function deleteProspect(id, name) {
     await fetch('', { method:'POST', body:fd });
     showToast('Dihapus!');
     setTimeout(() => location.reload(), 700);
+}
+
+async function syncToClient(id, name) {
+    if(!confirm(`Sinkronkan prospek "${name}" ke daftar Klien?\nData dasar (nama, PIC, WA, alamat) akan disalin.\nAnda dapat melengkapi data di halaman Clients.`)) return;
+    const fd = new FormData();
+    fd.append('ajax_action', 'sync_client');
+    fd.append('id', id);
+    const res = await fetch('', { method:'POST', body:fd });
+    const data = await res.json();
+    if(data.ok) {
+        showToast(`${name} berhasil ditambahkan ke Clients!`);
+        setTimeout(() => {
+            window.location = '/dashboard/clients/?highlight=' + data.client_id;
+        }, 1200);
+    } else {
+        showToast(data.msg || 'Gagal sinkronisasi!', true);
+    }
 }
 
 function showToast(msg, isErr = false) {
