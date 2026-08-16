@@ -1407,7 +1407,7 @@ function buildInvoiceHTML(inv) {
         ${watermarkHtml}
         <div class="dark-inv-body" style="position:relative;z-index:1;">
             <div class="dark-inv-logo-row">
-                <img src="/uploads/icon.png" style="width:36px;height:36px;object-fit:contain;border-radius:50%;" alt="HVM Digital">
+                <img src="/uploads/logohvm.png" style="height:36px;width:auto;object-fit:contain;" alt="HVM Digital">
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
