@@ -66,34 +66,8 @@ if($q_ev && mysqli_num_rows($q_ev) > 0) {
 }
 
 // ═══ BULK AUTO-SYNC: Prospek Deal → Client ═══
-// Setiap kali halaman dimuat, cek semua prospek Deal yang belum tersinkronisasi
-$q_bulk = mysqli_query($conn, "SELECT * FROM prospects WHERE status='Deal' AND (is_synced IS NULL OR is_synced=0)");
-while($pb = mysqli_fetch_assoc($q_bulk)) {
-    // Cek apakah nama perusahaan sudah ada di clients
-    $cname_esc = mysqli_real_escape_string($conn, $pb['company_name']);
-    $q_exist = mysqli_query($conn, "SELECT client_id FROM clients WHERE company_name='$cname_esc' LIMIT 1");
-    if(mysqli_num_rows($q_exist) == 0) {
-        // Get next client ID
-        $q_id = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
-        $r_id = mysqli_fetch_assoc($q_id);
-        $new_cid = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
-        
-        $pic_esc   = mysqli_real_escape_string($conn, $pb['pic'] ?? '');
-        $jab_esc   = mysqli_real_escape_string($conn, $pb['jabatan'] ?? '');
-        $wa_esc    = mysqli_real_escape_string($conn, $pb['wa'] ?? '');
-        $alam_esc  = mysqli_real_escape_string($conn, $pb['alamat'] ?? '');
-        $note_esc  = mysqli_real_escape_string($conn, $pb['catatan'] ?? '');
-        $dom_esc   = mysqli_real_escape_string($conn, $pb['domain'] ?? '');
-        mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$new_cid', '$cname_esc', '$pic_esc', '$jab_esc', '$wa_esc', '$alam_esc', '$note_esc', '$dom_esc', 'Active', '[]', '[]')");
-        
-        // Migrate meetings
-        $pid = intval($pb['id']);
-        mysqli_query($conn, "UPDATE events SET target_id='$new_cid', target_type='Client', target_name='$cname_esc' WHERE target_id='$pid' AND target_type='Prospect'");
-    }
-    // Tandai sudah tersinkronisasi
-    $pid = intval($pb['id']);
-    mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$pid");
-}
+// (Removed to prevent aggressive syncing on page load. Sync now relies on AJAX 'Deal' status change or manual pull in Client dashboard)
+
 
 // 3. AJAX ACTIONS
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
@@ -140,6 +114,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
                 mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id_new', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes_esc', '$dom_esc', 'Active', '[]', '[]')");
                 mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$new_id");
                 mysqli_query($conn, "UPDATE events SET target_id='$client_id_new', target_type='Client', target_name='$company' WHERE target_id='$new_id' AND target_type='Prospect'");
+                mysqli_query($conn, "UPDATE invoices SET client_ref_id='$client_id_new', client_ref_type='Client', client_name='$company' WHERE client_ref_id='$new_id' AND client_ref_type='Prospect'");
             }
         }
 
@@ -174,6 +149,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes', '$domain', 'Active', '[]', '[]')");
             mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$id");
             mysqli_query($conn, "UPDATE events SET target_id='$client_id', target_type='Client', target_name='$company' WHERE target_id='$id' AND target_type='Prospect'");
+            mysqli_query($conn, "UPDATE invoices SET client_ref_id='$client_id', client_ref_type='Client', client_name='$company' WHERE client_ref_id='$id' AND client_ref_type='Prospect'");
             
             echo json_encode(['ok'=>true, 'client_id'=>$client_id]);
         } else {

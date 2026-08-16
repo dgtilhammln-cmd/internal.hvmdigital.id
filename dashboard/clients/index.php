@@ -421,7 +421,7 @@ if($allowed){
     $stat_lastmon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(DATE_SUB(NOW(),INTERVAL 1 MONTH)) AND MONTH(created_at)=MONTH(DATE_SUB(NOW(),INTERVAL 1 MONTH))"))['n'];
     $stat_thismon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW()) AND MONTH(created_at)=MONTH(NOW())"))['n'];
 
-    $q_pros = mysqli_query($conn, "SELECT id, company_name, pic, jabatan, wa, alamat, domain FROM prospects WHERE status='Deal' AND (is_synced=0 OR is_synced IS NULL) ORDER BY company_name ASC");
+    $q_pros = mysqli_query($conn, "SELECT id, company_name, pic, jabatan, wa, alamat, domain FROM prospects WHERE status='Deal' ORDER BY company_name ASC");
     $prospect_opts = [];
     if($q_pros) while($r = mysqli_fetch_assoc($q_pros)) $prospect_opts[] = $r;
     $prospect_json = json_encode($prospect_opts);
@@ -1293,9 +1293,9 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                     </div>
 
                     <div class="form-grid">
-                        <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;" id="tarikProspekWrap">
-                            <label><i class="fas fa-magic" style="color:var(--neon-sec);margin-right:5px;"></i>Tarik Data dari Prospek (Status: Deal)</label>
-                            <select id="f_tarik_prospek" class="form-input" style="border-color:var(--neon-sec); color:var(--neon-sec); font-weight:700; background:rgba(78,253,196,0.05);" onchange="tarikProspek(this.value)">
+                        <div class="form-group" style="grid-column: span 2; margin-bottom: 10px;" id="tarikProspekWrap">
+                            <label><i class="fas fa-link" style="color:var(--neon-main);margin-right:5px;"></i>Tarik Data dari Prospek (Status: Deal)</label>
+                            <select id="f_tarik_prospek" class="form-input" style="background:rgba(0,0,0,0.5); border:1px dashed var(--neon-main); color:var(--neon-main); font-weight:600; cursor:pointer;" onchange="tarikProspek(this.value)">
                                 <option value="">-- Pilih Prospek (Opsional) --</option>
                                 <?php foreach($prospect_opts as $p): ?>
                                     <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['company_name']) ?></option>
