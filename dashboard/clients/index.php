@@ -60,6 +60,18 @@ if($q_mig && mysqli_num_rows($q_mig) > 0){
     }
 }
 
+// Auto-fix any 'cli_xxxx' IDs to sequential numeric IDs
+$q_bad_ids = mysqli_query($conn, "SELECT client_id FROM clients WHERE client_id LIKE 'cli_%'");
+if($q_bad_ids && mysqli_num_rows($q_bad_ids) > 0) {
+    while($rb = mysqli_fetch_assoc($q_bad_ids)) {
+        $bad_id = $rb['client_id'];
+        $q_max = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
+        $r_max = mysqli_fetch_assoc($q_max);
+        $new_cid = str_pad((int)($r_max['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
+        mysqli_query($conn, "UPDATE clients SET client_id='$new_cid' WHERE client_id='$bad_id'");
+    }
+}
+
 // Upload dirs
 $upload_dir  = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_logos/';
 $docs_dir    = $_SERVER['DOCUMENT_ROOT'] . '/uploads/client_docs/';
@@ -390,6 +402,11 @@ if($allowed){
     $stat_year    = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW())"))['n'];
     $stat_lastmon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(DATE_SUB(NOW(),INTERVAL 1 MONTH)) AND MONTH(created_at)=MONTH(DATE_SUB(NOW(),INTERVAL 1 MONTH))"))['n'];
     $stat_thismon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW()) AND MONTH(created_at)=MONTH(NOW())"))['n'];
+
+    $q_pros = mysqli_query($conn, "SELECT id, company_name, pic, jabatan, wa, alamat FROM prospects WHERE status='Deal' AND (is_synced=0 OR is_synced IS NULL) ORDER BY company_name ASC");
+    $prospect_opts = [];
+    if($q_pros) while($r = mysqli_fetch_assoc($q_pros)) $prospect_opts[] = $r;
+    $prospect_json = json_encode($prospect_opts);
 }
 ?>
 <!DOCTYPE html>
@@ -1258,14 +1275,25 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                     </div>
 
                     <div class="form-grid">
+                        <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;" id="tarikProspekWrap">
+                            <label><i class="fas fa-magic" style="color:var(--neon-sec);margin-right:5px;"></i>Tarik Data dari Prospek (Status: Deal)</label>
+                            <select id="f_tarik_prospek" class="form-input" style="border-color:var(--neon-sec); color:var(--neon-sec); font-weight:700; background:rgba(78,253,196,0.05);" onchange="tarikProspek(this.value)">
+                                <option value="">-- Pilih Prospek (Opsional) --</option>
+                                <?php foreach($prospect_opts as $p): ?>
+                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['company_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input type="hidden" name="prospect_id" id="f_prospect_id" value="">
+                        </div>
+
                         <div class="form-group"><label>Client ID</label><input type="text" name="client_id" id="f_id" class="form-input" readonly></div>
                         <div class="form-group"><label>Company Name</label><input type="text" name="company_name" id="f_name" class="form-input" required></div>
                         <div class="form-group"><label>Sector / Industri</label><input type="text" name="sector" id="f_sector" class="form-input" required></div>
                         <div class="form-group"><label>City / Address</label><input type="text" name="city" id="f_city" class="form-input" required></div>
                         <div class="form-group"><label><i class="fas fa-circle" style="color:var(--neon-main);margin-right:5px;"></i>Status Klien</label>
-                            <select name="client_status" id="f_status" class="form-input fa-select" style="cursor:pointer; font-family:'Inter', 'Font Awesome 5 Free'; font-weight:900;">
-                                <option value="Active">&#xf058; Aktif</option>
-                                <option value="Inactive">&#xf057; Non-Aktif</option>
+                            <select name="client_status" id="f_status" class="form-input" style="cursor:pointer; appearance:none; background:rgba(0,0,0,0.5); font-weight:700;">
+                                <option value="Active">✅ Aktif / Berjalan</option>
+                                <option value="Inactive">❌ Non-Aktif / Selesai</option>
                             </select>
                         </div>
                         <input type="hidden" name="contract_type" id="f_contract_type" value="">
@@ -1496,6 +1524,29 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 <div id="popup" class="popup"><i class="fas fa-check-circle"></i> <span id="popupMsg">Success</span></div>
 
 <script>
+const prosData = <?= $prospect_json ?>;
+function tarikProspek(id) {
+    if(!id) return;
+    const p = prosData.find(x => x.id == id);
+    if(p) {
+        document.getElementById('f_name').value = p.company_name || '';
+        document.getElementById('f_pic').value = p.pic || '';
+        document.getElementById('f_pos').value = p.jabatan || '';
+        document.getElementById('f_wa').value = p.wa || '';
+        document.getElementById('f_city').value = p.alamat || '';
+        document.getElementById('f_prospect_id').value = p.id || '';
+        
+        // Highlight inputs
+        ['f_name','f_pic','f_pos','f_wa','f_city'].forEach(fid => {
+            const el = document.getElementById(fid);
+            if(el){ 
+                el.style.boxShadow = '0 0 10px rgba(161,255,90,0.5)'; 
+                setTimeout(()=>el.style.boxShadow='none', 1000); 
+            }
+        });
+    }
+}
+
 const modal = document.getElementById('clientModal');
 const form  = document.getElementById('clientForm');
 

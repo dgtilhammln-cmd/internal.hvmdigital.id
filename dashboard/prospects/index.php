@@ -67,8 +67,11 @@ while($pb = mysqli_fetch_assoc($q_bulk)) {
     $cname_esc = mysqli_real_escape_string($conn, $pb['company_name']);
     $q_exist = mysqli_query($conn, "SELECT client_id FROM clients WHERE company_name='$cname_esc' LIMIT 1");
     if(mysqli_num_rows($q_exist) == 0) {
-        // Belum ada → insert ke clients
-        $new_cid   = uniqid('cli_');
+        // Get next client ID
+        $q_id = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
+        $r_id = mysqli_fetch_assoc($q_id);
+        $new_cid = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
+        
         $pic_esc   = mysqli_real_escape_string($conn, $pb['pic'] ?? '');
         $jab_esc   = mysqli_real_escape_string($conn, $pb['jabatan'] ?? '');
         $wa_esc    = mysqli_real_escape_string($conn, $pb['wa'] ?? '');
@@ -117,7 +120,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             $q_syn = mysqli_query($conn, "SELECT is_synced FROM prospects WHERE id=$new_id");
             $r_syn = mysqli_fetch_assoc($q_syn);
             if(!$r_syn['is_synced']) {
-                $client_id_new = uniqid('cli_');
+                $q_id = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
+                $r_id = mysqli_fetch_assoc($q_id);
+                $client_id_new = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
+                
                 $notes_esc = mysqli_real_escape_string($conn, $_POST['catatan'] ?? '');
                 mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$client_id_new', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes_esc', 'Active', '[]', '[]')");
                 mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$new_id");
@@ -140,7 +146,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $q = mysqli_query($conn, "SELECT * FROM prospects WHERE id=$id AND is_synced=0");
         $row = mysqli_fetch_assoc($q);
         if($row) {
-            $client_id = uniqid('cli_');
+            $q_id = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
+            $r_id = mysqli_fetch_assoc($q_id);
+            $client_id = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
+            
             $company = mysqli_real_escape_string($conn, $row['company_name']);
             $pic = mysqli_real_escape_string($conn, $row['pic']);
             $jabatan = mysqli_real_escape_string($conn, $row['jabatan']);
