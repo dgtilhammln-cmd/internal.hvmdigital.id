@@ -23,7 +23,7 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `prospects` (
     `domain` VARCHAR(255) DEFAULT NULL,
     `link_deck` TEXT DEFAULT NULL,
     `catatan` TEXT DEFAULT NULL,
-    `tier` ENUM('B2B Kecil','B2B Menengah','B2B Besar') DEFAULT 'B2B Kecil',
+    `tier` ENUM('UMKM','Perusahaan Menengah','Korporasi','Instansi / Pemerintah') DEFAULT 'UMKM',
     `status` ENUM('Prospecting','Follow Up','Negotiation','Deal','Lost') DEFAULT 'Prospecting',
     `is_synced` TINYINT(1) DEFAULT 0,
     `deal_status` ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL,
@@ -31,7 +31,18 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `prospects` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )");
 
-fixCol($conn, 'prospects', 'tier', "ENUM('B2B Kecil','B2B Menengah','B2B Besar') DEFAULT 'B2B Kecil' AFTER catatan");
+// Migrate old tier values
+$q_tier_chk = mysqli_query($conn, "SHOW COLUMNS FROM prospects LIKE 'tier'");
+$r_tier_chk = mysqli_fetch_assoc($q_tier_chk);
+if($r_tier_chk && strpos($r_tier_chk['Type'], 'UMKM') === false) {
+    mysqli_query($conn, "ALTER TABLE prospects MODIFY COLUMN tier ENUM('B2B Kecil','B2B Menengah','B2B Besar','UMKM','Perusahaan Menengah','Korporasi','Instansi / Pemerintah') DEFAULT 'UMKM'");
+    mysqli_query($conn, "UPDATE prospects SET tier='UMKM' WHERE tier='B2B Kecil' OR tier IS NULL");
+    mysqli_query($conn, "UPDATE prospects SET tier='Perusahaan Menengah' WHERE tier='B2B Menengah'");
+    mysqli_query($conn, "UPDATE prospects SET tier='Korporasi' WHERE tier='B2B Besar'");
+    mysqli_query($conn, "ALTER TABLE prospects MODIFY COLUMN tier ENUM('UMKM','Perusahaan Menengah','Korporasi','Instansi / Pemerintah') DEFAULT 'UMKM'");
+} else {
+    fixCol($conn, 'prospects', 'tier', "ENUM('UMKM','Perusahaan Menengah','Korporasi','Instansi / Pemerintah') DEFAULT 'UMKM' AFTER catatan");
+}
 fixCol($conn, 'prospects', 'is_synced', "TINYINT(1) DEFAULT 0 AFTER status");
 
 // Auto-migrate old statuses
@@ -64,7 +75,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $link_deck   = mysqli_real_escape_string($conn, trim($_POST['link_deck'] ?? ''));
         $catatan     = mysqli_real_escape_string($conn, trim($_POST['catatan'] ?? ''));
         $status      = mysqli_real_escape_string($conn, $_POST['status'] ?? 'Prospecting');
-        $tier        = mysqli_real_escape_string($conn, $_POST['tier'] ?? 'B2B Kecil');
+        $tier        = mysqli_real_escape_string($conn, $_POST['tier'] ?? 'UMKM');
         $deal_status = isset($_POST['deal_status']) && $_POST['deal_status'] ? "'".mysqli_real_escape_string($conn, $_POST['deal_status'])."'" : "NULL";
 
         if(empty($company)) { echo json_encode(['ok'=>false,'msg'=>'Nama perusahaan wajib diisi.']); exit; }
@@ -167,7 +178,7 @@ $q_lv = mysqli_query($conn, "SELECT target_id, MAX(event_date) as last_date FROM
 if($q_lv) while($lv = mysqli_fetch_assoc($q_lv)) $last_visit_map[$lv['target_id']] = $lv['last_date'];
 
 $counts = ['all'=>0,'Prospecting'=>0,'Follow Up'=>0,'Negotiation'=>0,'Deal'=>0,'Lost'=>0];
-$tier_counts = ['B2B Kecil'=>0,'B2B Menengah'=>0,'B2B Besar'=>0];
+$tier_counts = ['UMKM'=>0,'Perusahaan Menengah'=>0,'Korporasi'=>0,'Instansi / Pemerintah'=>0];
 $q_c = mysqli_query($conn, "SELECT status, COUNT(*) as c FROM prospects GROUP BY status");
 while($r = mysqli_fetch_assoc($q_c)) { $counts[$r['status']] = ($counts[$r['status']] ?? 0) + $r['c']; $counts['all'] += $r['c']; }
 $q_t = mysqli_query($conn, "SELECT tier, COUNT(*) as c FROM prospects GROUP BY tier");
@@ -357,11 +368,12 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
         </div>
     </div>
     <!-- TIER CHIPS -->
-    <div style="display:flex;gap:8px;margin-bottom:18px;">
-        <span style="font-size:0.72rem;color:#666;line-height:28px;font-weight:700;">SKALA B2B:</span>
-        <span class="badge" style="background:rgba(78,253,196,0.08);border-color:rgba(78,253,196,0.25);color:#4efdc4;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building-shield" style="margin-right:4px;"></i>Kecil: <?= $tier_counts['B2B Kecil'] ?></span>
-        <span class="badge" style="background:rgba(252,163,17,0.08);border-color:rgba(252,163,17,0.25);color:#fca311;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building" style="margin-right:4px;"></i>Menengah: <?= $tier_counts['B2B Menengah'] ?></span>
-        <span class="badge" style="background:rgba(161,255,90,0.08);border-color:rgba(161,255,90,0.25);color:#a1ff5a;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-city" style="margin-right:4px;"></i>Besar: <?= $tier_counts['B2B Besar'] ?></span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+        <span style="font-size:0.72rem;color:#666;line-height:28px;font-weight:700;">SKALA USAHA:</span>
+        <span class="badge" style="background:rgba(78,253,196,0.08);border-color:rgba(78,253,196,0.25);color:#4efdc4;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-store" style="margin-right:4px;"></i>UMKM: <?= $tier_counts['UMKM'] ?></span>
+        <span class="badge" style="background:rgba(252,163,17,0.08);border-color:rgba(252,163,17,0.25);color:#fca311;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building" style="margin-right:4px;"></i>Menengah: <?= $tier_counts['Perusahaan Menengah'] ?></span>
+        <span class="badge" style="background:rgba(161,255,90,0.08);border-color:rgba(161,255,90,0.25);color:#a1ff5a;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-city" style="margin-right:4px;"></i>Korporasi: <?= $tier_counts['Korporasi'] ?></span>
+        <span class="badge" style="background:rgba(100,149,237,0.08);border-color:rgba(100,149,237,0.25);color:#6495ed;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-landmark" style="margin-right:4px;"></i>Instansi: <?= $tier_counts['Instansi / Pemerintah'] ?></span>
     </div>
 
     <!-- TOOLBAR -->
@@ -426,13 +438,15 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     <td><span class="last-visit-tag <?= $lv_class ?>"><i class="fas fa-calendar-check" style="margin-right:4px;opacity:0.7;"></i><?= $lv_text ?></span></td>
                     <td>
                         <?php
-                        $tier_val = $p['tier'] ?? 'B2B Kecil';
-                        $tier_colors = ['B2B Kecil'=>'#4efdc4','B2B Menengah'=>'#fca311','B2B Besar'=>'#a1ff5a'];
+                        $tier_val = $p['tier'] ?? 'UMKM';
+                        $tier_icons = ['UMKM'=>'fa-store','Perusahaan Menengah'=>'fa-building','Korporasi'=>'fa-city','Instansi / Pemerintah'=>'fa-landmark'];
+                        $tier_colors = ['UMKM'=>'#4efdc4','Perusahaan Menengah'=>'#fca311','Korporasi'=>'#a1ff5a','Instansi / Pemerintah'=>'#6495ed'];
                         $tier_color = $tier_colors[$tier_val] ?? '#888';
+                        $tier_icon  = $tier_icons[$tier_val] ?? 'fa-store';
                         $status_colors = ['Prospecting'=>'b-cold','Follow Up'=>'b-warm','Negotiation'=>'b-hot','Deal'=>'b-closed','Lost'=>'b-lost'];
                         $sBadge = $status_colors[$p['status']] ?? 'b-cold';
                         ?>
-                        <span class="badge" style="background:rgba(<?= implode(',',sscanf($tier_color,'#%02x%02x%02x')) ?>,0.1);border-color:<?= $tier_color ?>33;color:<?= $tier_color ?>;font-size:0.65rem;"><?= $tier_val ?></span>
+                        <span class="badge" style="background:rgba(<?= implode(',',sscanf($tier_color,'#%02x%02x%02x')) ?>,0.1);border-color:<?= $tier_color ?>33;color:<?= $tier_color ?>;font-size:0.65rem;"><i class="fas <?= $tier_icon ?>" style="margin-right:4px;"></i><?= $tier_val ?></span>
                         <br><span class="badge <?= $sBadge ?>" style="margin-top:4px;"><?= $p['status'] ?></span>
                         <?php if($p['is_synced']): ?>
                             <span class="badge" style="background:rgba(78,253,196,0.06);color:#4efdc4;border-color:rgba(78,253,196,0.2);font-size:0.62rem;margin-top:2px;"><i class="fas fa-check"></i> Synced</span>
@@ -499,21 +513,22 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                         <input type="text" id="f_wa" placeholder="08xxxxxxxxxx">
                     </div>
                     <div class="form-grp">
-                        <label>Status Pipeline</label>
+                        <label><i class="fas fa-route" style="margin-right:6px;color:var(--green);"></i>Status Pipeline</label>
                         <select id="f_status">
-                            <option value="Prospecting">🎯 Prospecting</option>
-                            <option value="Follow Up">📞 Follow Up</option>
-                            <option value="Negotiation">🤝 Negosiasi</option>
-                            <option value="Deal">✅ Deal</option>
-                            <option value="Lost">❌ Lost</option>
+                            <option value="Prospecting">Prospecting</option>
+                            <option value="Follow Up">Follow Up</option>
+                            <option value="Negotiation">Negosiasi</option>
+                            <option value="Deal">Deal</option>
+                            <option value="Lost">Lost</option>
                         </select>
                     </div>
                     <div class="form-grp">
-                        <label>Skala B2B</label>
+                        <label><i class="fas fa-layer-group" style="margin-right:6px;color:var(--green);"></i>Skala Usaha</label>
                         <select id="f_tier">
-                            <option value="B2B Kecil">🏠 B2B Kecil (UKM)</option>
-                            <option value="B2B Menengah">🏢 B2B Menengah</option>
-                            <option value="B2B Besar">🏙️ B2B Besar (Enterprise)</option>
+                            <option value="UMKM">UMKM (Usaha Mikro, Kecil, Menengah)</option>
+                            <option value="Perusahaan Menengah">Perusahaan Menengah</option>
+                            <option value="Korporasi">Korporasi / Enterprise</option>
+                            <option value="Instansi / Pemerintah">Instansi / Pemerintah</option>
                         </select>
                     </div>
                 </div>
@@ -624,7 +639,7 @@ function openModal(data = null) {
     document.getElementById('f_alamat').value = data ? (data.alamat||'') : '';
     document.getElementById('f_catatan').value = data ? (data.catatan||'') : '';
     document.getElementById('f_status').value = data ? (data.status||'Prospecting') : 'Prospecting';
-    document.getElementById('f_tier').value = data ? (data.tier||'B2B Kecil') : 'B2B Kecil';
+    document.getElementById('f_tier').value = data ? (data.tier||'UMKM') : 'UMKM';
     
     const dealRadios = document.getElementsByName('f_deal_status');
     dealRadios[0].checked = true; // default belum ditentukan
