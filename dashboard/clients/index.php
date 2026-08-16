@@ -378,6 +378,13 @@ if(isset($_POST['save_client'])){
                  '$l_plan','$l_design','$l_artikel','$l_thumb','$l_other',
                  '$c_ig','$c_tt','$c_yt','$notes',$logo_ins,'$cli_status','$services_json','$creds_json')");
             $msg = "New Client Added!";
+            
+            // Handle pulled prospect
+            if(!empty($_POST['prospect_id'])) {
+                $pid = intval($_POST['prospect_id']);
+                mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$pid");
+                mysqli_query($conn, "UPDATE events SET target_id='$id', target_type='Client', target_name='$name' WHERE target_id='$pid' AND target_type='Prospect'");
+            }
         }
         $_SESSION['popup']=['type'=>'success','msg'=>$msg];
         header("Location: index.php"); exit;
@@ -403,7 +410,7 @@ if($allowed){
     $stat_lastmon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(DATE_SUB(NOW(),INTERVAL 1 MONTH)) AND MONTH(created_at)=MONTH(DATE_SUB(NOW(),INTERVAL 1 MONTH))"))['n'];
     $stat_thismon = (int)mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as n FROM clients WHERE YEAR(created_at)=YEAR(NOW()) AND MONTH(created_at)=MONTH(NOW())"))['n'];
 
-    $q_pros = mysqli_query($conn, "SELECT id, company_name, pic, jabatan, wa, alamat FROM prospects WHERE status='Deal' AND (is_synced=0 OR is_synced IS NULL) ORDER BY company_name ASC");
+    $q_pros = mysqli_query($conn, "SELECT id, company_name, pic, jabatan, wa, alamat, domain FROM prospects WHERE status='Deal' AND (is_synced=0 OR is_synced IS NULL) ORDER BY company_name ASC");
     $prospect_opts = [];
     if($q_pros) while($r = mysqli_fetch_assoc($q_pros)) $prospect_opts[] = $r;
     $prospect_json = json_encode($prospect_opts);
@@ -1534,10 +1541,11 @@ function tarikProspek(id) {
         document.getElementById('f_pos').value = p.jabatan || '';
         document.getElementById('f_wa').value = p.wa || '';
         document.getElementById('f_city').value = p.alamat || '';
+        document.getElementById('f_links').value = p.domain || '';
         document.getElementById('f_prospect_id').value = p.id || '';
         
         // Highlight inputs
-        ['f_name','f_pic','f_pos','f_wa','f_city'].forEach(fid => {
+        ['f_name','f_pic','f_pos','f_wa','f_city','f_links'].forEach(fid => {
             const el = document.getElementById(fid);
             if(el){ 
                 el.style.boxShadow = '0 0 10px rgba(161,255,90,0.5)'; 

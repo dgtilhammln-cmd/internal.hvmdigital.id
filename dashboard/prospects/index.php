@@ -59,6 +59,12 @@ if (strpos($r_chk['Type'], 'Cold') !== false) {
 
 fixCol($conn, 'prospects', 'deal_status', "ENUM('Deal','Gak Deal','Ghosting') DEFAULT NULL AFTER `status`");
 
+// Ensure events target_id is VARCHAR so it can store '0012' client_ids properly
+$q_ev = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
+if($q_ev && mysqli_num_rows($q_ev) > 0) {
+    mysqli_query($conn, "ALTER TABLE `events` MODIFY COLUMN `target_id` VARCHAR(50) DEFAULT NULL");
+}
+
 // ═══ BULK AUTO-SYNC: Prospek Deal → Client ═══
 // Setiap kali halaman dimuat, cek semua prospek Deal yang belum tersinkronisasi
 $q_bulk = mysqli_query($conn, "SELECT * FROM prospects WHERE status='Deal' AND (is_synced IS NULL OR is_synced=0)");
@@ -77,7 +83,12 @@ while($pb = mysqli_fetch_assoc($q_bulk)) {
         $wa_esc    = mysqli_real_escape_string($conn, $pb['wa'] ?? '');
         $alam_esc  = mysqli_real_escape_string($conn, $pb['alamat'] ?? '');
         $note_esc  = mysqli_real_escape_string($conn, $pb['catatan'] ?? '');
-        mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$new_cid', '$cname_esc', '$pic_esc', '$jab_esc', '$wa_esc', '$alam_esc', '$note_esc', 'Active', '[]', '[]')");
+        $dom_esc   = mysqli_real_escape_string($conn, $pb['domain'] ?? '');
+        mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$new_cid', '$cname_esc', '$pic_esc', '$jab_esc', '$wa_esc', '$alam_esc', '$note_esc', '$dom_esc', 'Active', '[]', '[]')");
+        
+        // Migrate meetings
+        $pid = intval($pb['id']);
+        mysqli_query($conn, "UPDATE events SET target_id='$new_cid', target_type='Client', target_name='$cname_esc' WHERE target_id='$pid' AND target_type='Prospect'");
     }
     // Tandai sudah tersinkronisasi
     $pid = intval($pb['id']);
@@ -125,8 +136,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
                 $client_id_new = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
                 
                 $notes_esc = mysqli_real_escape_string($conn, $_POST['catatan'] ?? '');
-                mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$client_id_new', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes_esc', 'Active', '[]', '[]')");
+                $dom_esc   = mysqli_real_escape_string($conn, $_POST['domain'] ?? '');
+                mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id_new', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes_esc', '$dom_esc', 'Active', '[]', '[]')");
                 mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$new_id");
+                mysqli_query($conn, "UPDATE events SET target_id='$client_id_new', target_type='Client', target_name='$company' WHERE target_id='$new_id' AND target_type='Prospect'");
             }
         }
 
@@ -156,9 +169,12 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             $wa = mysqli_real_escape_string($conn, $row['wa']);
             $alamat = mysqli_real_escape_string($conn, $row['alamat']);
             $notes = mysqli_real_escape_string($conn, $row['catatan']);
+            $domain = mysqli_real_escape_string($conn, $row['domain']);
             
-            mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, status, services_data, credentials_data) VALUES ('$client_id', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes', 'Active', '[]', '[]')");
+            mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes', '$domain', 'Active', '[]', '[]')");
             mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$id");
+            mysqli_query($conn, "UPDATE events SET target_id='$client_id', target_type='Client', target_name='$company' WHERE target_id='$id' AND target_type='Prospect'");
+            
             echo json_encode(['ok'=>true, 'client_id'=>$client_id]);
         } else {
             echo json_encode(['ok'=>false, 'msg'=>'Gagal sinkronisasi atau sudah disinkronkan.']);
