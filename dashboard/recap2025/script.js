@@ -91,12 +91,16 @@ function renderGrowthChart() {
     gradient.addColorStop(0, 'rgba(78, 253, 196, 0.5)');
     gradient.addColorStop(1, 'rgba(78, 253, 196, 0.0)');
 
+    const totalDuration = 3000;
+    const delayBetweenPoints = chartData.length > 0 ? totalDuration / chartData.length : 0;
+    const previousY = (ctx) => ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(100) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
+
     growthChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartLabels,
             datasets: [{
-                label: 'Revenue',
+                label: 'Pendapatan',
                 data: chartData,
                 borderColor: '#4efdc4',
                 backgroundColor: gradient,
@@ -113,8 +117,32 @@ function renderGrowthChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 3000,
-                easing: 'easeOutQuart'
+                x: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: delayBetweenPoints,
+                    from: NaN,
+                    delay(ctx) {
+                        if (ctx.type !== 'data' || ctx.xStarted) {
+                            return 0;
+                        }
+                        ctx.xStarted = true;
+                        return ctx.index * delayBetweenPoints;
+                    }
+                },
+                y: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: delayBetweenPoints,
+                    from: previousY,
+                    delay(ctx) {
+                        if (ctx.type !== 'data' || ctx.yStarted) {
+                            return 0;
+                        }
+                        ctx.yStarted = true;
+                        return ctx.index * delayBetweenPoints;
+                    }
+                }
             },
             scales: {
                 x: {

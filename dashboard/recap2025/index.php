@@ -100,12 +100,12 @@ while($r = mysqli_fetch_assoc($q_trend)){
         <div class="slide" id="slide2">
             <div class="glass-card">
                 <i class="fas fa-wallet" style="font-size:3rem; color:var(--neon-green); margin-bottom:20px;"></i>
-                <div class="data-label">TOTAL REVENUE</div>
+                <div class="data-label">TOTAL PENDAPATAN</div>
                 <div class="data-big">
                     <span class="currency">Rp</span>
                     <span class="counter" data-val="<?php echo $revenue; ?>">0</span>
                 </div>
-                <p style="color:#aaa;">Hasil dari kerja keras dan dedikasi tim.</p>
+                <p style="color:#aaa;">Bukti nyata dari kerja keras, eksekusi, dan dedikasi tanpa henti.</p>
             </div>
             <div class="nav-bottom">
                 <button class="nav-btn" onclick="nextSlide()"><i class="fas fa-arrow-right"></i></button>
@@ -118,12 +118,12 @@ while($r = mysqli_fetch_assoc($q_trend)){
                 <div class="stat-box">
                     <i class="fas fa-users stat-icon"></i>
                     <h2 class="counter" data-val="<?php echo $new_clients; ?>" style="font-size:3rem; margin:0;">0</h2>
-                    <p class="data-label">NEW PARTNERS</p>
+                    <p class="data-label">MITRA BARU EKSLUSIF</p>
                 </div>
                 <div class="stat-box">
                     <i class="fas fa-handshake stat-icon" style="color:var(--neon-cyan);"></i>
                     <h2 class="counter" data-val="<?php echo $total_trx; ?>" style="font-size:3rem; margin:0;">0</h2>
-                    <p class="data-label">DEALS CLOSED</p>
+                    <p class="data-label">PROYEK GOL</p>
                 </div>
             </div>
             <div class="nav-bottom">
@@ -134,7 +134,7 @@ while($r = mysqli_fetch_assoc($q_trend)){
 
         <!-- SLIDE 4: GROWTH CHART -->
         <div class="slide" id="slide4">
-            <h2 class="subtitle">GROWTH TRAJECTORY</h2>
+            <h2 class="subtitle">GRAFIK PERTUMBUHAN</h2>
             <div class="glass-card" style="width: 100%; max-width: 800px; padding: 20px; box-sizing: border-box;">
                 <canvas id="growthChart" height="250"></canvas>
             </div>
@@ -146,23 +146,23 @@ while($r = mysqli_fetch_assoc($q_trend)){
 
         <!-- SLIDE 5: HIGHLIGHTS -->
         <div class="slide" id="slide5">
-            <h2 class="subtitle">THE HIGHLIGHTS</h2>
+            <h2 class="subtitle">PUNCAK PRESTASI</h2>
             <div class="grid-stats">
                 <div class="stat-box" style="border-color:#ffd700;">
                     <i class="fas fa-crown stat-icon" style="color:#ffd700;"></i>
                     <h3 style="font-size:2rem; margin:10px 0;"><?php echo strtoupper($best_month); ?></h3>
                     <p style="color:#fff;">Rp <?php echo number_format($best_val/1000000, 1); ?> JT</p>
-                    <p class="data-label" style="margin-top:10px;">BEST MONTH</p>
+                    <p class="data-label" style="margin-top:10px;">BULAN TERBAIK</p>
                 </div>
                 <div class="stat-box">
                     <i class="fas fa-star stat-icon"></i>
                     <h3 style="font-size:1.8rem; margin:10px 0;"><?php echo $top_service; ?></h3>
-                    <p class="data-label">TOP SERVICE</p>
+                    <p class="data-label">LAYANAN TERFAVORIT</p>
                 </div>
                 <div class="stat-box">
                     <i class="fas fa-trophy stat-icon" style="color:var(--neon-cyan);"></i>
                     <h3 style="font-size:1.5rem; margin:10px 0;"><?php echo $top_client; ?></h3>
-                    <p class="data-label">TOP CLIENT</p>
+                    <p class="data-label">KLIEN ELIT</p>
                 </div>
             </div>
             <div class="nav-bottom">
@@ -185,20 +185,20 @@ while($r = mysqli_fetch_assoc($q_trend)){
                         
                         <div style="margin-top:40px;">
                             <h1 class="story-year"><?php echo $year; ?></h1>
-                            <div style="font-size:1.2rem; letter-spacing:5px; margin-bottom:30px;">WRAPPED</div>
+                            <div style="font-size:1.2rem; letter-spacing:5px; margin-bottom:30px;">PENCAPAIAN</div>
                             
                             <div class="story-data-row">
-                                <span class="story-lbl">TOTAL REVENUE</span>
+                                <span class="story-lbl">TOTAL PENDAPATAN</span>
                                 <div class="story-val" style="color:var(--neon-green)">Rp <?php echo number_format($revenue/1000000, 1); ?> Juta</div>
                             </div>
                             
                             <div class="story-data-row">
-                                <span class="story-lbl">TOTAL DEALS</span>
-                                <div class="story-val"><?php echo $total_trx; ?> Transactions</div>
+                                <span class="story-lbl">TOTAL PROYEK GOL</span>
+                                <div class="story-val"><?php echo $total_trx; ?> Transaksi</div>
                             </div>
 
                             <div class="story-data-row">
-                                <span class="story-lbl">TOP SERVICE</span>
+                                <span class="story-lbl">LAYANAN TERFAVORIT</span>
                                 <div class="story-val" style="color:var(--neon-cyan)"><?php echo $top_service; ?></div>
                             </div>
                         </div>
@@ -207,9 +207,9 @@ while($r = mysqli_fetch_assoc($q_trend)){
                     </div>
                 </div>
 
-                <div class="btn-group" style="margin-top:20px;">
-                    <button class="btn-primary" onclick="downloadStory()"><i class="fas fa-download"></i> Save</button>
-                    <button class="btn-primary" onclick="location.reload()" style="background:transparent; border:1px solid #fff;"><i class="fas fa-redo"></i> Replay</button>
+                <div class="btn-group" style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="downloadStory()"><i class="fas fa-download"></i> Simpan</button>
+                    <button class="btn-primary" onclick="location.reload()" style="background:transparent; color:#fff; border:1px solid #fff;"><i class="fas fa-redo"></i> Ulang</button>
                 </div>
             </div>
         </div>
