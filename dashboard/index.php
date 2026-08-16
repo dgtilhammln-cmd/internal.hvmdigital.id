@@ -1456,7 +1456,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 </div>
                 <div style="margin-bottom:16px;">
                     <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:5px;">DETAIL LOG</div>
-                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${desc}</div>
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${desc.replace(/(^|\n)\*\s+([^\n]+)/g, '$1<div style="display:flex; margin-bottom:4px;"><span style="color:var(--neon-main);margin-right:8px;">&bull;</span><span style="color:#e0e0e0;">$2</span></div>')}</div>
                 </div>
                 <div id="extraEventDetail" style="color:#888;font-size:0.8rem;">Memuat detail...</div>
             `;
