@@ -429,6 +429,47 @@ if(isset($_POST['save_event'])) {
         </div>
     </div>
 
+    <!-- MODAL EDIT CATATAN (KEEP) - Google Keep Style -->
+    <div class="modal-overlay" id="editNoteModal" style="z-index:10000;" onclick="if(event.target===this) saveEditedNote()">
+        <div id="editNoteModalContent" class="modal-content" style="background:#0c0c0e;border:1px solid rgba(255,255,255,0.1);width:580px;max-width:96%;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.9);position:relative;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s;transform:scale(0.95);opacity:0;">
+            <!-- Header: judul bisa langsung diedit -->
+            <div style="padding:20px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
+                <input type="text" id="editTitle" placeholder="Judul" style="background:transparent;border:none;color:#fff;font-size:1.05rem;font-weight:700;font-family:inherit;outline:none;flex:1;">
+                <button id="editPinBtn" onclick="toggleEditPin()" title="Sematkan" style="background:none;border:none;color:#555;font-size:1.15rem;cursor:pointer;transition:color 0.2s,transform 0.2s;margin-left:12px;" onmouseover="this.style.transform='rotate(-15deg)'" onmouseout="this.style.transform='rotate(0)'"><i class="fas fa-thumbtack"></i></button>
+            </div>
+            <!-- Body: konten catatan -->
+            <div style="overflow-y:auto;padding:16px 24px;flex:1;">
+                <textarea id="editContent" placeholder="Tulis catatan..." style="width:100%;min-height:180px;background:transparent;border:none;color:#ccc;font-size:0.9rem;font-family:inherit;outline:none;resize:none;line-height:1.7;"></textarea>
+                <input type="hidden" id="editNoteId">
+                <input type="hidden" id="editColor">
+                <!-- Reminder row -->
+                <div style="margin-top:12px;display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.05);">
+                    <i class="far fa-clock" style="color:#555;font-size:0.85rem;"></i>
+                    <input type="datetime-local" id="editReminder" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#aaa;padding:5px 10px;border-radius:8px;font-family:inherit;font-size:0.78rem;outline:none;flex:1;">
+                </div>
+            </div>
+            <!-- Footer actions -->
+            <div style="padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
+                <button type="button" onclick="trashNote(document.getElementById('editNoteId').value)" title="Pindah ke Sampah"
+                    style="background:transparent;border:none;color:#555;font-size:1.1rem;cursor:pointer;padding:6px;border-radius:8px;transition:all 0.2s;"
+                    onmouseover="this.style.color='#ff5a5a';this.style.background='rgba(255,90,90,0.1)'" onmouseout="this.style.color='#555';this.style.background='transparent'">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <button type="button" onclick="closeModal('editNoteModal')"
+                        style="background:transparent;border:none;color:#888;border-radius:10px;padding:7px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;transition:0.2s;"
+                        onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Tutup</button>
+                    <button type="button" onclick="saveEditedNote()"
+                        style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:7px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+                        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(161,255,90,0.3)'"
+                        onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <i class="fas fa-save" style="margin-right:6px;"></i>Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- AI POPUP & JS -->
 <div id="nebulaPopup" class="ai-popup-overlay">
     <div class="ai-popup-content">
@@ -814,11 +855,20 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
                     const reminderHtml = n.reminder_date ? `<div class="nc-reminder"><i class="far fa-clock"></i> ${n.reminder_date.substr(0,16)}</div>` : '';
 
                     const card = `
-                        <div class="note-card" style="background:${bg}; border-color:${bg!=='rgba(255,255,255,0.03)'?'transparent':'var(--border)'}" onclick="openEditNote('${nData}')">
+                        <div class="note-card animate-pop" style="background:${bg}; border-color:${bg!=='rgba(255,255,255,0.03)'?'transparent':'var(--border)';} cursor:pointer;" onclick="${currentKeepView === 'trash' ? '' : `openEditNote('${nData}')`}">
                             <i class="fas fa-thumbtack ${pinClass}"></i>
                             <div class="nc-title">${n.title}</div>
                             <div class="nc-body">${n.content}</div>
                             ${reminderHtml}
+                            ${currentKeepView === 'trash' ? `
+                                <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.7rem; color:#ff6b6b;"><i class="fas fa-exclamation-circle"></i> Sisa ${n.days_left || 0} hari</span>
+                                    <div style="display:flex; gap:6px;">
+                                        <button onclick="restoreNote(${n.id}); event.stopPropagation();" style="background:rgba(161,255,90,0.15); border:none; color:#a1ff5a; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-trash-restore"></i></button>
+                                        <button onclick="deleteNoteForever(${n.id}); event.stopPropagation();" style="background:rgba(255,90,90,0.15); border:none; color:#ff5a5a; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>`;
                     
                     if(n.is_pinned == 1 && currentKeepView !== 'trash') pinnedHtml += card; else otherHtml += card;
@@ -830,25 +880,119 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
                 if(pinnedHtml && currentKeepView === 'notes') { pinLbl.style.display = 'block'; } else { pinLbl.style.display = 'none'; }
             });
         }
+        
+        function saveEditedNote() {
+            const id = document.getElementById('editNoteId').value;
+            const t = document.getElementById('editTitle').value;
+            const c = document.getElementById('editContent').value;
+            const color = document.getElementById('editColor').value;
+            const isPinned = document.getElementById('editPinBtn').classList.contains('active') ? 1 : 0;
+            const rem = document.getElementById('editReminder').value.replace('T', ' ');
+            
+            const fd = new FormData(); 
+            fd.append('action','save_note'); 
+            fd.append('id', id);
+            fd.append('title', t); 
+            fd.append('content', c); 
+            fd.append('color', color); 
+            fd.append('is_pinned', isPinned);
+            if(rem) fd.append('reminder', rem);
+            
+            fetch('ajax.php', { method:'POST', body:fd }).then(r=>r.json()).then(d=>{ 
+                if(d.status==='success') { loadNotes(); closeModal('editNoteModal'); }
+            });
+        }
+        
+        function trashNote(id) {
+            Swal.fire({ title:'Pindah ke Sampah?', text:'Catatan akan dihapus permanen dalam 30 hari.', icon:'warning', showCancelButton:true, confirmButtonText:'Ya, Pindahkan', cancelButtonText:'Batal', background:'#111', color:'#fff' }).then((result)=>{
+                if(result.isConfirmed) {
+                    const fd = new FormData(); fd.append('action','trash_note'); fd.append('id',id);
+                    fetch('ajax.php',{method:'POST',body:fd}).then(()=> { loadNotes(); closeModal('editNoteModal'); });
+                }
+            });
+        }
+        function restoreNote(id) {
+            const fd = new FormData(); fd.append('action','restore_note'); fd.append('id',id);
+            fetch('ajax.php',{method:'POST',body:fd}).then(()=>loadNotes());
+        }
+        function deleteNoteForever(id) {
+            Swal.fire({ title:'Hapus Permanen?', text:'Tindakan ini tidak bisa dibatalkan!', icon:'error', showCancelButton:true, confirmButtonText:'Hapus Permanen', cancelButtonText:'Batal', background:'#111', color:'#fff' }).then((result)=>{
+                if(result.isConfirmed) {
+                    const fd = new FormData(); fd.append('action','delete_forever'); fd.append('id',id);
+                    fetch('ajax.php',{method:'POST',body:fd}).then(()=>loadNotes());
+                }
+            });
+        }
 
-        // EDIT NOTE
+        // EDIT NOTE - Google Keep style
         function openEditNote(json) {
             const data = JSON.parse(decodeURIComponent(json));
-            const modal = document.getElementById('editNoteModal');
-            document.getElementById('editTitle').value = data.title;
-            document.getElementById('editContent').value = data.content;
+            document.getElementById('editTitle').value = data.title || '';
+            document.getElementById('editContent').value = data.content || '';
             document.getElementById('editNoteId').value = data.id;
-            document.getElementById('editColor').value = data.color;
-            document.getElementById('editReminder').value = data.reminder_date ? data.reminder_date.replace(' ', 'T') : '';
+            document.getElementById('editColor').value = data.color || 'default';
+            document.getElementById('editReminder').value = data.reminder_date ? data.reminder_date.replace(' ', 'T').substr(0,16) : '';
             
             const pinBtn = document.getElementById('editPinBtn');
-            if(data.is_pinned == 1) { pinBtn.style.color = 'var(--neon)'; pinBtn.classList.add('active'); }
-            else { pinBtn.style.color = '#555'; pinBtn.classList.remove('active'); }
+            const isPinned = data.is_pinned == 1;
+            pinBtn.classList.toggle('active', isPinned);
+            pinBtn.querySelector('i').style.color = isPinned ? '#a1ff5a' : '#555';
             
-            const colorMap = { 'red': '#5c2b29', 'orange': '#614a19', 'yellow': '#635d19', 'green': '#345920', 'teal': '#16504b', 'blue': '#2d555e', 'purple': '#42275e', 'default': '#0a0a0a' };
-            modal.querySelector('.modal-content').style.background = colorMap[data.color] || '#0a0a0a';
+            const colorMap = { 'red':'#5c2b29','orange':'#614a19','yellow':'#635d19','green':'#345920','teal':'#16504b','blue':'#2d555e','purple':'#42275e','default':'#0d0d0d' };
+            const mc = document.getElementById('editNoteModalContent');
+            mc.style.background = colorMap[data.color] || '#0d0d0d';
+
+            const modal = document.getElementById('editNoteModal');
             modal.classList.add('active');
+            // Animate in
+            requestAnimationFrame(() => {
+                mc.style.transform = 'scale(1)';
+                mc.style.opacity = '1';
+            });
         }
+
+        // --- 4. REALTIME PRESENCE LOGIC ---
+        function updateRealtimePresence() {
+            fetch('presence_ping.php?page=workspace')
+                .then(r => r.json())
+                .then(users => {
+                    const container = document.getElementById('realtimePresence');
+                    if(!container) return;
+                    let html = '';
+                    users.forEach((u, i) => {
+                        // Max 4 avatars to avoid overflow in thin sidebar
+                        if(i > 3) return;
+                        
+                        let imgUrl = u.photo ? '/uploads/teams/' + u.photo : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name) + '&background=a1ff5a&color=000';
+                        if(u.photo === 'default-profile.png') imgUrl = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name) + '&background=a1ff5a&color=000';
+                        
+                        // Z-index to stack avatars nicely
+                        let zIdx = 10 - i; 
+                        
+                        html += `
+                            <div class="collab-avatar animate-pop" style="z-index:${zIdx}; position:relative; margin-bottom:-10px;" title="${u.name} (${u.role})">
+                                <img src="${imgUrl}" alt="${u.name}" style="width:36px; height:36px; border-radius:50%; border:2px solid #050505; object-fit:cover;">
+                                <div class="online-indicator" style="position:absolute; bottom:2px; right:2px; width:10px; height:10px; background:#a1ff5a; border-radius:50%; border:2px solid #050505;"></div>
+                            </div>
+                        `;
+                    });
+                    
+                    if(users.length > 4) {
+                        html += `
+                            <div class="collab-avatar animate-pop" style="z-index:1; position:relative; display:flex; justify-content:center; align-items:center; width:36px; height:36px; border-radius:50%; border:2px solid #050505; background:rgba(255,255,255,0.1); color:#fff; font-size:0.7rem; font-weight:700;" title="+${users.length - 4} lainnya">
+                                +${users.length - 4}
+                            </div>
+                        `;
+                    }
+                    
+                    container.innerHTML = html;
+                })
+                .catch(e => console.error("Presence Error:", e));
+        }
+        
+        // Run immediately, then every 20 seconds
+        updateRealtimePresence();
+        setInterval(updateRealtimePresence, 20000);
 
         function saveEditedNote() {
             const id = document.getElementById('editNoteId').value;
@@ -860,21 +1004,27 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
             
             const fd = new FormData();
             fd.append('action', 'save_note'); fd.append('id', id); fd.append('title', t);
-            fd.append('content', c); fd.append('color', col); fd.append('is_pinned', isP); fd.append('reminder', rem);
+            fd.append('content', c); fd.append('color', col); fd.append('is_pinned', isP);
+            if(rem) fd.append('reminder', rem.replace('T', ' '));
             fetch('ajax.php', { method:'POST', body:fd }).then(() => {
-                document.getElementById('editNoteModal').classList.remove('active');
-                loadNotes();
+                // Animate out then close
+                const mc = document.getElementById('editNoteModalContent');
+                mc.style.transform = 'scale(0.95)';
+                mc.style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('editNoteModal').classList.remove('active');
+                    mc.style.transform = 'scale(0.95)';
+                    mc.style.opacity = '0';
+                    loadNotes();
+                }, 200);
             });
         }
         
-        function trashCurrentNote() {
-            const id = document.getElementById('editNoteId').value;
-            const action = currentKeepView === 'trash' ? 'delete_forever' : 'trash_note';
-            const fd = new FormData(); fd.append('action', action); fd.append('id', id);
-            fetch('ajax.php', { method:'POST', body:fd }).then(() => { document.getElementById('editNoteModal').classList.remove('active'); loadNotes(); });
+        function toggleEditPin() {
+            const btn = document.getElementById('editPinBtn');
+            btn.classList.toggle('active');
+            btn.querySelector('i').style.color = btn.classList.contains('active') ? '#a1ff5a' : '#555';
         }
-        
-        function toggleEditPin() { document.getElementById('editPinBtn').classList.toggle('active'); }
 
         function toggleColorPalette() {
             const p = document.getElementById('colorPalette');
@@ -893,7 +1043,18 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
         // INIT
         refreshPlanner();
         loadNotes();
-        document.getElementById('realtimePresence').innerHTML = `<div class="avatar-box-v31 active"><img src="<?= $profile_img ?: 'https://ui-avatars.com/api/?name='.$user_logged ?>"><div class="pulse-dot"></div></div>`;
+        // closeModal override for editNoteModal to animate out
+        const _origCloseModal = closeModal;
+        closeModal = function(id) {
+            if(id === 'editNoteModal') {
+                const mc = document.getElementById('editNoteModalContent');
+                mc.style.transform = 'scale(0.95)';
+                mc.style.opacity = '0';
+                setTimeout(() => { document.getElementById(id).classList.remove('active'); }, 200);
+            } else {
+                document.getElementById(id).classList.remove('active');
+            }
+        };
     </script>
 </body>
 </html>

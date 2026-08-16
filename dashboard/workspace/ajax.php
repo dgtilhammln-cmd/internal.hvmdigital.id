@@ -8,6 +8,10 @@ $user = $_SESSION['admin'];
 
 // AUTO FIX DB
 mysqli_query($conn, "CREATE TABLE IF NOT EXISTS keep_notes (id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(100), title VARCHAR(255), content TEXT, color VARCHAR(20) DEFAULT 'default', is_pinned TINYINT(1) DEFAULT 0, is_trashed TINYINT(1) DEFAULT 0, reminder_date DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+$check_trash_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'trashed_at'");
+if(mysqli_num_rows($check_trash_col) == 0) {
+    mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN trashed_at TIMESTAMP NULL");
+}
 
 // 1. SAVE NOTE
 if(isset($_POST['action']) && $_POST['action'] == 'save_note') {
@@ -36,13 +40,16 @@ if(isset($_POST['action']) && $_POST['action'] == 'save_note') {
 
 // 2. GET NOTES
 if(isset($_GET['action']) && $_GET['action'] == 'get_notes') {
+    // Auto-delete notes in trash older than 30 days
+    mysqli_query($conn, "DELETE FROM keep_notes WHERE is_trashed = 1 AND trashed_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND user_name='$user'");
+
     $view = $_GET['view'] ?? 'notes';
     $where = "user_name='$user'";
     if($view == 'trash') $where .= " AND is_trashed = 1";
     elseif($view == 'reminders') $where .= " AND is_trashed = 0 AND reminder_date IS NOT NULL";
     else $where .= " AND is_trashed = 0";
     
-    $q = mysqli_query($conn, "SELECT * FROM keep_notes WHERE $where ORDER BY is_pinned DESC, id DESC");
+    $q = mysqli_query($conn, "SELECT *, DATEDIFF(DATE_ADD(trashed_at, INTERVAL 30 DAY), NOW()) as days_left FROM keep_notes WHERE $where ORDER BY is_pinned DESC, id DESC");
     $notes = [];
     while($row = mysqli_fetch_assoc($q)) $notes[] = $row;
     echo json_encode($notes);
@@ -52,8 +59,11 @@ if(isset($_GET['action']) && $_GET['action'] == 'get_notes') {
 // 3. TRASH / RESTORE / DELETE
 if(isset($_POST['action']) && ($_POST['action'] == 'trash_note' || $_POST['action'] == 'restore_note')) {
     $id = (int)$_POST['id'];
-    $val = ($_POST['action'] == 'trash_note') ? 1 : 0;
-    mysqli_query($conn, "UPDATE keep_notes SET is_trashed=$val WHERE id=$id AND user_name='$user'");
+    if($_POST['action'] == 'trash_note') {
+        mysqli_query($conn, "UPDATE keep_notes SET is_trashed=1, trashed_at=CURRENT_TIMESTAMP WHERE id=$id AND user_name='$user'");
+    } else {
+        mysqli_query($conn, "UPDATE keep_notes SET is_trashed=0, trashed_at=NULL WHERE id=$id AND user_name='$user'");
+    }
     echo json_encode(['status' => 'success']); exit;
 }
 if(isset($_POST['action']) && $_POST['action'] == 'delete_forever') {

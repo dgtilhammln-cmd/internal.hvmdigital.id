@@ -15,21 +15,25 @@ if(!isset($_SESSION['admin'])) {
 
 $my_name = mysqli_real_escape_string($conn, $_SESSION['admin']);
 
-// 1. Pastikan kolom last_seen ada dengan tipe yang benar
+// 1. Pastikan kolom last_seen dan current_page ada dengan tipe yang benar
 $check = mysqli_query($conn, "SHOW COLUMNS FROM teams LIKE 'last_seen'");
-if(mysqli_num_rows($check) == 0) {
-    mysqli_query($conn, "ALTER TABLE teams ADD COLUMN last_seen DATETIME");
-}
+if(mysqli_num_rows($check) == 0) mysqli_query($conn, "ALTER TABLE teams ADD COLUMN last_seen DATETIME");
+
+$check_page = mysqli_query($conn, "SHOW COLUMNS FROM teams LIKE 'current_page'");
+if(mysqli_num_rows($check_page) == 0) mysqli_query($conn, "ALTER TABLE teams ADD COLUMN current_page VARCHAR(50) DEFAULT NULL");
+
+$page = isset($_GET['page']) ? mysqli_real_escape_string($conn, $_GET['page']) : 'dashboard';
 
 // 2. Update waktu user ini (Gunakan CURRENT_TIMESTAMP agar sinkron dengan database)
-mysqli_query($conn, "UPDATE teams SET last_seen = CURRENT_TIMESTAMP WHERE name = '$my_name'");
+mysqli_query($conn, "UPDATE teams SET last_seen = CURRENT_TIMESTAMP, current_page = '$page' WHERE name = '$my_name'");
 
 // 3. Ambil SEMUA user yang aktif dalam 60 detik terakhir (kita perlonggar sedikit agar lebih stabil)
-// Menggunakan DATE_SUB agar lebih kompatibel dengan berbagai versi MySQL
-$q = mysqli_query($conn, "SELECT name, photo, role 
-                          FROM teams 
-                          WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 60 SECOND) 
-                          ORDER BY last_seen DESC");
+$q_str = "SELECT name, photo, role FROM teams WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 60 SECOND)";
+if(isset($_GET['page'])) {
+    $q_str .= " AND current_page = '$page'";
+}
+$q_str .= " ORDER BY last_seen DESC";
+$q = mysqli_query($conn, $q_str);
 
 $online_users = [];
 if ($q) {
