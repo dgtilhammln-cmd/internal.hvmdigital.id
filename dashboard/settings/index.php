@@ -75,9 +75,8 @@ $persona  = $settings['ai_persona'] ?? '';
         :root { --bg:#050505; --card:rgba(20,20,20,0.7); --border:rgba(255,255,255,0.07); --green:#a1ff5a; --cyan:#4efdc4; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
         body { background:var(--bg); color:#fff; min-height:100vh; display:flex; }
-        .main-content { flex:1; padding:40px; margin-left:120px; }
-        @media(min-width:769px) { .main-content { margin-left:120px; } }
-        @media(max-width:768px) { .main-content { margin-left:0; padding:20px 20px 120px; } }
+        .main-content { flex:1; padding:40px; margin-left:260px; width:calc(100% - 260px); }
+        @media(max-width:768px) { .main-content { margin-left:0; width:100%; padding:20px 20px 120px; } }
         .page-header { margin-bottom:35px; }
         .page-header h1 { font-size:2rem; font-weight:800; background:linear-gradient(135deg,#fff,#aaa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
         .page-header p { color:#555; font-size:0.9rem; margin-top:6px; }

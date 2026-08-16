@@ -231,6 +231,7 @@ while($r = mysqli_fetch_assoc($q_t)) { $tier_counts[$r['tier']] = $r['c']; }
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prospects - HVM Digital</title>
+<link rel="shortcut icon" href="/uploads/icon.png?v=<?= time() ?>">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
@@ -252,9 +253,8 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 .glow-1 { top:-100px; left:40px; width:500px; height:500px; background:var(--green); }
 .glow-2 { bottom:-100px; right:40px; width:400px; height:400px; background:var(--teal); }
 
-.main-content { padding:32px 40px; margin-left:120px; }
-@media (min-width:769px) { .main-content { margin-left:120px; } }
-@media (max-width:768px) { .main-content { margin-left:0; padding:20px 16px 110px; } }
+.main-content { padding:32px 40px; margin-left:260px; width:calc(100% - 260px); }
+@media (max-width:768px) { .main-content { margin-left:0; width:100%; padding:20px 16px 110px; } }
 
 /* Page header */
 .page-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }

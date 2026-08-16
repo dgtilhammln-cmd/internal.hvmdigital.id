@@ -150,6 +150,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Invoice Generator - HVM Digital</title>
+<link rel="shortcut icon" href="/uploads/icon.png?v=<?= time() ?>">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -186,9 +187,10 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .main-content {
     padding: 32px 40px;
     max-width: 1400px;
-    margin: 0 0 0 120px;
+    margin: 0 0 0 260px;
+    width: calc(100% - 260px);
 }
-@media(max-width:768px){ .main-content { margin-left:0; padding:20px 16px 110px; } }
+@media(max-width:768px){ .main-content { margin-left:0; width:100%; padding:20px 16px 110px; } }
 
 .page-headline { margin-bottom: 28px; }
 .page-headline h1 {
