@@ -156,11 +156,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'get_client_data'){
     $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil, teams_involved FROM events WHERE (target_id='$cli_id_esc' AND target_type='Client') OR (target_type='Client' AND target_name='$company_esc') ORDER BY event_date DESC");
     if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
 
-    // Invoice history (status Lunas)
+    // Invoice history
     $invoices_hist = [];
     $chk_inv = mysqli_query($conn, "SHOW TABLES LIKE 'invoices'");
     if(mysqli_num_rows($chk_inv) > 0) {
-        $q_inv = mysqli_query($conn, "SELECT id, inv_no, client_name, service_label, inv_date, total, status FROM invoices WHERE (client_ref_id='$id' AND client_ref_type='Client') AND status='Lunas' ORDER BY inv_date DESC LIMIT 20");
+        $q_inv = mysqli_query($conn, "SELECT id, inv_no, client_name, service_label, inv_date, total, status FROM invoices WHERE (client_ref_id='$id' AND client_ref_type='Client') ORDER BY inv_date DESC LIMIT 20");
         if($q_inv) while($r=mysqli_fetch_assoc($q_inv)) $invoices_hist[] = $r;
     }
 
@@ -384,6 +384,7 @@ if(isset($_POST['save_client'])){
                 $pid = intval($_POST['prospect_id']);
                 mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$pid");
                 mysqli_query($conn, "UPDATE events SET target_id='$id', target_type='Client', target_name='$name' WHERE target_id='$pid' AND target_type='Prospect'");
+                mysqli_query($conn, "UPDATE invoices SET client_ref_id='$id', client_ref_type='Client', client_name='$name' WHERE client_ref_id='$pid' AND client_ref_type='Prospect'");
             }
         }
         $_SESSION['popup']=['type'=>'success','msg'=>$msg];
@@ -1480,8 +1481,8 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 
                 <!-- TAB INVOICES -->
                 <div id="tab_invoices" class="tab-pane">
-                    <div class="detail-section-title"><i class="fas fa-file-invoice" style="color:var(--neon-orange);margin-right:6px;"></i>INVOICE TERKIRIM (LUNAS)</div>
-                    <div id="invoicesList" class="history-list"></div>
+                    <div class="detail-section-title"><i class="fas fa-file-invoice-dollar" style="color:var(--neon-main);margin-right:8px;"></i>DAFTAR INVOICE</div>
+                    <div id="pInvoicesList"></div>
                 </div>
 
                 <!-- TAB HISTORY -->
@@ -1767,28 +1768,34 @@ function fetchData(id, mode){
         }
 
         // Render Invoices
-        const invList = document.getElementById('invoicesList');
-        if(invList) {
-            invList.innerHTML = '';
+        const pInv = document.getElementById('pInvoicesList');
+        if(pInv) {
+            pInv.innerHTML = '';
             if(res.invoices_hist && res.invoices_hist.length>0) {
                 res.invoices_hist.forEach(inv => {
                     const dateStr = new Date(inv.inv_date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
                     const totalStr = 'Rp ' + parseInt(inv.total).toLocaleString('id-ID');
-                    invList.innerHTML += `
-                        <div class="hist-item">
-                            <div class="hist-icon" style="background:rgba(255,159,67,0.1);color:var(--neon-orange);"><i class="fas fa-file-invoice"></i></div>
-                            <div class="hist-content">
-                                <div class="hist-head">
-                                    <div class="hist-title">Invoice #${inv.inv_no}</div>
-                                    <div class="hist-amount">${totalStr}</div>
-                                </div>
-                                <div class="hist-date">${dateStr} | ${inv.service_label} <span style="float:right;color:var(--neon-main);font-weight:700;"><i class="fas fa-check-circle"></i> LUNAS</span></div>
+                    let statBadge = '';
+                    if(inv.status === 'Lunas') statBadge = '<span style="background:rgba(161,255,90,0.1);color:var(--neon-main);padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;"><i class="fas fa-check-circle"></i> Lunas</span>';
+                    else if(inv.status === 'Pending') statBadge = '<span style="background:rgba(255,159,67,0.1);color:var(--neon-orange);padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;"><i class="fas fa-clock"></i> Pending</span>';
+                    else statBadge = '<span style="background:rgba(255,90,90,0.1);color:var(--neon-red);padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;">' + inv.status + '</span>';
+                    
+                    pInv.innerHTML += `
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:0.85rem;color:#fff;margin-bottom:4px;">Invoice #${inv.inv_no}</div>
+                                <div style="font-size:0.75rem;color:var(--muted);">${inv.service_label}</div>
+                                <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">${dateStr}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:800;font-size:0.9rem;color:var(--neon-sec);margin-bottom:6px;">${totalStr}</div>
+                                ${statBadge}
                             </div>
                         </div>
                     `;
                 });
             } else {
-                invList.innerHTML = '<div style="text-align:center;color:#666;padding:20px;font-size:0.85rem;"><i class="fas fa-box-open" style="font-size:1.5rem;display:block;margin-bottom:10px;opacity:0.5;"></i>Belum ada riwayat invoice lunas.</div>';
+                pInv.innerHTML = '<div style="text-align:center;color:#666;padding:20px;font-size:0.85rem;"><i class="fas fa-box-open" style="font-size:1.5rem;display:block;margin-bottom:10px;opacity:0.5;"></i>Belum ada riwayat invoice.</div>';
             }
         }
 
