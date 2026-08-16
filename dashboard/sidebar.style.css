@@ -52,8 +52,8 @@ body {
         margin-bottom: 30px;
     }
 
-    .logo-min { height: 35px; width: auto; transition: 0.3s; }
-    .logo-full { display: none; height: 38px; width: auto; }
+    .logo-min { height: 32px; width: auto; transition: 0.3s; object-fit: contain; }
+    .logo-full { display: none; max-width: 140px; max-height: 28px; width: auto; height: auto; object-fit: contain; }
     .sidebar:hover .logo-min { display: none; }
     .sidebar:hover .logo-full { display: block; }
 
