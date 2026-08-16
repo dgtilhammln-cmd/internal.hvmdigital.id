@@ -1300,7 +1300,9 @@ function editInvoice(id){
     document.getElementById('f_clientRefId').value = inv.refId || '';
     if(inv.refType) {
         invSwitchClientType(inv.refType);
-        document.getElementById('f_clientSelect').value = inv.client;
+        const sel = document.getElementById('f_clientSelect');
+        sel.value = inv.client;
+        invOnClientSelect(sel);
     } else {
         invSwitchClientType('manual');
         document.getElementById('f_clientName').value = inv.client;
