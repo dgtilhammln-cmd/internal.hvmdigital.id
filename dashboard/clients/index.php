@@ -396,6 +396,16 @@ if(isset($_POST['save_client'])){
     }
 }
 
+// 5b. DELETE CLIENT
+if(isset($_GET['delete_client']) && $allowed){
+    $did = mysqli_real_escape_string($conn, $_GET['delete_client']);
+    mysqli_query($conn, "DELETE FROM clients WHERE client_id='$did'");
+    mysqli_query($conn, "DELETE FROM events WHERE target_id='$did' AND target_type='Client'");
+    mysqli_query($conn, "DELETE FROM invoices WHERE client_ref_id='$did' AND client_ref_type='Client'");
+    $_SESSION['popup']=['type'=>'success','msg'=>'Klien berhasil dihapus!'];
+    header("Location: index.php"); exit;
+}
+
 // 6. VIEW DATA
 if($allowed){
     $q_id    = mysqli_query($conn,"SELECT MAX(client_id) as max_id FROM clients");
@@ -1520,8 +1530,9 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                     <?php endif; ?>
                 </div>
 
-                <div id="btnContainer" style="margin-top:20px;">
-                    <button type="submit" name="save_client" class="btn-neon" style="width:100%;justify-content:center;"><i class="fas fa-save"></i> Save Data</button>
+                <div id="btnContainer" style="margin-top:20px; display:flex; gap:10px;">
+                    <button type="submit" name="save_client" class="btn-neon" style="flex:1; justify-content:center;"><i class="fas fa-save"></i> Save Data</button>
+                    <button type="button" id="btnDeleteClient" class="btn-neon" style="background:rgba(255,90,90,0.1); color:var(--neon-red); border-color:var(--neon-red); display:none; padding:10px 15px;" onclick="deleteClient()"><i class="fas fa-trash"></i> Hapus</button>
                 </div>
             </form>
         </div>
@@ -1558,6 +1569,15 @@ function tarikProspek(id) {
 
 const modal = document.getElementById('clientModal');
 const form  = document.getElementById('clientForm');
+
+function deleteClient() {
+    if(confirm('Yakin ingin menghapus Klien ini? (Riwayat Meeting & Invoice yang terhubung juga akan terhapus)')) {
+        const id = document.getElementById('f_id').value;
+        if(id) {
+            window.location = 'index.php?delete_client=' + id;
+        }
+    }
+}
 
 function closeModal(){ modal.classList.remove('active'); }
 
@@ -1800,6 +1820,7 @@ function fetchData(id, mode){
         }
 
         if(mode === 'edit') {
+            document.getElementById('btnDeleteClient').style.display = 'block';
             populateServicesEdit(res.services_data || []);
             // Set status dropdown
             const statusEl = document.getElementById('f_status');
@@ -1808,6 +1829,7 @@ function fetchData(id, mode){
             document.getElementById('servicesEditContainer').style.display = 'none';
             document.getElementById('servicesViewContainer').style.display = 'block';
             document.getElementById('btnAddService').style.display = 'none';
+            document.getElementById('btnDeleteClient').style.display = 'none';
         }
 
         // === RENDER VAULT ===
