@@ -186,8 +186,9 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .main-content {
     padding: 32px 40px;
     max-width: 1400px;
-    margin: 0 auto;
+    margin: 0 0 0 120px;
 }
+@media(max-width:768px){ .main-content { margin-left:0; padding:20px 16px 110px; } }
 
 .page-headline { margin-bottom: 28px; }
 .page-headline h1 {
@@ -441,6 +442,14 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .popup.show { transform:translateY(0); opacity:1; }
 .popup.error { border-color:rgba(255,90,90,0.3); color:var(--neon-red); }
 
+/* ===================== BANK MODAL OVERLAY ===================== */
+.modal {
+    position:fixed; inset:0; z-index:5000;
+    background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
+    display:none; align-items:center; justify-content:center; padding:20px;
+}
+.modal.active { display:flex; }
+
 /* PRINT - CLEAN NO WATERMARK */
 @page { margin: 0; size: A4; }
 @media print {
@@ -466,7 +475,6 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     background: #000000;
     color: #ffffff;
     width: 794px;       /* A4 at 96dpi */
-    min-height: 1122px; /* A4 height fix for html2pdf rounding */
     max-width: 100%;
     font-family: 'Montserrat', sans-serif;
     border-radius: 0;
@@ -474,42 +482,42 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     box-shadow: 0 20px 60px rgba(0,0,0,0.9);
     position: relative;
 }
-.dark-header-img { width: 100%; height: 240px; object-fit: cover; display: block; }
-.dark-header-placeholder { width: 100%; height: 240px; background: linear-gradient(135deg, #111, #222); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #333; font-weight: 900; }
-.dark-inv-body { padding: 48px; }
-.dark-inv-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-.dark-inv-logo { width: 44px; height: 44px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 1.4rem; font-weight: 900; }
-.dark-inv-number { font-size: 0.9rem; font-weight: 700; color: #fff; margin-top: 10px; }
-.dark-inv-title { font-size: 4rem; font-weight: 800; color: #fff; letter-spacing: -2px; margin-bottom: 48px; line-height: 1; }
-.dark-inv-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 48px; }
-.dark-inv-party-label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 12px; }
-.dark-inv-party-name { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
-.dark-inv-party-info { font-size: 0.8rem; color: #888; line-height: 1.5; }
-.dark-inv-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+.dark-header-img { width: 100%; height: 180px; object-fit: cover; display: block; }
+.dark-header-placeholder { width: 100%; height: 180px; background: linear-gradient(135deg, #111, #222); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #333; font-weight: 900; }
+.dark-inv-body { padding: 32px 40px; }
+.dark-inv-logo-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.dark-inv-logo { width: 36px; height: 36px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 1.2rem; font-weight: 900; }
+.dark-inv-number { font-size: 0.85rem; font-weight: 700; color: #fff; margin-top: 8px; }
+.dark-inv-title { font-size: 2.8rem; font-weight: 800; color: #fff; letter-spacing: -2px; margin-bottom: 20px; line-height: 1; }
+.dark-inv-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+.dark-inv-party-label { font-size: 0.62rem; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px; }
+.dark-inv-party-name { font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.dark-inv-party-info { font-size: 0.75rem; color: #888; line-height: 1.4; }
+.dark-inv-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
 .dark-inv-table thead tr { border-bottom: 1px solid #222; }
-.dark-inv-table th { padding: 12px 0; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; text-align: left; }
+.dark-inv-table th { padding: 8px 0; font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; text-align: left; }
 .dark-inv-table th:not(:first-child) { text-align: right; }
 .dark-inv-table tbody tr { border-bottom: 1px solid #1a1a1a; }
 .dark-inv-table tbody tr:last-child { border-bottom: 1px solid #222; }
-.dark-inv-table td { padding: 20px 0; font-size: 0.9rem; color: #ccc; vertical-align: top; }
+.dark-inv-table td { padding: 10px 0; font-size: 0.83rem; color: #ccc; vertical-align: top; }
 .dark-inv-table td:not(:first-child) { text-align: right; }
 .dark-inv-table td strong { color: #fff; font-weight: 700; }
-.dark-inv-totals { display: flex; justify-content: flex-end; margin-bottom: 48px; }
-.dark-inv-totals-box { width: 280px; }
-.dark-inv-totals-line { display: flex; justify-content: space-between; font-size: 0.85rem; color: #888; margin-bottom: 12px; }
-.dark-inv-totals-div { border: none; border-top: 1px solid #333; margin: 16px 0; }
-.dark-inv-totals-grand { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 800; color: #fff; }
-.dark-inv-bottom { display: flex; flex-direction: column; gap: 32px; }
-.dark-inv-payment-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 12px; }
-.dark-inv-payment-line { font-size: 0.8rem; color: #888; margin-bottom: 6px; }
-.dark-inv-note-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 12px; }
-.dark-inv-note-text { font-size: 0.8rem; color: #888; line-height: 1.5; max-width: 400px; }
-.dark-inv-signature { margin-top: 48px; display: flex; justify-content: flex-end; }
+.dark-inv-totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+.dark-inv-totals-box { width: 260px; }
+.dark-inv-totals-line { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 8px; }
+.dark-inv-totals-div { border: none; border-top: 1px solid #333; margin: 10px 0; }
+.dark-inv-totals-grand { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; color: #fff; }
+.dark-inv-bottom { display: flex; flex-direction: column; gap: 16px; }
+.dark-inv-payment-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 8px; }
+.dark-inv-payment-line { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+.dark-inv-note-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; margin-bottom: 8px; }
+.dark-inv-note-text { font-size: 0.75rem; color: #888; line-height: 1.4; max-width: 400px; }
+.dark-inv-signature { margin-top: 24px; display: flex; justify-content: flex-end; }
 .dark-inv-sig-box { text-align: center; }
-.dark-inv-sig-line { width: 160px; border-top: 1px solid #444; margin-bottom: 8px; padding-top: 8px; }
-.dark-inv-sig-name { font-size: 0.85rem; font-weight: 700; color: #fff; }
-.dark-inv-sig-role { font-size: 0.72rem; color: #666; margin-top: 2px; }
-.dark-inv-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 32px; }
+.dark-inv-sig-line { width: 160px; border-top: 1px solid #444; margin-bottom: 6px; padding-top: 6px; }
+.dark-inv-sig-name { font-size: 0.82rem; font-weight: 700; color: #fff; }
+.dark-inv-sig-role { font-size: 0.7rem; color: #666; margin-top: 2px; }
+.dark-inv-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 20px; font-size: 0.62rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
 .dark-inv-status-badge.lunas { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
 .dark-inv-status-badge.dp { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
 .dark-inv-status-badge.pending { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
@@ -1396,7 +1404,7 @@ function buildInvoiceHTML(inv) {
         ${watermarkHtml}
         <div class="dark-inv-body" style="position:relative;z-index:1;">
             <div class="dark-inv-logo-row">
-                <img src="/uploads/icon.png" style="width:44px;height:44px;object-fit:contain;border-radius:50%;" alt="HVM Digital">
+                <img src="/uploads/icon.png" style="width:36px;height:36px;object-fit:contain;border-radius:50%;" alt="HVM Digital">
                 <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
@@ -1417,7 +1425,7 @@ function buildInvoiceHTML(inv) {
                 <div style="text-align:right;">
                     <div class="dark-inv-party-label">Issued</div>
                     <div class="dark-inv-party-name">${fmtDate(inv.date)}</div>
-                    <div class="dark-inv-party-label" style="margin-top:16px;">Due</div>
+                    <div class="dark-inv-party-label" style="margin-top:10px;">Due</div>
                     <div class="dark-inv-party-name">${fmtDate(due.toISOString().split('T')[0])}</div>
                 </div>
             </div>
@@ -1430,7 +1438,7 @@ function buildInvoiceHTML(inv) {
                 </tr></thead>
                 <tbody>${itemsHtml}</tbody>
             </table>
-            <div class="dark-inv-totals" style="margin-bottom: 24px;">
+            <div class="dark-inv-totals">
                 <div class="dark-inv-totals-box">
                     <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(inv.subtotal)}</span></div>
                     ${inv.ppn?`<div class="dark-inv-totals-line"><span>Tax (${inv.ppn}%)</span><span>${fmtRp(ppnVal)}</span></div>`:''}
@@ -1438,25 +1446,22 @@ function buildInvoiceHTML(inv) {
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
             </div>
-            <div class="dark-inv-bottom" style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;">
+            <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;gap:20px;">
                 <!-- LEFT COLUMN: Payment, Notes -->
-                <div style="flex:1;padding-right:40px;">
+                <div style="flex:1;">
                     <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
                     <div class="dark-inv-payment-line">Payment Method: Bank Transfer</div>
                     <div class="dark-inv-payment-line">Bank: ${esc(inv.bank)}</div>
                     <div class="dark-inv-payment-line">Account: ${esc(inv.rekening)}</div>
                     <div class="dark-inv-payment-line">A/N: ${esc(inv.atasNama)}</div>
-                    
-                    ${inv.note?`<div style="margin-top:30px;"><div class="dark-inv-note-label">NOTES</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
+                    ${inv.note?`<div style="margin-top:14px;"><div class="dark-inv-note-label">NOTES</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
                 </div>
-                
-                <!-- RIGHT COLUMN: QR Code & Signature Data -->
-                <div style="width:250px;text-align:right;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('https://wa.me/6285179982373?text=Halo%20HVM%20Digital,%20saya%20ingin%20konfirmasi%20pembayaran%20untuk%20Invoice%20HVM-' + esc(inv.no))}" style="width:110px;height:110px;border-radius:4px;border:4px solid #fff;background:#fff;margin-bottom:12px;display:inline-block;" alt="QR Code Konfirmasi">
-                    
-                    <div style="font-size:0.75rem;color:#ccc;line-height:1.5;">
+                <!-- RIGHT COLUMN: QR Code & Signature -->
+                <div style="text-align:right;flex-shrink:0;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://wa.me/6285179982373?text=Halo%20HVM%20Digital,%20saya%20ingin%20konfirmasi%20pembayaran%20untuk%20Invoice%20HVM-' + esc(inv.no))}" style="width:90px;height:90px;border-radius:4px;border:3px solid #fff;background:#fff;margin-bottom:8px;display:inline-block;" alt="QR">
+                    <div style="font-size:0.72rem;color:#ccc;line-height:1.4;">
                         <div style="color:#fff;">${esc(inv.sigName||'')} | <span style="color:#a1ff5a;">${esc(inv.sigRole||'')}</span></div>
-                        <div style="font-size:0.7rem;margin-top:2px;">${esc(inv.contact||'')} | ${esc(inv.email||'')}</div>
+                        <div style="font-size:0.68rem;margin-top:2px;">${esc(inv.contact||'')} | ${esc(inv.email||'')}</div>
                     </div>
                 </div>
             </div>
