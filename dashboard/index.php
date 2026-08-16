@@ -167,6 +167,17 @@ if ($achieved < 10000000) {
 $q_new = mysqli_query($conn, "SELECT COUNT(*) as c FROM clients WHERE MONTH(created_at) = '$bulan_ini' AND YEAR(created_at) = '$tahun_ini'");
 $new_clients = mysqli_fetch_assoc($q_new)['c'];
 
+// Meetings
+$chk_ev = mysqli_query($conn, "SHOW TABLES LIKE 'events'");
+if (mysqli_num_rows($chk_ev) > 0) {
+    $q_meet = mysqli_query($conn, "SELECT COUNT(*) as c FROM events WHERE MONTH(event_date) = '$bulan_ini' AND YEAR(event_date) = '$tahun_ini'");
+    $meetings_done = mysqli_fetch_assoc($q_meet)['c'] ?? 0;
+} else {
+    $meetings_done = 0;
+}
+$meeting_target = 12;
+$meeting_persen = min(100, ($meetings_done / $meeting_target) * 100);
+
 // Services count + client lists
 function getSvc($conn, $k) {
     $r = mysqli_query($conn, "SELECT COUNT(*) as c FROM clients WHERE status='Active' AND contract_type LIKE '%$k%'");
@@ -777,6 +788,29 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                 <span class="ms-label">40jt</span>
                                 <span class="ms-tag">Reached</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tp-sub-targets" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:12px; border-top:1px dashed rgba(255,255,255,0.1);">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-size:0.9rem;">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.6rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Meeting Target</div>
+                            <div style="font-size:0.9rem; font-weight:800; color:#fff;">
+                                <?php echo $meetings_done; ?> <span style="font-size:0.7rem; color:rgba(255,255,255,0.3); font-weight:600;">/ 12</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="width:100px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:rgba(255,255,255,0.5); font-weight:700; margin-bottom:4px;">
+                            <span>Progress</span>
+                            <span><?php echo round($meeting_persen); ?>%</span>
+                        </div>
+                        <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+                            <div style="height:100%; width:<?php echo $meeting_persen; ?>%; background:linear-gradient(90deg, #4efdc4, #a1ff5a); border-radius:2px;"></div>
                         </div>
                     </div>
                 </div>
