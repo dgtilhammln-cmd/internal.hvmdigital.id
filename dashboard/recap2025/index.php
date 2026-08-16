@@ -19,25 +19,25 @@ function get_val($conn, $query, $key='total') {
 }
 
 // 1. Finance Data
-$revenue = get_val($conn, "SELECT SUM(amount) as total FROM payments WHERE YEAR(payment_date) = '$year'");
-$total_trx = get_val($conn, "SELECT COUNT(*) as total FROM payments WHERE YEAR(payment_date) = '$year'");
+$revenue = get_val($conn, "SELECT SUM(amount) as total FROM payments WHERE payment_date >= '2025-10-01'");
+$total_trx = get_val($conn, "SELECT COUNT(*) as total FROM payments WHERE payment_date >= '2025-10-01'");
 
 // 2. Clients Data
-$new_clients = get_val($conn, "SELECT COUNT(*) as total FROM clients WHERE YEAR(created_at) = '$year'");
+$new_clients = get_val($conn, "SELECT COUNT(*) as total FROM clients WHERE created_at >= '2025-10-01'");
 
 // 3. Best Month
-$q_best = mysqli_query($conn, "SELECT MONTH(payment_date) as m, SUM(amount) as total FROM payments WHERE YEAR(payment_date) = '$year' GROUP BY m ORDER BY total DESC LIMIT 1");
+$q_best = mysqli_query($conn, "SELECT MONTH(payment_date) as m, YEAR(payment_date) as y, SUM(amount) as total FROM payments WHERE payment_date >= '2025-10-01' GROUP BY y, m ORDER BY total DESC LIMIT 1");
 $best_data = mysqli_fetch_assoc($q_best);
-$best_month = $best_data ? date("F", mktime(0, 0, 0, $best_data['m'], 10)) : "None";
+$best_month = $best_data ? date("F", mktime(0, 0, 0, $best_data['m'], 10, $best_data['y'])) . ' ' . $best_data['y'] : "None";
 $best_val = $best_data['total'] ?? 0;
 
 // 4. Top Service
-$q_svc = mysqli_query($conn, "SELECT service_type, COUNT(*) as cnt FROM payments WHERE YEAR(payment_date) = '$year' GROUP BY service_type ORDER BY cnt DESC LIMIT 1");
+$q_svc = mysqli_query($conn, "SELECT service_type, COUNT(*) as cnt FROM payments WHERE payment_date >= '2025-10-01' GROUP BY service_type ORDER BY cnt DESC LIMIT 1");
 $svc_data = mysqli_fetch_assoc($q_svc);
 $top_service = $svc_data['service_type'] ?? "General";
 
 // 5. Top Client
-$q_cl = mysqli_query($conn, "SELECT company_name, SUM(amount) as total FROM payments WHERE YEAR(payment_date) = '$year' GROUP BY company_name ORDER BY total DESC LIMIT 1");
+$q_cl = mysqli_query($conn, "SELECT company_name, SUM(amount) as total FROM payments WHERE payment_date >= '2025-10-01' GROUP BY company_name ORDER BY total DESC LIMIT 1");
 $cl_data = mysqli_fetch_assoc($q_cl);
 $top_client = $cl_data['company_name'] ?? "No Data";
 ?>
@@ -76,8 +76,8 @@ $top_client = $cl_data['company_name'] ?? "No Data";
         <div class="slide active" id="slide1">
             <div class="logo-badge">HVM DIGITAL</div>
             <h1 class="mega-title">REWIND <span class="text-neon">2025</span></h1>
-            <p class="subtitle">PERJALANAN LUAR BIASA TAHUN INI</p>
-            <button class="btn-primary" onclick="startShow()">
+            <p class="subtitle">PERJALANAN LUAR BIASA (Okt - Sekarang)</p>
+            <button class="btn-primary" onclick="startExperience()">
                 START RECAP <i class="fas fa-play"></i>
             </button>
         </div>
