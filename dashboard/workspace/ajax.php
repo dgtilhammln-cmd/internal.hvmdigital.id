@@ -12,26 +12,53 @@ $check_trash_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'trash
 if(mysqli_num_rows($check_trash_col) == 0) {
     mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN trashed_at TIMESTAMP NULL");
 }
+$check_img_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'image_path'");
+if(mysqli_num_rows($check_img_col) == 0) {
+    mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN image_path VARCHAR(500) NULL");
+}
 
-// 1. SAVE NOTE
+// 1. SAVE NOTE (with optional image upload)
 if(isset($_POST['action']) && $_POST['action'] == 'save_note') {
-    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-    $title = mysqli_real_escape_string($conn, $_POST['title']);
-    $content = mysqli_real_escape_string($conn, $_POST['content']);
-    $color = $_POST['color'] ?? 'default';
-    $is_pinned = $_POST['is_pinned'] ?? 0;
-    $reminder = !empty($_POST['reminder']) ? $_POST['reminder'] : 'NULL';
-    
+    $id      = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+    $title   = mysqli_real_escape_string($conn, $_POST['title'] ?? '');
+    $content = mysqli_real_escape_string($conn, $_POST['content'] ?? '');
+    $color   = mysqli_real_escape_string($conn, $_POST['color'] ?? 'default');
+    $is_pinned = (int)($_POST['is_pinned'] ?? 0);
+    $reminder  = !empty($_POST['reminder']) ? mysqli_real_escape_string($conn, $_POST['reminder']) : 'NULL';
+
+    // Handle image upload
+    $extra_set = '';
+    if(isset($_FILES['note_image']) && $_FILES['note_image']['error'] === 0) {
+        $ext = strtolower(pathinfo($_FILES['note_image']['name'], PATHINFO_EXTENSION));
+        if(in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/notes/';
+            if(!file_exists($upload_dir)) mkdir($upload_dir, 0755, true);
+            $fname = 'note_' . time() . '_' . rand(100,999) . '.' . $ext;
+            if(move_uploaded_file($_FILES['note_image']['tmp_name'], $upload_dir . $fname)) {
+                $safe_path = mysqli_real_escape_string($conn, '/uploads/notes/'.$fname);
+                $extra_set = ", image_path='$safe_path'";
+            }
+        }
+    } elseif(!empty($_POST['remove_image'])) {
+        $extra_set = ", image_path=NULL";
+    }
+
     if(!empty($title) || !empty($content)) {
         if($id > 0) {
             $rem_sql = ($reminder == 'NULL') ? "reminder_date = NULL" : "reminder_date = '$reminder'";
-            $sql = "UPDATE keep_notes SET title='$title', content='$content', color='$color', is_pinned='$is_pinned', $rem_sql WHERE id=$id AND user_name='$user'";
+            $sql = "UPDATE keep_notes SET title='$title', content='$content', color='$color', is_pinned='$is_pinned', $rem_sql $extra_set WHERE id=$id AND user_name='$user'";
         } else {
             $val_rem = ($reminder == 'NULL') ? "NULL" : "'$reminder'";
-            $sql = "INSERT INTO keep_notes (user_name, title, content, color, is_pinned, reminder_date) VALUES ('$user', '$title', '$content', '$color', '$is_pinned', $val_rem)";
+            $img_col = ''; $img_val = '';
+            if(strpos($extra_set, 'image_path') !== false) {
+                preg_match("/image_path='([^']+)'/", $extra_set, $m);
+                if($m) { $img_col = ', image_path'; $img_val = ', \'' . $m[1] . '\''; }
+            }
+            $sql = "INSERT INTO keep_notes (user_name, title, content, color, is_pinned, reminder_date$img_col) VALUES ('$user', '$title', '$content', '$color', '$is_pinned', $val_rem$img_val)";
         }
         mysqli_query($conn, $sql);
-        echo json_encode(['status' => 'success']);
+        $new_id = ($id > 0) ? $id : mysqli_insert_id($conn);
+        echo json_encode(['status' => 'success', 'id' => $new_id]);
     } else {
         echo json_encode(['status' => 'empty']);
     }

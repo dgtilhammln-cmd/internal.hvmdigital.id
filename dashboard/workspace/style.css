@@ -118,6 +118,8 @@ body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; widt
 .cal-event.purple { background: #a55eea; color: #fff; }
 .cal-event.green { background: #a1ff5a; color: #000; }
 .cal-event.red { background: #ff5a5a; color: #fff; }
+.cal-day-cell.is-holiday { background: rgba(255, 107, 107, 0.05); border-color: rgba(255,107,107,0.2); }
+.cal-day-cell.is-holiday .cal-day-num { color: #ff6b6b; }
 
 .cal-grid-day { display: flex; flex-direction: column; gap: 10px; }
 .cal-hour-row { display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border); align-items: center; }

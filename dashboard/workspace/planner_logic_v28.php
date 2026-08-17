@@ -42,6 +42,22 @@ if(mysqli_num_rows($check) > 0) {
     }
 }
 
+// 4. FETCH HARI LIBUR NASIONAL INDONESIA
+$holidays = [];
+$holiday_api_url = "https://api.harilibur.co.id/api?month=$month&year=$year";
+$holiday_ctx = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true]]);
+$holiday_raw = @file_get_contents($holiday_api_url, false, $holiday_ctx);
+if($holiday_raw) {
+    $holiday_data = json_decode($holiday_raw, true);
+    if(is_array($holiday_data)) {
+        foreach($holiday_data as $h) {
+            if(!empty($h['holiday_date']) && !empty($h['holiday_name'])) {
+                $holidays[$h['holiday_date']] = htmlspecialchars($h['holiday_name'], ENT_QUOTES);
+            }
+        }
+    }
+}
+
 // --- INJECT CLIENT SERVICE DEADLINES ---
 $q_clients_deadlines = mysqli_query($conn, "SELECT company_name, services_data FROM clients WHERE status='Active' AND services_data IS NOT NULL AND services_data != '' AND services_data != '[]'");
 if ($q_clients_deadlines) {
@@ -108,9 +124,11 @@ if($mode == 'month') {
         }
 
         // CLICK CELL (ADD)
-        echo "<div class='cal-day-cell $isToday $isSunday' data-date='$currentDate' onclick=\"openEventModal('$currentDate')\">
+        $isHoliday = isset($holidays[$currentDate]) ? 'is-holiday' : '';
+        $holidayLabel = isset($holidays[$currentDate]) ? "<div class='holiday-label-container' style='font-size:0.6rem; color:#ff6b6b; font-weight:700; margin-bottom:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{$holidays[$currentDate]}'><i class='fas fa-star' style='font-size:0.5rem;'></i> {$holidays[$currentDate]}</div>" : "<div class='holiday-label-container' style='min-height:12px;'></div>";
+        echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' onclick=\"openEventModal('$currentDate')\">
                 <div class='cal-day-num'>$d</div>
-                <div class='holiday-label-container' style='font-size:0.6rem; color:var(--neon-red); font-weight:700; margin-bottom:2px; line-height:1; min-height:0px;'></div>
+                $holidayLabel
                 $eventHtml
               </div>";
     }

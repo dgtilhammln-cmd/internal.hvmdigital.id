@@ -157,20 +157,8 @@ if(isset($_POST['save_event'])) {
     <div class="ambient-glow glow-2"></div>
 
     <div class="zenith-wrapper">
-        <!-- SIDEBAR -->
-        <aside class="zenith-sidebar animate-slide-right">
-            <div class="sidebar-capsule-v30">
-                <div class="sb-top">
-                    <button class="sb-btn" onclick="location.href='/dashboard/'" title="Back to Dashboard"><i class="fas fa-home"></i></button>
-                    <div class="sb-divider"></div>
-                </div>
-                <!-- Realtime Presence -->
-                <div class="collaborator-stack" id="realtimePresence"></div>
-                <div class="sb-bottom">
-                    <button class="btn-nebula-trigger pulse-glow" onclick="toggleNebulaAI()"></button>
-                </div>
-            </div>
-        </aside>
+        <!-- SIDEBAR (Pakai sidebar utama dashboard) -->
+        <?php include $_SERVER['DOCUMENT_ROOT'] . '/dashboard/sidebar.php'; ?>
 
         <!-- MAIN CONTENT -->
         <main class="zenith-main-deck">
@@ -180,7 +168,7 @@ if(isset($_POST['save_event'])) {
                         <img src="/uploads/icon.png" class="brand-icon-big pulse-glow">
                         <div class="headline-group">
                             <h1 class="headline-v30">WorkSpace <b class="text-neon-gradient">HVM</b></h1>
-                            <div class="subheadline-v30">INTEGRATED PRODUCTIVITY SUITE</div>
+                            <div class="subheadline-v30">Ruang Kerja & Kolaborasi Tim</div>
                         </div>
                     </div>
                 </div>
@@ -429,39 +417,110 @@ if(isset($_POST['save_event'])) {
         </div>
     </div>
 
-    <!-- MODAL EDIT CATATAN (KEEP) - Google Keep Style -->
-    <div class="modal-overlay" id="editNoteModal" style="z-index:10000;" onclick="if(event.target===this) saveEditedNote()">
-        <div id="editNoteModalContent" class="modal-content" style="background:#0c0c0e;border:1px solid rgba(255,255,255,0.1);width:580px;max-width:96%;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.9);position:relative;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s;transform:scale(0.95);opacity:0;">
-            <!-- Header: judul bisa langsung diedit -->
-            <div style="padding:20px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-                <input type="text" id="editTitle" placeholder="Judul" style="background:transparent;border:none;color:#fff;font-size:1.05rem;font-weight:700;font-family:inherit;outline:none;flex:1;">
-                <button id="editPinBtn" onclick="toggleEditPin()" title="Sematkan" style="background:none;border:none;color:#555;font-size:1.15rem;cursor:pointer;transition:color 0.2s,transform 0.2s;margin-left:12px;" onmouseover="this.style.transform='rotate(-15deg)'" onmouseout="this.style.transform='rotate(0)'"><i class="fas fa-thumbtack"></i></button>
+    <!-- MODAL EDIT CATATAN (KEEP) - Full Featured Like Google Keep -->
+    <div class="modal-overlay" id="editNoteModal" style="z-index:10000;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);" onclick="if(event.target===this) saveEditedNote()">
+        <div id="editNoteModalContent" style="
+            background:#0c0c0e;
+            border:1px solid rgba(255,255,255,0.1);
+            width:900px; max-width:96vw;
+            height:88vh; max-height:88vh;
+            border-radius:20px;
+            box-shadow:0 30px 80px rgba(0,0,0,0.95), 0 0 0 1px rgba(161,255,90,0.06);
+            position:relative; display:flex; flex-direction:column; overflow:hidden;
+            transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+            transform:scale(0.95); opacity:0;">
+
+            <!-- HEADER -->
+            <div style="padding:18px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                <input type="text" id="editTitle" placeholder="Judul catatan..."
+                    style="background:transparent;border:none;color:#fff;font-size:1.15rem;font-weight:700;font-family:inherit;outline:none;flex:1;letter-spacing:-0.3px;">
+                <button id="editPinBtn" onclick="toggleEditPin()" title="Sematkan"
+                    style="background:none;border:none;color:#555;font-size:1.15rem;cursor:pointer;transition:color 0.2s,transform 0.2s;padding:6px;"
+                    onmouseover="this.style.transform='rotate(-20deg)'" onmouseout="this.style.transform=''">
+                    <i class="fas fa-thumbtack"></i>
+                </button>
+                <button onclick="closeModal('editNoteModal')"
+                    style="background:none;border:none;color:#555;font-size:1.3rem;cursor:pointer;padding:4px 8px;transition:color 0.2s;"
+                    onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#555'">&times;</button>
             </div>
-            <!-- Body: konten catatan -->
-            <div style="overflow-y:auto;padding:16px 24px;flex:1;">
-                <textarea id="editContent" placeholder="Tulis catatan..." style="width:100%;min-height:180px;background:transparent;border:none;color:#ccc;font-size:0.9rem;font-family:inherit;outline:none;resize:none;line-height:1.7;"></textarea>
-                <input type="hidden" id="editNoteId">
-                <input type="hidden" id="editColor">
-                <!-- Reminder row -->
-                <div style="margin-top:12px;display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.05);">
-                    <i class="far fa-clock" style="color:#555;font-size:0.85rem;"></i>
-                    <input type="datetime-local" id="editReminder" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#aaa;padding:5px 10px;border-radius:8px;font-family:inherit;font-size:0.78rem;outline:none;flex:1;">
+
+            <!-- BODY: 2 KOLOM (kiri: teks | kanan: gambar) -->
+            <div style="flex:1;display:flex;overflow:hidden;min-height:0;">
+                <!-- Kolom kiri: textarea -->
+                <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.05);">
+                    <textarea id="editContent" placeholder="Tulis catatanmu di sini..."
+                        style="flex:1;width:100%;background:transparent;border:none;color:#d0d0d0;
+                               font-size:0.95rem;font-family:inherit;outline:none;resize:none;
+                               line-height:1.8;min-height:300px;"></textarea>
+                    <!-- Reminder -->
+                    <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;">
+                        <i class="far fa-clock" style="color:#555;"></i>
+                        <label style="font-size:0.72rem;color:#555;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Pengingat:</label>
+                        <input type="datetime-local" id="editReminder"
+                            style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#aaa;
+                                   padding:5px 10px;border-radius:8px;font-family:inherit;font-size:0.8rem;outline:none;flex:1;">
+                    </div>
+                    <input type="hidden" id="editNoteId">
+                    <input type="hidden" id="editColor">
+                    <input type="hidden" id="imgRemoveFlag" value="0">
+                </div>
+
+                <!-- Kolom kanan: upload gambar -->
+                <div style="width:280px;flex-shrink:0;padding:20px;display:flex;flex-direction:column;gap:14px;background:rgba(255,255,255,0.015);overflow-y:auto;">
+                    <div style="font-size:0.7rem;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+                        <i class="fas fa-image" style="margin-right:6px;"></i>Lampiran Gambar
+                    </div>
+
+                    <!-- Preview gambar yang sudah ada -->
+                    <div id="editImgPreviewWrap" style="display:none;position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+                        <img id="editImgPreview" src="" style="width:100%;object-fit:cover;max-height:180px;display:block;">
+                        <button onclick="removeNoteImage()" title="Hapus Gambar"
+                            style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.8);border:none;color:#ff5a5a;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <!-- Preview gambar baru yang dipilih -->
+                    <div id="newImgPreviewWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid rgba(161,255,90,0.3);">
+                        <img id="newImgPreview" src="" style="width:100%;object-fit:cover;max-height:180px;display:block;">
+                        <div style="background:rgba(161,255,90,0.08);padding:6px 10px;font-size:0.68rem;color:#a1ff5a;text-align:center;">
+                            <i class="fas fa-check-circle"></i> Siap diunggah
+                        </div>
+                    </div>
+
+                    <!-- Upload trigger -->
+                    <label for="editImgFile" style="cursor:pointer;">
+                        <div style="border:2px dashed rgba(255,255,255,0.12);border-radius:12px;padding:28px 16px;text-align:center;transition:all 0.2s;"
+                            onmouseover="this.style.borderColor='rgba(161,255,90,0.4)';this.style.background='rgba(161,255,90,0.04)'"
+                            onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background=''">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:1.6rem;color:#555;margin-bottom:10px;display:block;"></i>
+                            <div style="font-size:0.75rem;color:#666;font-weight:600;">Klik untuk pilih gambar</div>
+                            <div style="font-size:0.65rem;color:#444;margin-top:4px;">JPG, PNG, WebP, GIF</div>
+                        </div>
+                    </label>
+                    <input type="file" id="editImgFile" accept="image/*" style="display:none;" onchange="previewNewImage(this)">
                 </div>
             </div>
-            <!-- Footer actions -->
-            <div style="padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-                <button type="button" onclick="trashNote(document.getElementById('editNoteId').value)" title="Pindah ke Sampah"
-                    style="background:transparent;border:none;color:#555;font-size:1.1rem;cursor:pointer;padding:6px;border-radius:8px;transition:all 0.2s;"
-                    onmouseover="this.style.color='#ff5a5a';this.style.background='rgba(255,90,90,0.1)'" onmouseout="this.style.color='#555';this.style.background='transparent'">
-                    <i class="fas fa-trash"></i>
-                </button>
+
+            <!-- FOOTER -->
+            <div style="padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                <div style="display:flex;gap:4px;">
+                    <button type="button" onclick="trashNote(document.getElementById('editNoteId').value)" title="Pindah ke Sampah"
+                        style="background:transparent;border:none;color:#555;font-size:1rem;cursor:pointer;padding:8px;border-radius:8px;transition:all 0.2s;"
+                        onmouseover="this.style.color='#ff5a5a';this.style.background='rgba(255,90,90,0.1)'"
+                        onmouseout="this.style.color='#555';this.style.background='transparent'">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
                 <div style="display:flex;gap:10px;align-items:center;">
+                    <span style="font-size:0.72rem;color:#444;" id="editAutoSaveStatus"></span>
                     <button type="button" onclick="closeModal('editNoteModal')"
-                        style="background:transparent;border:none;color:#888;border-radius:10px;padding:7px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;transition:0.2s;"
-                        onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Tutup</button>
+                        style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:8px 18px;font-family:inherit;font-size:0.82rem;cursor:pointer;transition:all 0.2s;"
+                        onmouseover="this.style.color='#fff';this.style.borderColor='rgba(255,255,255,0.3)'"
+                        onmouseout="this.style.color='#888';this.style.borderColor='rgba(255,255,255,0.1)'">Tutup</button>
                     <button type="button" onclick="saveEditedNote()"
-                        style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:7px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
-                        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(161,255,90,0.3)'"
+                        style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 22px;font-family:inherit;font-size:0.82rem;font-weight:800;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(161,255,90,0.4)'"
                         onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <i class="fas fa-save" style="margin-right:6px;"></i>Simpan
                     </button>
@@ -836,70 +895,96 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
             loadNotes();
         }
 
+        // ── notesDataMap: simpan data note di sini, bukan di onclick ──
+        let notesDataMap = {};
+
         function loadNotes() {
             fetch(`ajax.php?action=get_notes&view=${currentKeepView}`).then(r=>r.json()).then(notes => {
+                notesDataMap = {}; // reset map
                 let pinnedHtml = '', otherHtml = '';
-                const colorMap = { 'red': 'rgba(92, 43, 41, 0.6)', 'orange': 'rgba(97, 74, 25, 0.6)', 'yellow': 'rgba(99, 93, 25, 0.6)', 'green': 'rgba(52, 89, 32, 0.6)', 'teal': 'rgba(22, 80, 75, 0.6)', 'blue': 'rgba(45, 85, 94, 0.6)', 'purple': 'rgba(66, 39, 94, 0.6)', 'default': 'rgba(255,255,255,0.03)' };
+                const colorMapBg  = { red:'rgba(92,43,41,0.7)', orange:'rgba(97,74,25,0.7)', yellow:'rgba(99,93,25,0.7)', green:'rgba(52,89,32,0.7)', teal:'rgba(22,80,75,0.7)', blue:'rgba(45,85,94,0.7)', purple:'rgba(66,39,94,0.7)', default:'rgba(255,255,255,0.03)' };
 
-                if (notes.length === 0) {
-                    document.getElementById('notesGrid').innerHTML = '<div style="color:#555; text-align:center; grid-column:span 3;">Tidak ada catatan.</div>';
+                if(notes.length === 0) {
+                    const msg = currentKeepView === 'trash' ? 'Sampah kosong.' : 'Belum ada catatan.';
+                    document.getElementById('notesGrid').innerHTML = `<div style="color:#555;text-align:center;grid-column:span 3;padding:40px 0;">${msg}</div>`;
                     document.getElementById('pinnedGrid').innerHTML = '';
                     document.getElementById('pinnedLabel').style.display = 'none';
                     return;
                 }
 
                 notes.forEach(n => {
-                    const nData = encodeURIComponent(JSON.stringify(n));
-                    const bg = colorMap[n.color] || colorMap['default'];
-                    const pinClass = n.is_pinned == 1 ? 'nc-pin-icon active' : 'nc-pin-icon';
+                    // Simpan di map agar onclick tinggal pakai ID
+                    notesDataMap[n.id] = n;
+                    const bg = colorMapBg[n.color] || colorMapBg.default;
+                    const isDefault = (n.color === 'default' || !n.color);
+                    const pinIcon = n.is_pinned == 1 ? '<i class="fas fa-thumbtack nc-pin-icon active" title="Disematkan"></i>' : '';
                     const reminderHtml = n.reminder_date ? `<div class="nc-reminder"><i class="far fa-clock"></i> ${n.reminder_date.substr(0,16)}</div>` : '';
+                    const imgThumb = n.image_path ? `<img src="${n.image_path}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:8px;">` : '';
+                    const trashFooter = currentKeepView === 'trash' ? `
+                        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.65rem;color:#ff6b6b;"><i class="fas fa-exclamation-circle"></i> Sisa ${n.days_left||0} hari</span>
+                            <div style="display:flex;gap:6px;">
+                                <button data-nid="${n.id}" class="btn-restore" style="background:rgba(161,255,90,0.15);border:none;color:#a1ff5a;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem;"><i class="fas fa-trash-restore"></i></button>
+                                <button data-nid="${n.id}" class="btn-del-forever" style="background:rgba(255,90,90,0.15);border:none;color:#ff5a5a;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.72rem;"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>` : '';
 
-                    const card = `
-                        <div class="note-card animate-pop" style="background:${bg}; border-color:${bg!=='rgba(255,255,255,0.03)'?'transparent':'var(--border)';} cursor:pointer;" onclick="${currentKeepView === 'trash' ? '' : `openEditNote('${nData}')`}">
-                            <i class="fas fa-thumbtack ${pinClass}"></i>
-                            <div class="nc-title">${n.title}</div>
-                            <div class="nc-body">${n.content}</div>
-                            ${reminderHtml}
-                            ${currentKeepView === 'trash' ? `
-                                <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-size:0.7rem; color:#ff6b6b;"><i class="fas fa-exclamation-circle"></i> Sisa ${n.days_left || 0} hari</span>
-                                    <div style="display:flex; gap:6px;">
-                                        <button onclick="restoreNote(${n.id}); event.stopPropagation();" style="background:rgba(161,255,90,0.15); border:none; color:#a1ff5a; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-trash-restore"></i></button>
-                                        <button onclick="deleteNoteForever(${n.id}); event.stopPropagation();" style="background:rgba(255,90,90,0.15); border:none; color:#ff5a5a; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>`;
-                    
-                    if(n.is_pinned == 1 && currentKeepView !== 'trash') pinnedHtml += card; else otherHtml += card;
+                    const clickAttr = (currentKeepView !== 'trash') ? `data-note-id="${n.id}"` : '';
+                    const card = `<div class="note-card" style="background:${bg};border:1px solid ${isDefault?'rgba(255,255,255,0.08)':'transparent'};" ${clickAttr}>
+                        ${pinIcon}
+                        ${n.title ? `<div class="nc-title">${n.title}</div>` : ''}
+                        <div class="nc-body">${n.content}</div>
+                        ${imgThumb}${reminderHtml}${trashFooter}
+                    </div>`;
+
+                    if(n.is_pinned == 1 && currentKeepView !== 'trash') pinnedHtml += card;
+                    else otherHtml += card;
                 });
-                
+
                 document.getElementById('pinnedGrid').innerHTML = pinnedHtml;
-                document.getElementById('notesGrid').innerHTML = otherHtml;
-                const pinLbl = document.getElementById('pinnedLabel');
-                if(pinnedHtml && currentKeepView === 'notes') { pinLbl.style.display = 'block'; } else { pinLbl.style.display = 'none'; }
+                document.getElementById('notesGrid').innerHTML  = otherHtml;
+                document.getElementById('pinnedLabel').style.display = (pinnedHtml && currentKeepView === 'notes') ? 'block' : 'none';
+
+                // Pasang event listener lewat delegation (aman dari special chars)
+                document.querySelectorAll('[data-note-id]').forEach(el => {
+                    el.addEventListener('click', function() { openEditNote(+this.dataset.noteId); });
+                });
+                document.querySelectorAll('.btn-restore').forEach(btn => {
+                    btn.addEventListener('click', function(e) { e.stopPropagation(); restoreNote(+this.dataset.nid); });
+                });
+                document.querySelectorAll('.btn-del-forever').forEach(btn => {
+                    btn.addEventListener('click', function(e) { e.stopPropagation(); deleteNoteForever(+this.dataset.nid); });
+                });
             });
         }
         
         function saveEditedNote() {
-            const id = document.getElementById('editNoteId').value;
-            const t = document.getElementById('editTitle').value;
-            const c = document.getElementById('editContent').value;
-            const color = document.getElementById('editColor').value;
-            const isPinned = document.getElementById('editPinBtn').classList.contains('active') ? 1 : 0;
-            const rem = document.getElementById('editReminder').value.replace('T', ' ');
-            
-            const fd = new FormData(); 
-            fd.append('action','save_note'); 
+            const id  = document.getElementById('editNoteId').value;
+            const t   = document.getElementById('editTitle').value;
+            const c   = document.getElementById('editContent').value;
+            const col = document.getElementById('editColor').value;
+            const isP = document.getElementById('editPinBtn').classList.contains('active') ? 1 : 0;
+            const rem = document.getElementById('editReminder').value;
+            const imgFile  = document.getElementById('editImgFile').files[0];
+            const removeImg = document.getElementById('imgRemoveFlag').value;
+
+            const fd = new FormData();
+            fd.append('action','save_note');
             fd.append('id', id);
-            fd.append('title', t); 
-            fd.append('content', c); 
-            fd.append('color', color); 
-            fd.append('is_pinned', isPinned);
-            if(rem) fd.append('reminder', rem);
-            
-            fetch('ajax.php', { method:'POST', body:fd }).then(r=>r.json()).then(d=>{ 
-                if(d.status==='success') { loadNotes(); closeModal('editNoteModal'); }
+            fd.append('title', t);
+            fd.append('content', c);
+            fd.append('color', col);
+            fd.append('is_pinned', isP);
+            if(rem) fd.append('reminder', rem.replace('T',' '));
+            if(imgFile) fd.append('note_image', imgFile);
+            if(removeImg === '1') fd.append('remove_image','1');
+
+            fetch('ajax.php', { method:'POST', body:fd }).then(r=>r.json()).then(d=> {
+                if(d.status==='success') {
+                    const mc = document.getElementById('editNoteModalContent');
+                    mc.style.transform='scale(0.95)'; mc.style.opacity='0';
+                    setTimeout(()=>{ document.getElementById('editNoteModal').classList.remove('active'); loadNotes(); }, 200);
+                }
             });
         }
         
@@ -924,31 +1009,41 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
             });
         }
 
-        // EDIT NOTE - Google Keep style
-        function openEditNote(json) {
-            const data = JSON.parse(decodeURIComponent(json));
-            document.getElementById('editTitle').value = data.title || '';
+        // EDIT NOTE - by ID (safe, no JSON in onclick)
+        function openEditNote(id) {
+            const data = notesDataMap[id];
+            if(!data) return;
+            document.getElementById('editTitle').value   = data.title || '';
             document.getElementById('editContent').value = data.content || '';
-            document.getElementById('editNoteId').value = data.id;
-            document.getElementById('editColor').value = data.color || 'default';
-            document.getElementById('editReminder').value = data.reminder_date ? data.reminder_date.replace(' ', 'T').substr(0,16) : '';
-            
+            document.getElementById('editNoteId').value  = data.id;
+            document.getElementById('editColor').value   = data.color || 'default';
+            document.getElementById('editReminder').value = data.reminder_date ? data.reminder_date.replace(' ','T').substr(0,16) : '';
+
             const pinBtn = document.getElementById('editPinBtn');
             const isPinned = data.is_pinned == 1;
             pinBtn.classList.toggle('active', isPinned);
             pinBtn.querySelector('i').style.color = isPinned ? '#a1ff5a' : '#555';
-            
-            const colorMap = { 'red':'#5c2b29','orange':'#614a19','yellow':'#635d19','green':'#345920','teal':'#16504b','blue':'#2d555e','purple':'#42275e','default':'#0d0d0d' };
+
+            // Show / hide existing image
+            const imgPreview = document.getElementById('editImgPreview');
+            if(data.image_path) {
+                imgPreview.src = data.image_path;
+                imgPreview.parentElement.style.display = 'block';
+            } else {
+                imgPreview.parentElement.style.display = 'none';
+            }
+            document.getElementById('newImgPreviewWrap').style.display = 'none';
+            document.getElementById('editImgFile').value = '';
+            document.getElementById('imgRemoveFlag').value = '0';
+
+            const colorMap = { red:'#5c2b29', orange:'#614a19', yellow:'#635d19', green:'#345920', teal:'#16504b', blue:'#2d555e', purple:'#42275e', default:'#0d0d0d' };
             const mc = document.getElementById('editNoteModalContent');
             mc.style.background = colorMap[data.color] || '#0d0d0d';
 
             const modal = document.getElementById('editNoteModal');
             modal.classList.add('active');
-            // Animate in
-            requestAnimationFrame(() => {
-                mc.style.transform = 'scale(1)';
-                mc.style.opacity = '1';
-            });
+            requestAnimationFrame(() => { mc.style.transform='scale(1)'; mc.style.opacity='1'; });
+            document.getElementById('editContent').focus();
         }
 
         // --- 4. REALTIME PRESENCE LOGIC ---
@@ -1020,6 +1115,25 @@ document.getElementById('aiMsgInput').addEventListener('keypress', function (e) 
             });
         }
         
+        function previewNewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('newImgPreview').src = e.target.result;
+                    document.getElementById('newImgPreviewWrap').style.display = 'block';
+                    document.getElementById('imgRemoveFlag').value = '0';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function removeNoteImage() {
+            document.getElementById('editImgPreviewWrap').style.display = 'none';
+            document.getElementById('newImgPreviewWrap').style.display = 'none';
+            document.getElementById('editImgFile').value = '';
+            document.getElementById('imgRemoveFlag').value = '1';
+        }
+
         function toggleEditPin() {
             const btn = document.getElementById('editPinBtn');
             btn.classList.toggle('active');
