@@ -157,8 +157,20 @@ if(isset($_POST['save_event'])) {
     <div class="ambient-glow glow-2"></div>
 
     <div class="zenith-wrapper">
-        <!-- SIDEBAR (Pakai sidebar utama dashboard) -->
-        <?php include $_SERVER['DOCUMENT_ROOT'] . '/dashboard/sidebar.php'; ?>
+        <!-- SIDEBAR -->
+        <aside class="zenith-sidebar animate-slide-right">
+            <div class="sidebar-capsule-v30">
+                <div class="sb-top">
+                    <button class="sb-btn" onclick="location.href='/dashboard/'" title="Back to Dashboard"><i class="fas fa-home"></i></button>
+                    <div class="sb-divider"></div>
+                </div>
+                <!-- Realtime Presence -->
+                <div class="collaborator-stack" id="realtimePresence"></div>
+                <div class="sb-bottom">
+                    <button class="btn-nebula-trigger pulse-glow" onclick="toggleNebulaAI()"></button>
+                </div>
+            </div>
+        </aside>
 
         <!-- MAIN CONTENT -->
         <main class="zenith-main-deck">
