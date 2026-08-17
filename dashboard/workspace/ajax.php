@@ -6,15 +6,18 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
 if(!isset($_SESSION['admin'])) { echo json_encode(['status' => 'error', 'message' => 'Unauthorized']); exit; }
 $user = $_SESSION['admin'];
 
-// AUTO FIX DB
-mysqli_query($conn, "CREATE TABLE IF NOT EXISTS keep_notes (id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(100), title VARCHAR(255), content TEXT, color VARCHAR(20) DEFAULT 'default', is_pinned TINYINT(1) DEFAULT 0, is_trashed TINYINT(1) DEFAULT 0, reminder_date DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-$check_trash_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'trashed_at'");
-if(mysqli_num_rows($check_trash_col) == 0) {
-    mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN trashed_at TIMESTAMP NULL");
-}
-$check_img_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'image_path'");
-if(mysqli_num_rows($check_img_col) == 0) {
-    mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN image_path VARCHAR(500) NULL");
+// AUTO FIX DB (Run once per session to improve AJAX speed)
+if(!isset($_SESSION['keep_db_checked'])) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS keep_notes (id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(100), title VARCHAR(255), content TEXT, color VARCHAR(20) DEFAULT 'default', is_pinned TINYINT(1) DEFAULT 0, is_trashed TINYINT(1) DEFAULT 0, reminder_date DATETIME NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $check_trash_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'trashed_at'");
+    if(mysqli_num_rows($check_trash_col) == 0) {
+        mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN trashed_at TIMESTAMP NULL");
+    }
+    $check_img_col = mysqli_query($conn, "SHOW COLUMNS FROM keep_notes LIKE 'image_path'");
+    if(mysqli_num_rows($check_img_col) == 0) {
+        mysqli_query($conn, "ALTER TABLE keep_notes ADD COLUMN image_path VARCHAR(500) NULL");
+    }
+    $_SESSION['keep_db_checked'] = true;
 }
 
 // 1. SAVE NOTE (with optional image upload)
@@ -67,8 +70,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'save_note') {
 
 // 2. GET NOTES
 if(isset($_GET['action']) && $_GET['action'] == 'get_notes') {
-    // Auto-delete notes in trash older than 30 days
-    mysqli_query($conn, "DELETE FROM keep_notes WHERE is_trashed = 1 AND trashed_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND user_name='$user'");
+    // Auto-delete notes in trash older than 30 days (Run once per session)
+    if(!isset($_SESSION['keep_trash_cleaned'])) {
+        mysqli_query($conn, "DELETE FROM keep_notes WHERE is_trashed = 1 AND trashed_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND user_name='$user'");
+        $_SESSION['keep_trash_cleaned'] = true;
+    }
 
     $view = $_GET['view'] ?? 'notes';
     $where = "user_name='$user'";

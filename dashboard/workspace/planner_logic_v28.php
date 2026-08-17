@@ -42,18 +42,25 @@ if(mysqli_num_rows($check) > 0) {
     }
 }
 
-// 4. FETCH HARI LIBUR NASIONAL INDONESIA
+// 4. FETCH HARI LIBUR NASIONAL INDONESIA (WITH SESSION CACHE UNTUK SPEED)
 $holidays = [];
-$holiday_api_url = "https://api.harilibur.co.id/api?month=$month&year=$year";
-$holiday_ctx = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true]]);
-$holiday_raw = @file_get_contents($holiday_api_url, false, $holiday_ctx);
-if($holiday_raw) {
-    $holiday_data = json_decode($holiday_raw, true);
-    if(is_array($holiday_data)) {
-        foreach($holiday_data as $h) {
-            if(!empty($h['holiday_date']) && !empty($h['holiday_name'])) {
-                $holidays[$h['holiday_date']] = htmlspecialchars($h['holiday_name'], ENT_QUOTES);
+$cache_key = "holidays_{$year}_{$month}";
+if(isset($_SESSION[$cache_key])) {
+    $holidays = $_SESSION[$cache_key];
+} else {
+    $holiday_api_url = "https://api.harilibur.co.id/api?month=$month&year=$year";
+    $holiday_ctx = stream_context_create(['http' => ['timeout' => 2, 'ignore_errors' => true]]);
+    $holiday_raw = @file_get_contents($holiday_api_url, false, $holiday_ctx);
+    if($holiday_raw) {
+        $holiday_data = json_decode($holiday_raw, true);
+        if(is_array($holiday_data)) {
+            foreach($holiday_data as $h) {
+                if(!empty($h['holiday_date']) && !empty($h['holiday_name'])) {
+                    $holidays[$h['holiday_date']] = htmlspecialchars($h['holiday_name'], ENT_QUOTES);
+                }
             }
+            // Save to cache for the entire session
+            $_SESSION[$cache_key] = $holidays;
         }
     }
 }
