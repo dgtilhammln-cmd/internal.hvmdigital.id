@@ -154,29 +154,29 @@
 
 /* Untuk Chrome, Safari, dan Edge */
 ::-webkit-scrollbar {
-    width: 8px; /* Ukuran lebih ramping & modern */
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #050505; /* Warna background track disamakan dengan body */
+    background: rgba(255, 255, 255, 0.03);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #2a2a2a; /* Warna batang scroll */
-    border-radius: 10px; /* Membuat sudut membulat/round */
-    border: 2px solid #050505; /* Memberi efek padding agar terlihat melayang */
+    background: #666675;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: 0.3s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #444; /* Warna sedikit lebih terang saat diarahkan kursor */
+    background: #aaaaaa;
 }
 
 /* Khusus untuk Firefox */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #2a2a2a #050505;
+    scrollbar-color: #666675 rgba(255, 255, 255, 0.03);
 }
 
 /* Hilangkan tombol panah atas bawah agar terlihat lebih bersih/minimalis */

@@ -321,8 +321,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
 /* SCROLLBAR */
 ::-webkit-scrollbar { width:6px; height:6px; }
-::-webkit-scrollbar-track { background:#0a0a0a; }
-::-webkit-scrollbar-thumb { background:#333; border-radius:10px; border:1px solid var(--neon-main); }
+::-webkit-scrollbar-track { background:rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb { background:#666675; border-radius:10px; border:1px solid rgba(255,255,255,0.1); }
+::-webkit-scrollbar-thumb:hover { background:#aaaaaa; }
+* { scrollbar-width: thin; scrollbar-color: #666675 rgba(255,255,255,0.03); }
 
 /* LAYOUT */
 .dashboard-wrapper { display:flex; width:100%; min-height:100vh; }

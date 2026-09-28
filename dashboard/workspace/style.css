@@ -18,9 +18,10 @@
 body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
 
 /* SCROLLBAR */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-thumb { background: var(--grad); border-radius: 10px; box-shadow: 0 0 10px var(--neon); }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #666675; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+::-webkit-scrollbar-thumb:hover { background: #aaaaaa; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
 
 /* LAYOUT UTAMA */
 .zenith-wrapper { display: flex; height: 100vh; overflow: hidden; }
