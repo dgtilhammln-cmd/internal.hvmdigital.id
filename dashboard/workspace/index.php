@@ -22,6 +22,7 @@ $_cols = [
     'target_id'      => "INT DEFAULT NULL",
     'log_hasil'      => "TEXT DEFAULT NULL",
     'teams_involved' => "TEXT DEFAULT NULL",
+    'photos'         => "TEXT DEFAULT NULL",
 ];
 foreach($_cols as $_col => $_def){
     $_chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$_col'");
@@ -72,20 +73,43 @@ if(isset($_POST['update_event'])) {
     $lng_val = "NULL";
     $coords_esc = mysqli_real_escape_string($conn, $coords_raw);
     if($coords_raw !== '') {
-        // Only parse decimal lat,lng — preserves user input as-is in coords_raw
         $parts = explode(',', $coords_raw);
         if(count($parts) >= 2 && is_numeric(trim($parts[0])) && is_numeric(trim($parts[1]))) {
             $lat_val = floatval(trim($parts[0]));
             $lng_val = floatval(trim($parts[1]));
         }
-        // If Plus Code or text: lat/lng stays NULL, coords_raw saved as-is
     }
 
-    // Ensure coords_raw column exists
+    // Ensure columns exist
     $chk_cr2 = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'coords_raw'");
     if(mysqli_num_rows($chk_cr2) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `coords_raw` VARCHAR(255) DEFAULT NULL");
+    $chk_ph2 = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'photos'");
+    if(mysqli_num_rows($chk_ph2) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `photos` TEXT DEFAULT NULL");
 
-    mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', lat=$lat_val, lng=$lng_val, coords_raw='$coords_esc', log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id WHERE id=$eid");
+    // Existing & uploaded photos processing
+    $existing_photos = isset($_POST['existing_photos']) ? json_decode($_POST['existing_photos'], true) : [];
+    if(!is_array($existing_photos)) $existing_photos = [];
+
+    $new_photos = [];
+    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/visits/';
+    if(!is_dir($upload_dir)) @mkdir($upload_dir, 0755, true);
+
+    if(!empty($_FILES['event_photos']['name'][0])) {
+        foreach($_FILES['event_photos']['tmp_name'] as $idx => $tmpName) {
+            if(!empty($tmpName) && is_uploaded_file($tmpName)) {
+                $fname = 'visit_' . $eid . '_' . time() . '_' . $idx . '.webp';
+                $targetFile = $upload_dir . $fname;
+                if(move_uploaded_file($tmpName, $targetFile)) {
+                    $new_photos[] = '/uploads/visits/' . $fname;
+                }
+            }
+        }
+    }
+
+    $all_photos = array_merge($existing_photos, $new_photos);
+    $photos_sql = !empty($all_photos) ? "'" . mysqli_real_escape_string($conn, json_encode(array_values($all_photos))) . "'" : "NULL";
+
+    mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', lat=$lat_val, lng=$lng_val, coords_raw='$coords_esc', log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id, photos=$photos_sql WHERE id=$eid");
     echo json_encode(['ok' => true]);
     exit;
 }
