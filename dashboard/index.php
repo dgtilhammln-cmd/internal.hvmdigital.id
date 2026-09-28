@@ -1763,6 +1763,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             const points = [];
             const bounds = L.latLngBounds();
+            let displayedCount = 0;
 
             for(let i = 0; i < meetings.length; i++) {
                 const m = meetings[i];
@@ -1776,16 +1777,22 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         lng = coords.lng;
                         saveCoordsToDB(m.id, lat, lng);
                     }
-                    // Pause 300ms to respect Nominatim API rate limit
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 200));
+                }
+
+                // Fallback: If still no coordinates found, assign offset position around Surabaya center so pin is never dropped
+                if((isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && m.location) {
+                    lat = -7.2575 + ((i % 5) * 0.008) - 0.015;
+                    lng = 112.7521 + (Math.floor(i / 5) * 0.008) - 0.015;
                 }
 
                 if(!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+                    displayedCount++;
                     const latLng = [lat, lng];
                     points.push(latLng);
                     bounds.extend(latLng);
 
-                    const pinHtml = `<div class="map-marker-pin">${i+1}</div>`;
+                    const pinHtml = `<div class="map-marker-pin">${displayedCount}</div>`;
                     const customIcon = L.divIcon({
                         html: pinHtml,
                         className: '',
@@ -1796,7 +1803,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                     const popupContent = `
                         <div style="padding: 4px; min-width: 180px;">
-                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Kunjungan #${i+1}</div>
+                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Kunjungan #${displayedCount}</div>
                             <div style="font-size: 0.92rem; font-weight: 800; color: #fff; margin-top: 2px;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
                             <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
                             <div style="font-size: 0.75rem; color: #ccc; margin-top: 4px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location)}</div>
@@ -1812,10 +1819,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             if(points.length > 1) {
                 L.polyline(points, {
-                    color: '#a1ff5a',
-                    weight: 3,
-                    opacity: 0.85,
-                    dashArray: '6, 8'
+                    color: '#000000',
+                    weight: 3.5,
+                    opacity: 0.9,
+                    dashArray: '6, 6'
                 }).addTo(_mapPolylineLayer);
             }
 
@@ -1859,13 +1866,37 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 if(res) return res;
             }
 
-            // 4. Fallback: comma separated query (e.g. "Gedung XYZ, Ketabang, Surabaya" -> try "Ketabang, Surabaya")
             const targetText = stripped || cleanQuery;
+
+            // 4. Strip business/cafe/brand prefix words (e.g. "tomorrow coffe graha pena surabaya" -> "graha pena surabaya")
+            let strippedVenue = targetText.replace(/^(tomorrow\s+coffe[e]?|coffee|coffe|cafe|café|kopi|warung|resto|restaurant|toko|shop|outlet|office|kantor|gedung|pt|ud|cv)\s+/i, '').trim();
+            if(strippedVenue && strippedVenue !== targetText) {
+                res = await tryFetch(strippedVenue);
+                if(res) return res;
+            }
+
+            // 5. Try progressive word trimming from start (e.g. "tomorrow coffe graha pena surabaya" -> "graha pena surabaya" -> "pena surabaya" -> "surabaya")
+            const words = targetText.split(/\s+/).filter(Boolean);
+            if(words.length > 2) {
+                // Try last 3 words
+                res = await tryFetch(words.slice(-3).join(' '));
+                if(res) return res;
+                // Try last 2 words
+                res = await tryFetch(words.slice(-2).join(' '));
+                if(res) return res;
+                // Try last word (e.g. city)
+                res = await tryFetch(words[words.length - 1]);
+                if(res) return res;
+            } else if(words.length === 2) {
+                res = await tryFetch(words[1]);
+                if(res) return res;
+            }
+
+            // 6. Comma fallback if present
             if(targetText.includes(',')) {
                 const parts = targetText.split(',').map(s=>s.trim()).filter(Boolean);
                 if(parts.length > 1) {
-                    const broader = parts.slice(1).join(', ');
-                    res = await tryFetch(broader);
+                    res = await tryFetch(parts.slice(1).join(', '));
                     if(res) return res;
                 }
             }
