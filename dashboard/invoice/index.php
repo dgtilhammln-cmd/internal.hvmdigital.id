@@ -1376,9 +1376,9 @@ function resetForm(){
     document.getElementById('f_bank').value='';
     document.getElementById('f_rekening').value='';
     document.getElementById('f_atasNama').value='';
-    document.getElementById('f_sigName').value='Casandra';
-    document.getElementById('f_sigRole').value='Finance Dept.';
-    document.getElementById('f_contact').value='0851-6261-2373';
+    document.getElementById('f_sigName').value='HIVIA';
+    document.getElementById('f_sigRole').value='CS Support.';
+    document.getElementById('f_contact').value='0851-7998-2373';
     document.getElementById('f_email').value='bisnis@hvmdigital.id';
     document.getElementById('f_note').value='Mohon konfirmasi setelah melakukan pembayaran, untuk kami lanjut ke tahap selanjutnya untuk proses optimalisasi.';
     document.getElementById('f_status').value='Pending';

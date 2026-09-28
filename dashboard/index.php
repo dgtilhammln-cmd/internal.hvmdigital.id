@@ -118,8 +118,15 @@ if(isset($_POST['save_event'])){
     $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
     $target_id   = intval($_POST['target_id'] ?? 0);
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+    $coords_raw  = trim($_POST['coords'] ?? '');
     $lat         = isset($_POST['lat']) && $_POST['lat'] !== '' ? floatval($_POST['lat']) : "NULL";
     $lng         = isset($_POST['lng']) && $_POST['lng'] !== '' ? floatval($_POST['lng']) : "NULL";
+    if($coords_raw !== '') {
+        if(preg_match('/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/', $coords_raw, $m_c)) {
+            $lat = floatval($m_c[1]);
+            $lng = floatval($m_c[2]);
+        }
+    }
     $teams_raw   = $_POST['teams_involved'] ?? [];
     $teams_str   = mysqli_real_escape_string($conn, implode(',', $teams_raw));
     if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
@@ -1264,14 +1271,20 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom:14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin:0;" id="d-loc-label">Link Meeting (Google Meet / Zoom)</label>
-                        <span id="geoStatusMsg" style="font-size:0.68rem;color:#a1ff5a;display:none;"><i class="fas fa-map-pin"></i> Koordinat terdeteksi</span>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                    <div class="form-group">
+                        <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;" id="d-loc-label"><i class="fas fa-building" style="margin-right:4px;"></i>Nama Lokasi / Tempat</label>
+                        <input type="text" name="location" class="form-input" id="d-loc-input" placeholder="contoh: Tomorrow Coffee Graha Pena">
                     </div>
-                    <input type="text" name="location" class="form-input" id="d-loc-input" placeholder="https://meet.google.com/..." onchange="dashGeocodeLocation()">
-                    <input type="hidden" name="lat" id="d-lat-input" value="">
-                    <input type="hidden" name="lng" id="d-lng-input" value="">
+                    <div class="form-group">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin:0;"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:#ff9f43;"></i>Koordinat (Opsional)</label>
+                            <span id="geoStatusMsg" style="font-size:0.68rem;color:#a1ff5a;display:none;"><i class="fas fa-check"></i></span>
+                        </div>
+                        <input type="text" name="coords" class="form-input" id="d-coords-input" placeholder="contoh: -7.3164, 112.7342" onchange="dashGeocodeLocation()">
+                        <input type="hidden" name="lat" id="d-lat-input" value="">
+                        <input type="hidden" name="lng" id="d-lng-input" value="">
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px;">
@@ -1614,11 +1627,14 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     <input type="text" id="em_target_name" value="${ev.target_name||''}" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
                     <input type="hidden" id="em_target_type" value="${ev.target_type||'Client'}">
                 </div>
-                <div style="margin-bottom:12px;">
-                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Lokasi / Link Meeting</label>
-                    <div style="display:flex;gap:6px;">
-                        <input type="text" id="em_location" value="${ev.location||''}" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
-                        <button type="button" onclick="if(document.getElementById('em_location').value){window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(document.getElementById('em_location').value),'_blank');}" style="width:36px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#4efdc4;cursor:pointer;"><i class="fas fa-map-marked-alt"></i></button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;"><i class="fas fa-building" style="margin-right:4px;"></i>Nama Lokasi / Tempat</label>
+                        <input type="text" id="em_location" value="${ev.location||''}" placeholder="contoh: Tomorrow Coffee Graha Pena" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:#ff9f43;"></i>Koordinat (Opsional)</label>
+                        <input type="text" id="em_coords" value="${(ev.lat && ev.lng) ? (ev.lat + ', ' + ev.lng) : ''}" placeholder="contoh: -7.3164, 112.7342" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
                     </div>
                 </div>
                 <div style="margin-bottom:12px;">
@@ -1649,6 +1665,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const event_date  = document.getElementById('em_date').value;
             const time_start  = document.getElementById('em_time').value;
             const location    = document.getElementById('em_location').value;
+            const coords      = document.getElementById('em_coords').value;
             const log_hasil   = document.getElementById('em_log').value;
             const teams = Array.from(document.querySelectorAll('#detailContent input[name="em_teams[]"]:checked')).map(c=>c.value);
 
@@ -1662,6 +1679,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             fd.append('event_date', event_date);
             fd.append('time_start', time_start);
             fd.append('location', location);
+            fd.append('coords', coords);
             fd.append('log_hasil', log_hasil);
             teams.forEach(t => fd.append('teams_involved[]', t));
 
@@ -1801,13 +1819,26 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     });
 
                     const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    let gmapsQuery = '';
+                    if(!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                        gmapsQuery = `${lat},${lng}`;
+                    } else if(m.location) {
+                        gmapsQuery = encodeURIComponent(m.location);
+                    }
+                    const gmapsUrl = gmapsQuery ? `https://www.google.com/maps/search/?api=1&query=${gmapsQuery}` : '';
+
                     const popupContent = `
-                        <div style="padding: 4px; min-width: 180px;">
-                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Kunjungan #${displayedCount}</div>
-                            <div style="font-size: 0.92rem; font-weight: 800; color: #fff; margin-top: 2px;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
+                        <div style="padding: 4px; min-width: 220px;">
+                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</div>
+                            <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-top: 2px;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
                             <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
-                            <div style="font-size: 0.75rem; color: #ccc; margin-top: 4px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location)}</div>
+                            <div style="font-size: 0.75rem; color: #ccc; margin-top: 4px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
                             ${m.log_hasil ? `<div style="font-size: 0.72rem; color: #999; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); line-height: 1.4;">${escHtml(m.log_hasil).substring(0, 100)}...</div>` : ''}
+                            
+                            <div style="display:flex; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
+                                ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(78,253,196,0.15); border:1px solid rgba(78,253,196,0.4); color:#4efdc4; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; text-decoration:none;"><i class="fas fa-directions"></i> Google Maps</a>` : ''}
+                                <button onclick="openEditEvent(${m.id})" style="display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(161,255,90,0.15); border:1px solid rgba(161,255,90,0.4); color:#a1ff5a; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i> Edit</button>
+                            </div>
                         </div>
                     `;
 
