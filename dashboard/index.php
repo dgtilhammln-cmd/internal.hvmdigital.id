@@ -66,9 +66,11 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         if(mysqli_num_rows($chk_lat) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lat` FLOAT DEFAULT NULL");
         $chk_lng = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lng'");
         if(mysqli_num_rows($chk_lng) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lng` FLOAT DEFAULT NULL");
+        $chk_cr = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'coords_raw'");
+        if(mysqli_num_rows($chk_cr) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `coords_raw` VARCHAR(255) DEFAULT NULL");
 
         $rows = [];
-        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
+        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, coords_raw, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
         if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
         echo json_encode($rows); exit;
     }
@@ -102,7 +104,8 @@ if(isset($_POST['save_event'])){
         'location'     => "TEXT DEFAULT NULL",
         'log_hasil'    => "TEXT DEFAULT NULL",
         'lat'          => "FLOAT DEFAULT NULL",
-        'lng'          => "FLOAT DEFAULT NULL"
+        'lng'          => "FLOAT DEFAULT NULL",
+        'coords_raw'   => "VARCHAR(255) DEFAULT NULL"
     ];
     foreach($cols as $col => $def){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
@@ -119,47 +122,24 @@ if(isset($_POST['save_event'])){
     $target_id   = intval($_POST['target_id'] ?? 0);
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
     $coords_raw  = trim($_POST['coords'] ?? '');
+    $coords_esc  = mysqli_real_escape_string($conn, $coords_raw);
     $lat = "NULL";
     $lng = "NULL";
     if($coords_raw !== '') {
+        // Only parse decimal lat,lng — do NOT auto-geocode (preserves user input)
         $parts = explode(',', $coords_raw);
         if(count($parts) >= 2 && is_numeric(trim($parts[0])) && is_numeric(trim($parts[1]))) {
             $lat = floatval(trim($parts[0]));
             $lng = floatval(trim($parts[1]));
-        } else {
-            // User entered Plus Code or address string in coords field
-            $ctx = stream_context_create(['http' => ['header' => "User-Agent: HVMDigitalApp/1.0\r\n", 'timeout' => 3]]);
-            $geoUrl = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($coords_raw) . "&limit=1";
-            $geoRes = @file_get_contents($geoUrl, false, $ctx);
-            if($geoRes) {
-                $geoData = json_decode($geoRes, true);
-                if(!empty($geoData[0]['lat']) && !empty($geoData[0]['lon'])) {
-                    $lat = floatval($geoData[0]['lat']);
-                    $lng = floatval($geoData[0]['lon']);
-                }
-            }
-            if($lat === "NULL") {
-                $stripped = trim(preg_replace('/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}\s*,?\s*/i', '', $coords_raw));
-                if($stripped !== '' && $stripped !== $coords_raw) {
-                    $geoUrl2 = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($stripped) . "&limit=1";
-                    $geoRes2 = @file_get_contents($geoUrl2, false, $ctx);
-                    if($geoRes2) {
-                        $geoData2 = json_decode($geoRes2, true);
-                        if(!empty($geoData2[0]['lat']) && !empty($geoData2[0]['lon'])) {
-                            $lat = floatval($geoData2[0]['lat']);
-                            $lng = floatval($geoData2[0]['lon']);
-                        }
-                    }
-                }
-            }
         }
+        // If Plus Code or text: lat/lng stays NULL, coords_raw saved as-is for Google Maps link
     }
     $teams_raw   = $_POST['teams_involved'] ?? [];
     $teams_str   = mysqli_real_escape_string($conn, implode(',', $teams_raw));
     if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, lat, lng, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', $lat, $lng, '$teams_str')");
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, lat, lng, coords_raw, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', $lat, $lng, '$coords_esc', '$teams_str')");
     header("Location: /dashboard/"); exit;
 }
 
@@ -1308,7 +1288,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin:0;"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:#ff9f43;"></i>Koordinat (Opsional)</label>
                             <span id="geoStatusMsg" style="font-size:0.68rem;color:#a1ff5a;display:none;"><i class="fas fa-check"></i></span>
                         </div>
-                        <input type="text" name="coords" class="form-input" id="d-coords-input" placeholder="contoh: -7.3164, 112.7342" onchange="dashGeocodeLocation()">
+                        <input type="text" name="coords" class="form-input" id="d-coords-input" placeholder="contoh: -7.3164, 112.7342 atau Plus Code">
                         <input type="hidden" name="lat" id="d-lat-input" value="">
                         <input type="hidden" name="lng" id="d-lng-input" value="">
                     </div>
@@ -1661,7 +1641,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     </div>
                     <div>
                         <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;"><i class="fas fa-map-marker-alt" style="margin-right:4px;color:#ff9f43;"></i>Koordinat (Opsional)</label>
-                        <input type="text" id="em_coords" value="${(ev.lat && ev.lng) ? (ev.lat + ', ' + ev.lng) : ''}" placeholder="contoh: -7.3164, 112.7342" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
+                        <input type="text" id="em_coords" value="${ev.coords_raw || ((ev.lat && ev.lng) ? (ev.lat + ', ' + ev.lng) : '')}" placeholder="contoh: -7.3164, 112.7342 atau Plus Code" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:8px;font-family:inherit;">
                     </div>
                 </div>
                 <div style="margin-bottom:12px;">
@@ -1683,7 +1663,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             document.querySelectorAll('#detailContent input[name=em_meet_type]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#editMeetTypes .meet-type-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
             document.querySelectorAll('#detailContent input[name=em_mode]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#detailContent .meet-mode-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
 
-            openModal('detailModal');
+            document.getElementById('detailModal').classList.add('active');
         }
 
         function saveEditEvent(id) {
@@ -1817,16 +1797,20 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 let lat = parseFloat(m.lat);
                 let lng = parseFloat(m.lng);
 
+                // Try coords_raw first (Plus Code, decimal text, etc)
+                if((isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && m.coords_raw) {
+                    const coords = await geocodeAddress(m.coords_raw);
+                    if(coords) { lat = coords.lat; lng = coords.lng; }
+                    await new Promise(r => setTimeout(r, 150));
+                }
+                // Fallback to location name
                 if((isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && m.location) {
                     const coords = await geocodeAddress(m.location);
-                    if(coords) {
-                        lat = coords.lat;
-                        lng = coords.lng;
-                    }
+                    if(coords) { lat = coords.lat; lng = coords.lng; }
                     await new Promise(r => setTimeout(r, 200));
                 }
 
-                // Fallback: If still no coordinates found, assign offset position around Surabaya center so pin is never dropped
+                // Last fallback: offset around Surabaya center
                 if((isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && m.location) {
                     lat = -7.2575 + ((i % 5) * 0.008) - 0.015;
                     lng = 112.7521 + (Math.floor(i / 5) * 0.008) - 0.015;
@@ -1847,8 +1831,11 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     });
 
                     const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    // Google Maps: prefer coords_raw (supports Plus Code), then decimal lat/lng, then location name
                     let gmapsQuery = '';
-                    if(!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    if(m.coords_raw && m.coords_raw.trim() !== '') {
+                        gmapsQuery = encodeURIComponent(m.coords_raw.trim());
+                    } else if(!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                         gmapsQuery = `${lat},${lng}`;
                     } else if(m.location) {
                         gmapsQuery = encodeURIComponent(m.location);

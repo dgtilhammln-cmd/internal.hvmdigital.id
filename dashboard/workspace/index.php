@@ -70,41 +70,22 @@ if(isset($_POST['update_event'])) {
 
     $lat_val = "NULL";
     $lng_val = "NULL";
+    $coords_esc = mysqli_real_escape_string($conn, $coords_raw);
     if($coords_raw !== '') {
+        // Only parse decimal lat,lng — preserves user input as-is in coords_raw
         $parts = explode(',', $coords_raw);
         if(count($parts) >= 2 && is_numeric(trim($parts[0])) && is_numeric(trim($parts[1]))) {
             $lat_val = floatval(trim($parts[0]));
             $lng_val = floatval(trim($parts[1]));
-        } else {
-            // User entered Plus Code or address string in coords field
-            $ctx = stream_context_create(['http' => ['header' => "User-Agent: HVMDigitalApp/1.0\r\n", 'timeout' => 3]]);
-            $geoUrl = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($coords_raw) . "&limit=1";
-            $geoRes = @file_get_contents($geoUrl, false, $ctx);
-            if($geoRes) {
-                $geoData = json_decode($geoRes, true);
-                if(!empty($geoData[0]['lat']) && !empty($geoData[0]['lon'])) {
-                    $lat_val = floatval($geoData[0]['lat']);
-                    $lng_val = floatval($geoData[0]['lon']);
-                }
-            }
-            if($lat_val === "NULL") {
-                $stripped = trim(preg_replace('/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}\s*,?\s*/i', '', $coords_raw));
-                if($stripped !== '' && $stripped !== $coords_raw) {
-                    $geoUrl2 = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($stripped) . "&limit=1";
-                    $geoRes2 = @file_get_contents($geoUrl2, false, $ctx);
-                    if($geoRes2) {
-                        $geoData2 = json_decode($geoRes2, true);
-                        if(!empty($geoData2[0]['lat']) && !empty($geoData2[0]['lon'])) {
-                            $lat_val = floatval($geoData2[0]['lat']);
-                            $lng_val = floatval($geoData2[0]['lon']);
-                        }
-                    }
-                }
-            }
         }
+        // If Plus Code or text: lat/lng stays NULL, coords_raw saved as-is
     }
 
-    mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', lat=$lat_val, lng=$lng_val, log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id WHERE id=$eid");
+    // Ensure coords_raw column exists
+    $chk_cr2 = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'coords_raw'");
+    if(mysqli_num_rows($chk_cr2) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `coords_raw` VARCHAR(255) DEFAULT NULL");
+
+    mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', lat=$lat_val, lng=$lng_val, coords_raw='$coords_esc', log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id WHERE id=$eid");
     echo json_encode(['ok' => true]);
     exit;
 }
