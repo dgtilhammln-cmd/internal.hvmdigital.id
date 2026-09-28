@@ -341,6 +341,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 /* SENSOR */
 .sensor-text { filter:blur(6px); user-select:none; opacity:0.7; transition:0.3s; background:rgba(255,255,255,0.1); border-radius:4px; }
 .sensor-text:hover { filter:blur(3px); opacity:1; }
+.sensor-blur { transition: filter 0.3s ease, opacity 0.3s ease; }
+body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: none !important; pointer-events: none !important; opacity: 0.6; }
+.panel-card-box { height: 580px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: rgba(18, 18, 18, 0.6); border: 1px solid rgba(255,255,255,0.06); padding: 14px; }
 
 /* ══ HEADER ══ */
 .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; padding-bottom:15px; border-bottom:1px solid var(--card-border); animation:slideDown 0.6s ease; }
@@ -763,17 +766,34 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .split-icon-3 { display: flex; gap: 1.5px; }
         .split-icon-3 span { width: 4px; height: 14px; background: currentColor; border-radius: 2px; }
 
-        /* Panels Container Layout Transitions */
-        #panelsContainer {
-            transition: grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1),
-                        gap 0.35s ease;
+        /* SENSOR PRIVACY BLUR MODE */
+        body.sensor-active .sensor-blur {
+            filter: blur(5.5px) !important;
+            user-select: none !important;
+            pointer-events: none !important;
+            transition: filter 0.3s ease;
         }
 
-        /* Panel wrappers — each gets a label row in split mode */
+        /* Panels Container Layout Transitions */
+        #panelsContainer {
+            transition: grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1), gap 0.35s ease;
+            align-items: stretch !important;
+        }
+
+        /* Panel wrappers — equal height card containers */
+        .panel-card-box {
+            display: flex; flex-direction: column;
+            height: 580px; max-height: 580px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px; padding: 12px;
+            box-sizing: border-box; min-width: 0;
+        }
+
         .panel-split-label {
             display: none;
             font-size: 0.62rem; font-weight: 800; letter-spacing: 2px;
-            text-transform: uppercase; color: rgba(255,255,255,0.3);
+            text-transform: uppercase; color: rgba(255,255,255,0.4);
             padding: 0 2px 8px 2px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             margin-bottom: 10px;
@@ -1101,37 +1121,45 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             <div class="zenith-grid-layout">
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
 
-                    <!-- ── TIER 1: MAIN CARD HEADER (TABS & SPLIT SWITCHER) ── -->
+                    <!-- ── TIER 1: MAIN CARD HEADER (TABS, SENSOR TOGGLE & SPLIT SWITCHER) ── -->
                     <div class="planner-deck-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding: 4px 4px 10px 4px; border-bottom:1px solid rgba(255,255,255,0.06); margin-bottom:4px;">
                         <!-- Left: Tab Switcher -->
                         <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
                             <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:#ffffff; color:#000;"><i class="fas fa-calendar-alt"></i> Kalender</button>
                             <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                            <button id="tabBtnGallery" onclick="switchPlannerTab('gallery')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-images"></i> Galeri Visit</button>
+                            <button id="tabBtnGallery" onclick="switchPlannerTab('gallery')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-images"></i> Dokumentasi Meeting</button>
                         </div>
 
-                        <!-- Right: Split Layout Switcher -->
-                        <div id="splitModeBar" class="split-layout-bar" title="Layout Panel">
-                            <button id="btnSplit1" class="split-layout-btn active" data-mode="1" onclick="setSplitLayout(1)" title="1 Panel – Full Width">
-                                <span class="split-icon"><span class="split-icon-1"></span></span>
-                                <span class="split-btn-label">Full</span>
+                        <!-- Right: Sensor Toggle & Split Layout Switcher -->
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <!-- Privacy Sensor Toggle -->
+                            <button id="btnSensorToggle" onclick="toggleSensorMode()" style="display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:#888; font-size:0.75rem; font-weight:700; cursor:pointer; transition:all 0.2s; font-family:inherit;" title="Toggle Sensor Mode (Blur Nama Perusahaan & Lokasi)">
+                                <i id="sensorIcon" class="fas fa-eye-slash"></i> <span id="sensorText">Sensor: OFF</span>
                             </button>
-                            <button id="btnSplit2" class="split-layout-btn" data-mode="2" onclick="setSplitLayout(2)" title="2 Panel – Split 50/50">
-                                <span class="split-icon split-icon-2"><span></span><span></span></span>
-                                <span class="split-btn-label">Split 2</span>
-                            </button>
-                            <button id="btnSplit3" class="split-layout-btn" data-mode="3" onclick="setSplitLayout(3)" title="3 Panel – Semua Tab Tampil">
-                                <span class="split-icon split-icon-3"><span></span><span></span><span></span></span>
-                                <span class="split-btn-label">Split 3</span>
-                            </button>
+
+                            <!-- Split Layout Switcher -->
+                            <div id="splitModeBar" class="split-layout-bar" title="Layout Panel">
+                                <button id="btnSplit1" class="split-layout-btn active" data-mode="1" onclick="setSplitLayout(1)" title="1 Panel – Full Width">
+                                    <span class="split-icon"><span class="split-icon-1"></span></span>
+                                    <span class="split-btn-label">Full</span>
+                                </button>
+                                <button id="btnSplit2" class="split-layout-btn" data-mode="2" onclick="setSplitLayout(2)" title="2 Panel – Split 50/50">
+                                    <span class="split-icon split-icon-2"><span></span><span></span></span>
+                                    <span class="split-btn-label">Split 2</span>
+                                </button>
+                                <button id="btnSplit3" class="split-layout-btn" data-mode="3" onclick="setSplitLayout(3)" title="3 Panel – Semua Tab Tampil">
+                                    <span class="split-icon split-icon-3"><span></span><span></span><span></span></span>
+                                    <span class="split-btn-label">Split 3</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- ── TIER 2: PANELS CONTAINER (DYNAMIC GRID SPLIT) ── -->
-                    <div id="panelsContainer" style="display:grid; grid-template-columns:1fr; gap:16px; width:100%; padding-top:4px; align-items:start;">
+                    <div id="panelsContainer" style="display:grid; grid-template-columns:1fr; gap:16px; width:100%; padding-top:4px; align-items:stretch;">
 
                         <!-- PANEL 1: KALENDER -->
-                        <div id="panelCalendar" style="display:block; min-width:0; overflow-x:auto;">
+                        <div id="panelCalendar" class="panel-card-box" style="display:flex; flex-direction:column;">
                             <div class="panel-split-label"><i class="fas fa-calendar-alt" style="margin-right:6px; color:#ffffff;"></i>Kalender</div>
                             
                             <!-- Calendar Panel Dedicated Subtoolbar -->
@@ -1160,11 +1188,11 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                 </div>
                             </div>
 
-                            <div id="calendarViewport" class="planner-viewport" style="width:100%; display:flex; flex-direction:column; gap:10px;"></div>
+                            <div id="calendarViewport" class="planner-viewport" style="width:100%; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
                         </div>
 
                         <!-- PANEL 2: PETA -->
-                        <div id="panelMap" style="display:none; min-width:0;">
+                        <div id="panelMap" class="panel-card-box" style="display:none; flex-direction:column;">
                             <div class="panel-split-label"><i class="fas fa-map-marked-alt" style="margin-right:6px; color:#ffffff;"></i>Peta Kunjungan</div>
                             
                             <!-- Map Panel Dedicated Subtoolbar -->
@@ -1183,24 +1211,24 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                 </div>
                             </div>
 
-                            <div class="map-container-inner" style="height:520px;">
+                            <div class="map-container-inner" style="flex:1; width:100%; min-height:0; position:relative; border-radius:12px; overflow:hidden;">
                                 <div id="meetingMap" style="width:100%; height:100%;"></div>
                             </div>
                         </div>
 
-                        <!-- PANEL 3: GALERI VISIT -->
-                        <div id="panelGallery" style="display:none; min-width:0; max-height:600px; overflow-y:auto; padding-right:4px;">
-                            <div class="panel-split-label"><i class="fas fa-images" style="margin-right:6px; color:#ffffff;"></i>Galeri Visit</div>
+                        <!-- PANEL 3: DOKUMENTASI MEETING -->
+                        <div id="panelGallery" class="panel-card-box" style="display:none; flex-direction:column;">
+                            <div class="panel-split-label"><i class="fas fa-images" style="margin-right:6px; color:#ffffff;"></i>Dokumentasi Meeting</div>
                             
                             <!-- Gallery Panel Dedicated Subtoolbar -->
                             <div class="panel-subtoolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 12px; border-radius:12px; margin-bottom:10px;">
                                 <div style="font-size:0.85rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px;">
-                                    <i class="fas fa-images" style="color:#aaa;"></i> Dokumentasi Visit
+                                    <i class="fas fa-images" style="color:#aaa;"></i> Dokumentasi Meeting
                                 </div>
                                 <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
                             </div>
 
-                            <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px;"></div>
+                            <div id="galleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding-right:4px;"></div>
                         </div>
 
                     </div>
@@ -1993,6 +2021,44 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             loadMapMeetings('month');
         }
 
+        // ── Sensor Privacy Toggle Logic ──
+        let sensorModeActive = localStorage.getItem('hvm_sensor_mode') === 'true';
+
+        function updateSensorUI() {
+            const btn = document.getElementById('btnSensorToggle');
+            const icon = document.getElementById('sensorIcon');
+            const text = document.getElementById('sensorText');
+            if (sensorModeActive) {
+                document.body.classList.add('sensor-active');
+                if (btn) {
+                    btn.style.background = 'rgba(255, 90, 90, 0.15)';
+                    btn.style.borderColor = '#ff5a5a';
+                    btn.style.color = '#ff5a5a';
+                }
+                if (icon) icon.className = 'fas fa-eye';
+                if (text) text.textContent = 'Sensor: ON';
+            } else {
+                document.body.classList.remove('sensor-active');
+                if (btn) {
+                    btn.style.background = 'rgba(255, 255, 255, 0.05)';
+                    btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                    btn.style.color = '#888';
+                }
+                if (icon) icon.className = 'fas fa-eye-slash';
+                if (text) text.textContent = 'Sensor: OFF';
+            }
+        }
+
+        function toggleSensorMode() {
+            sensorModeActive = !sensorModeActive;
+            localStorage.setItem('hvm_sensor_mode', sensorModeActive);
+            updateSensorUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSensorUI();
+        });
+
         // ── Tab switcher & Split Layout System ──
         let currentSplitMode = 1;
         let currentActiveTab = 'calendar';
@@ -2020,12 +2086,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             if (mode === 3 && isWide) {
                 container.style.gridTemplateColumns = '1fr 1fr 1fr';
-                panelCal.style.display = 'block';
-                panelMap.style.display = 'block';
-                panelGal.style.display = 'block';
-                panelGal.style.maxHeight = '560px';
-                if(mapInner) mapInner.style.height = '520px';
-                // Load gallery and refresh map
+                panelCal.style.display = 'flex';
+                panelMap.style.display = 'flex';
+                panelGal.style.display = 'flex';
+                panelCal.style.height = '580px';
+                panelMap.style.height = '580px';
+                panelGal.style.height = '580px';
+                if(mapInner) mapInner.style.height = '100%';
                 loadGalleryVisits();
                 setTimeout(() => {
                     if (!_leafletMap) initMeetingMap();
@@ -2034,11 +2101,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             } else if (mode === 2 && isWide) {
                 container.style.gridTemplateColumns = '1fr 1fr';
-                // In 2-panel mode: show Calendar + Map (main two), hide gallery
-                panelCal.style.display = 'block';
-                panelMap.style.display = 'block';
+                panelCal.style.display = 'flex';
+                panelMap.style.display = 'flex';
                 panelGal.style.display = 'none';
-                if(mapInner) mapInner.style.height = '520px';
+                panelCal.style.height = '580px';
+                panelMap.style.height = '580px';
+                if(mapInner) mapInner.style.height = '100%';
                 setTimeout(() => {
                     if (!_leafletMap) initMeetingMap();
                     else _leafletMap.invalidateSize();
@@ -2048,16 +2116,14 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 // Mode 1: single tab, reset
                 currentSplitMode = 1;
                 container.style.gridTemplateColumns = '1fr';
-                panelCal.style.display = 'block';
+                panelCal.style.display = 'flex';
                 panelMap.style.display = 'none';
                 panelGal.style.display = 'none';
-                panelGal.style.maxHeight = '600px';
-                if(mapInner) mapInner.style.height = '520px';
-                // Update split buttons to mode 1 if forced
+                panelCal.style.height = '580px';
+                if(mapInner) mapInner.style.height = '100%';
                 document.querySelectorAll('.split-layout-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.getAttribute('data-mode') === '1');
                 });
-                // Restore tab state
                 switchPlannerTab(currentActiveTab);
             }
         }
@@ -2065,7 +2131,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         // ── Tab Switcher (mode 1 only) ──
         function switchPlannerTab(tab) {
             currentActiveTab = tab;
-            // In split mode, re-apply layout instead
             if(currentSplitMode !== 1) {
                 setSplitLayout(currentSplitMode);
                 return;
@@ -2079,12 +2144,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const btnGal     = document.getElementById('tabBtnGallery');
 
             // Reset tab buttons
-            [btnCal, btnMap, btnGal].forEach(b => { b.style.background = 'transparent'; b.style.color = '#888'; });
-            // Hide all panels
-            [panelCal, panelMap, panelGal].forEach(p => p.style.display = 'none');
+            [btnCal, btnMap, btnGal].forEach(b => { if(b) { b.style.background = 'transparent'; b.style.color = '#888'; } });
+            // Hide all panels & set fixed equal height
+            [panelCal, panelMap, panelGal].forEach(p => { if(p) { p.style.display = 'none'; p.style.height = '580px'; } });
 
             if (tab === 'map') {
-                panelMap.style.display  = 'block';
+                panelMap.style.display  = 'flex';
                 btnMap.style.background = '#ffffff';
                 btnMap.style.color      = '#000';
                 setTimeout(() => {
@@ -2092,12 +2157,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     else _leafletMap.invalidateSize();
                 }, 80);
             } else if (tab === 'gallery') {
-                panelGal.style.display  = 'block';
+                panelGal.style.display  = 'flex';
                 btnGal.style.background = '#ffffff';
                 btnGal.style.color      = '#000';
                 loadGalleryVisits();
             } else {
-                panelCal.style.display  = 'block';
+                panelCal.style.display  = 'flex';
                 btnCal.style.background = '#ffffff';
                 btnCal.style.color      = '#000';
             }
@@ -2113,7 +2178,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         async function loadGalleryVisits() {
             const grid = document.getElementById('galleryGrid');
             if(!grid) return;
-            grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Galeri Visit...</div>';
+            grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Dokumentasi Meeting...</div>';
             
             const fd = new FormData();
             fd.append('ajax_action', 'get_map_meetings');
@@ -2122,7 +2187,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             try {
                 const meetings = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
                 if(!meetings || meetings.length === 0) {
-                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data kunjungan/visit.</div>';
+                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data dokumentasi meeting.</div>';
                     return;
                 }
                 
@@ -2135,15 +2200,15 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     let photoBanner = '';
                     if(photosArr && photosArr.length > 0) {
                         photoBanner = `
-                            <div style="position:relative; width:100%; height:160px; overflow:hidden; border-radius:12px 12px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                            <div style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:12px 12px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 <div style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); padding:3px 8px; border-radius:6px; font-size:0.68rem; color:#fff; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
                             </div>
                         `;
                     } else {
                         photoBanner = `
-                            <div style="width:100%; height:90px; background:rgba(255,255,255,0.03); border-radius:12px 12px 0 0; display:flex; align-items:center; justify-content:center; color:#888; font-size:0.8rem; font-style:italic;">
-                                <i class="fas fa-map-marker-alt" style="margin-right:6px; color:#cccccc;"></i> ${escHtml(m.location || 'Dokumentasi Visit')}
+                            <div style="width:100%; aspect-ratio:1/1; background:rgba(255,255,255,0.03); border-radius:12px 12px 0 0; display:flex; align-items:center; justify-content:center; color:#888; font-size:0.8rem; font-style:italic; padding:10px; text-align:center;">
+                                <div><i class="fas fa-map-marker-alt" style="margin-right:6px; color:#cccccc;"></i> <span class="sensor-blur">${escHtml(m.location || 'Dokumentasi Meeting')}</span></div>
                             </div>
                         `;
                     }
@@ -2156,12 +2221,12 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             ${photoBanner}
                             <div style="padding:14px; flex:1; display:flex; flex-direction:column;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                    <span style="font-size:0.68rem; color:#ffffff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${escHtml(m.meeting_type || 'VISIT')}</span>
+                                    <span style="font-size:0.68rem; color:#ffffff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${escHtml(m.meeting_type || 'MEETING')}</span>
                                     <span style="font-size:0.7rem; color:#888;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice}</span>
                                 </div>
-                                <div style="font-size:0.95rem; font-weight:800; color:#fff; margin-bottom:4px; line-height:1.3;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
-                                ${m.target_name ? `<div style="font-size:0.75rem; color:#cccccc; font-weight:600; margin-bottom:6px;"><i class="fas fa-building" style="margin-right:4px;"></i>${escHtml(m.target_name)}</div>` : ''}
-                                ${m.location ? `<div style="font-size:0.73rem; color:#aaa; margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i>${escHtml(m.location)}</div>` : ''}
+                                <div style="font-size:0.95rem; font-weight:800; color:#fff; margin-bottom:4px; line-height:1.3;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
+                                ${m.target_name ? `<div style="font-size:0.75rem; color:#cccccc; font-weight:600; margin-bottom:6px;"><i class="fas fa-building" style="margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
+                                ${m.location ? `<div style="font-size:0.73rem; color:#aaa; margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
                                 ${m.log_hasil ? `<div style="font-size:0.73rem; color:#888; background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); margin-bottom:10px; line-height:1.3;">${escHtml(m.log_hasil)}</div>` : ''}
                                 
                                 <div style="margin-top:auto; display:flex; gap:6px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
@@ -2176,7 +2241,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 grid.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat galeri visit.</div>';
+                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat dokumentasi meeting.</div>';
             }
         }
 
@@ -2298,9 +2363,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                         <span style="font-size: 0.62rem; color: #ffffff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</span>
                                         ${photosArr.length > 1 ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.15); color:#ffffff; padding:1px 5px; border-radius:4px;"><i class="fas fa-camera"></i> ${photosArr.length}</span>` : ''}
                                     </div>
-                                    <div style="font-size: 0.88rem; font-weight: 800; color: #fff; margin-top: 2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(m.title || m.target_name || 'Meeting')}">${escHtml(m.title || m.target_name || 'Meeting')}</div>
+                                    <div style="font-size: 0.88rem; font-weight: 800; color: #fff; margin-top: 2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(m.title || m.target_name || 'Meeting')}"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
                                     <div style="font-size: 0.72rem; color: #aaa; margin-top: 3px;"><i class="far fa-calendar-alt" style="margin-right:4px; color:#ccc;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
-                                    <div style="font-size: 0.72rem; color: #ccc; margin-top: 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#aaa;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
+                                    <div style="font-size: 0.72rem; color: #ccc; margin-top: 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#aaa;margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location || 'Lokasi')}</span></div>
                                 </div>
                             </div>
                             ${m.log_hasil ? `<div style="font-size: 0.7rem; color: #888; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); line-height: 1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
@@ -2316,6 +2381,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     marker.on('mouseover', function() { this.openPopup(); });
                 }
             }
+
 
             if(points.length > 1) {
                 L.polyline(points, {
