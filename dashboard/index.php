@@ -119,12 +119,39 @@ if(isset($_POST['save_event'])){
     $target_id   = intval($_POST['target_id'] ?? 0);
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
     $coords_raw  = trim($_POST['coords'] ?? '');
-    $lat         = isset($_POST['lat']) && $_POST['lat'] !== '' ? floatval($_POST['lat']) : "NULL";
-    $lng         = isset($_POST['lng']) && $_POST['lng'] !== '' ? floatval($_POST['lng']) : "NULL";
+    $lat = "NULL";
+    $lng = "NULL";
     if($coords_raw !== '') {
-        if(preg_match('/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/', $coords_raw, $m_c)) {
-            $lat = floatval($m_c[1]);
-            $lng = floatval($m_c[2]);
+        $parts = explode(',', $coords_raw);
+        if(count($parts) >= 2 && is_numeric(trim($parts[0])) && is_numeric(trim($parts[1]))) {
+            $lat = floatval(trim($parts[0]));
+            $lng = floatval(trim($parts[1]));
+        } else {
+            // User entered Plus Code or address string in coords field
+            $ctx = stream_context_create(['http' => ['header' => "User-Agent: HVMDigitalApp/1.0\r\n", 'timeout' => 3]]);
+            $geoUrl = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($coords_raw) . "&limit=1";
+            $geoRes = @file_get_contents($geoUrl, false, $ctx);
+            if($geoRes) {
+                $geoData = json_decode($geoRes, true);
+                if(!empty($geoData[0]['lat']) && !empty($geoData[0]['lon'])) {
+                    $lat = floatval($geoData[0]['lat']);
+                    $lng = floatval($geoData[0]['lon']);
+                }
+            }
+            if($lat === "NULL") {
+                $stripped = trim(preg_replace('/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}\s*,?\s*/i', '', $coords_raw));
+                if($stripped !== '' && $stripped !== $coords_raw) {
+                    $geoUrl2 = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($stripped) . "&limit=1";
+                    $geoRes2 = @file_get_contents($geoUrl2, false, $ctx);
+                    if($geoRes2) {
+                        $geoData2 = json_decode($geoRes2, true);
+                        if(!empty($geoData2[0]['lat']) && !empty($geoData2[0]['lon'])) {
+                            $lat = floatval($geoData2[0]['lat']);
+                            $lng = floatval($geoData2[0]['lon']);
+                        }
+                    }
+                }
+            }
         }
     }
     $teams_raw   = $_POST['teams_involved'] ?? [];
