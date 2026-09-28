@@ -231,12 +231,12 @@ body { background:var(--bg); color:#fff; font-family:'Montserrat','Segoe UI',san
 
 /* Chart grid */
 .chart-grid { display:grid; grid-template-columns:1fr 340px; gap:16px; margin-bottom:20px; }
-.chart-main { background:var(--card-bg); backdrop-filter:blur(24px); border:1px solid var(--card-border); border-radius:var(--radius); padding:22px; }
+.chart-main { background:var(--card-bg); backdrop-filter:blur(24px); border:1px solid var(--card-border); border-radius:var(--radius); padding:22px; display:flex; flex-direction:column; }
 .chart-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
 .sec-label { display:inline-flex; align-items:center; gap:7px; font-size:.6rem; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#3a3a3a; margin-bottom:4px; }
 .chart-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:4px; }
 .chart-legend span { display:flex; align-items:center; gap:6px; font-size:.72rem; color:#555; font-weight:600; }
-.chart-canvas-wrap { height:260px; position:relative; }
+.chart-canvas-wrap { flex:1; min-height:300px; position:relative; width:100%; }
 .chart-toggle-group { display:flex; gap:4px; }
 .ctoggle { width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.04); border:1px solid var(--card-border); color:#444; cursor:pointer; transition:.3s; font-size:.8rem; display:flex; align-items:center; justify-content:center; }
 .ctoggle.active { background:rgba(161,255,90,.12); border-color:rgba(161,255,90,.3); color:var(--neon-main); }
@@ -355,9 +355,6 @@ tfoot .sum-row td { padding:14px 18px; border-top:1px solid rgba(255,255,255,.07
     <!-- HEADLINE -->
     <div class="page-headline">
         <div class="hl-left">
-            <div class="hl-tag">
-                <i class="fa-solid fa-chart-line"></i> FINANCIAL REPORT
-            </div>
             <h1>Performance <span class="grad-text">Report</span></h1>
             <p>Analisis keuangan &amp; metrik pertumbuhan untuk periode yang dipilih.</p>
         </div>
@@ -446,49 +443,49 @@ tfoot .sum-row td { padding:14px 18px; border-top:1px solid rgba(255,255,255,.07
             </div>
         </div>
 
-        <div class="stat-card" style="--d:70ms;--gc:<?=$total_profit>=0?'161,255,90':'255,90,90'?>;--ic:<?=$total_profit>=0?'161,255,90':'255,90,90'?>">
+        <div class="stat-card" style="--d:70ms;--gc:161,255,90;--ic:161,255,90">
             <div class="sc-glow"></div>
             <div class="sc-top">
                 <div class="sc-icon"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
-                <div class="sc-badge <?=$total_profit>=0?'sc-up':'sc-down'?>">
+                <div class="sc-badge sc-up">
                     <i class="fa-solid fa-<?=$total_profit>=0?'arrow-trend-up':'arrow-trend-down'?>"></i>
                 </div>
             </div>
             <div class="sc-label">Total Profit</div>
-            <div class="sc-val" style="color:<?=$total_profit>=0?'var(--neon-main)':'var(--neon-red)'?>">
+            <div class="sc-val" style="color:var(--neon-main)">
                 Rp <?=number_format($total_profit/1e6,1)?>jt
             </div>
             <div class="sc-foot">
-                <i class="fa-solid fa-percent" style="color:<?=$avg_margin>=0?'var(--neon-main)':'var(--neon-red)'?>"></i>
-                <span class="<?=$avg_margin>=0?'trend-up':'trend-down'?>"><?=$avg_margin?>% margin</span>
+                <i class="fa-solid fa-percent" style="color:var(--neon-main)"></i>
+                <span class="trend-up"><?=$avg_margin?>% margin</span>
             </div>
         </div>
 
-        <div class="stat-card" style="--d:140ms;--gc:255,90,90;--ic:255,90,90">
+        <div class="stat-card" style="--d:140ms;--gc:161,255,90;--ic:161,255,90">
             <div class="sc-glow"></div>
             <div class="sc-top">
                 <div class="sc-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                <div class="sc-badge sc-down"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                <div class="sc-badge sc-up"><i class="fa-solid fa-arrow-trend-down"></i></div>
             </div>
             <div class="sc-label">Total Pengeluaran</div>
-            <div class="sc-val" style="color:var(--neon-red)">Rp <?=number_format($total_expense/1e6,1)?>jt</div>
+            <div class="sc-val" style="color:var(--neon-main)">Rp <?=number_format($total_expense/1e6,1)?>jt</div>
             <div class="sc-foot">
-                <i class="fa-solid fa-gears" style="color:var(--neon-red)"></i>
-                <span class="trend-down">Operational cost</span>
+                <i class="fa-solid fa-gears" style="color:var(--neon-main)"></i>
+                <span style="color:var(--text-muted)">Operational cost</span>
             </div>
         </div>
 
-        <div class="stat-card" style="--d:210ms;--gc:255,159,67;--ic:255,159,67">
+        <div class="stat-card" style="--d:210ms;--gc:78,253,196;--ic:78,253,196">
             <div class="sc-glow"></div>
             <div class="sc-top">
                 <div class="sc-icon"><i class="fa-solid fa-people-group"></i></div>
-                <div class="sc-badge sc-warn"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="sc-badge sc-up"><i class="fa-solid fa-circle-check"></i></div>
             </div>
             <div class="sc-label">Active Clients</div>
-            <div class="sc-val" style="color:var(--neon-orange)"><?=$rt_active?></div>
+            <div class="sc-val" style="color:var(--neon-sec)"><?=$rt_active?></div>
             <div class="sc-foot">
-                <i class="fa-solid fa-triangle-exclamation" style="color:var(--neon-red)"></i>
-                <span class="trend-down"><?=$rt_suspend?> Suspended</span>
+                <i class="fa-solid fa-user-check" style="color:var(--neon-sec)"></i>
+                <span style="color:var(--text-muted)"><?=$rt_suspend?> Suspended</span>
             </div>
         </div>
 
@@ -520,7 +517,7 @@ tfoot .sum-row td { padding:14px 18px; border-top:1px solid rgba(255,255,255,.07
             </div>
             <div class="sc-foot">
                 <i class="fa-solid fa-calendar-days" style="color:var(--neon-sec)"></i>
-                <span>per bulan</span>
+                <span style="color:var(--text-muted)">per bulan</span>
             </div>
         </div>
 
