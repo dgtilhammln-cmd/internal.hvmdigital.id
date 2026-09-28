@@ -691,9 +691,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .add-event-fab { position: absolute; bottom: 15px; right: 15px; width: 45px; height: 45px; border-radius: 50%; background: #ffffff; color: #000; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(255,255,255,0.25); transition: 0.3s; z-index: 10; border: none; }
         .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 25px rgba(255,255,255,0.4); }
         /* --- CALENDAR GRIDS --- */
-        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 100%; }
-        .cal-day-header { text-align: center; font-weight: 700; color: #888; margin-bottom: 5px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .cal-day-cell { height: 56px; max-height: 56px; box-sizing: border-box; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); padding: 6px 8px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; }
+        .cal-day-header { text-align: center; font-weight: 700; color: #888; margin-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cal-day-cell { min-height: 72px; box-sizing: border-box; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); padding: 8px 10px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
         .cal-day-cell:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); }
         .cal-day-num { font-weight: 800; font-size: 0.85rem; color: #888; margin-bottom: 0; }
         .cal-day-cell.is-sunday .cal-day-num { color: #888; }
@@ -1099,83 +1099,88 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             <div class="zenith-grid-layout">
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
 
-                    <!-- ── TAB BAR & SPLIT LAYOUT SWITCHER ── -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding: 4px 4px 0;">
-                        <!-- Left: Tab Switcher & Split Mode Controls -->
-                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
-                                <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:var(--neon-main); color:#111;"><i class="fas fa-calendar-alt"></i> Kalender</button>
-                                <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                                <button id="tabBtnGallery" onclick="switchPlannerTab('gallery')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-images"></i> Galeri Visit</button>
-                            </div>
-
-                            <!-- Split Layout Mode Switcher -->
-                            <div id="splitModeBar" class="split-layout-bar" title="Layout Panel">
-                                <button id="btnSplit1" class="split-layout-btn active" data-mode="1" onclick="setSplitLayout(1)" title="1 Panel – Full Width">
-                                    <span class="split-icon"><span class="split-icon-1"></span></span>
-                                    <span class="split-btn-label">Full</span>
-                                </button>
-                                <button id="btnSplit2" class="split-layout-btn" data-mode="2" onclick="setSplitLayout(2)" title="2 Panel – Split 50/50">
-                                    <span class="split-icon split-icon-2"><span></span><span></span></span>
-                                    <span class="split-btn-label">Split 2</span>
-                                </button>
-                                <button id="btnSplit3" class="split-layout-btn" data-mode="3" onclick="setSplitLayout(3)" title="3 Panel – Semua Tab Tampil">
-                                    <span class="split-icon split-icon-3"><span></span><span></span><span></span></span>
-                                    <span class="split-btn-label">Split 3</span>
-                                </button>
-                            </div>
+                    <!-- ── TIER 1: MAIN CARD HEADER (TABS & SPLIT SWITCHER) ── -->
+                    <div class="planner-deck-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding: 4px 4px 10px 4px; border-bottom:1px solid rgba(255,255,255,0.06); margin-bottom:4px;">
+                        <!-- Left: Tab Switcher -->
+                        <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
+                            <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:#ffffff; color:#000;"><i class="fas fa-calendar-alt"></i> Kalender</button>
+                            <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                            <button id="tabBtnGallery" onclick="switchPlannerTab('gallery')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-images"></i> Galeri Visit</button>
                         </div>
 
-                        <!-- Right: Controls area -->
-                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <div id="plannerCalControls" style="display:flex; align-items:center; gap:8px;">
-                                <div class="panel-header-v30" style="padding:0; border:none; background:none;">
-                                    <div class="ph-left">
-                                        <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
-                                            <h2 id="plannerTitle" style="margin:0; font-size:1.1rem;">...</h2>
-                                            <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
-                                        </label>
-                                        <div class="ph-nav-group">
-                                            <button class="btn-today-v30" onclick="goToday()">TODAY</button>
-                                            <div class="arrow-nav-v30">
-                                                <button onclick="navigatePlanner(-1)" class="nav-arrow-v30"><i class="fas fa-chevron-left"></i></button>
-                                                <button onclick="navigatePlanner(1)" class="nav-arrow-v30"><i class="fas fa-chevron-right"></i></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="ph-right">
-                                        <div class="mode-switch-v30">
-                                            <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
-                                            <button id="btn-week" onclick="setMode('week', this)">Week</button>
-                                            <button id="btn-day" onclick="setMode('day', this)">Day</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="plannerMapControls" style="display:none; align-items:center; gap:8px;">
-                                <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:7px 12px; font-size:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; outline:none;">
-                                    <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
-                                    <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
-                                    <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
-                                    <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
-                                </select>
-                                <button type="button" onclick="loadMapMeetings()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:8px 14px;border-radius:10px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
-                            </div>
+                        <!-- Right: Split Layout Switcher -->
+                        <div id="splitModeBar" class="split-layout-bar" title="Layout Panel">
+                            <button id="btnSplit1" class="split-layout-btn active" data-mode="1" onclick="setSplitLayout(1)" title="1 Panel – Full Width">
+                                <span class="split-icon"><span class="split-icon-1"></span></span>
+                                <span class="split-btn-label">Full</span>
+                            </button>
+                            <button id="btnSplit2" class="split-layout-btn" data-mode="2" onclick="setSplitLayout(2)" title="2 Panel – Split 50/50">
+                                <span class="split-icon split-icon-2"><span></span><span></span></span>
+                                <span class="split-btn-label">Split 2</span>
+                            </button>
+                            <button id="btnSplit3" class="split-layout-btn" data-mode="3" onclick="setSplitLayout(3)" title="3 Panel – Semua Tab Tampil">
+                                <span class="split-icon split-icon-3"><span></span><span></span><span></span></span>
+                                <span class="split-btn-label">Split 3</span>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- ── PANELS CONTAINER (DYNAMIC GRID SPLIT) ── -->
-                    <div id="panelsContainer" style="display:grid; grid-template-columns:1fr; gap:16px; width:100%; padding-top:8px; align-items:start;">
+                    <!-- ── TIER 2: PANELS CONTAINER (DYNAMIC GRID SPLIT) ── -->
+                    <div id="panelsContainer" style="display:grid; grid-template-columns:1fr; gap:16px; width:100%; padding-top:4px; align-items:start;">
 
                         <!-- PANEL 1: KALENDER -->
-                        <div id="panelCalendar" style="display:block; min-width:0; overflow-x:auto; min-height:480px;">
-                            <div class="panel-split-label"><i class="fas fa-calendar-alt" style="margin-right:6px; color:var(--neon-main);"></i>Kalender</div>
+                        <div id="panelCalendar" style="display:block; min-width:0; overflow-x:auto;">
+                            <div class="panel-split-label"><i class="fas fa-calendar-alt" style="margin-right:6px; color:#ffffff;"></i>Kalender</div>
+                            
+                            <!-- Calendar Panel Dedicated Subtoolbar -->
+                            <div class="panel-subtoolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 14px; border-radius:12px; margin-bottom:12px;">
+                                <div class="ph-left" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                                    <label style="position:relative; display:inline-flex; align-items:center; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
+                                        <h2 id="plannerTitle" style="margin:0; font-size:1.05rem; font-weight:800; color:#ffffff; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                                            ... <i class="fas fa-chevron-down" style="font-size:0.7rem; color:#888;"></i>
+                                        </h2>
+                                        <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
+                                    </label>
+                                    <div class="ph-nav-group" style="display:flex; align-items:center; gap:6px;">
+                                        <button class="btn-today-v30" onclick="goToday()" style="background:#fff; color:#000; padding:6px 14px; border-radius:50px; font-weight:800; font-size:0.68rem; cursor:pointer; border:none;">TODAY</button>
+                                        <div class="arrow-nav-v30" style="display:flex; gap:4px;">
+                                            <button onclick="navigatePlanner(-1)" class="nav-arrow-v30" style="width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.75rem;"><i class="fas fa-chevron-left"></i></button>
+                                            <button onclick="navigatePlanner(1)" class="nav-arrow-v30" style="width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.75rem;"><i class="fas fa-chevron-right"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ph-right">
+                                    <div class="mode-switch-v30" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex; gap:2px;">
+                                        <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
+                                        <button id="btn-week" onclick="setMode('week', this)">Week</button>
+                                        <button id="btn-day" onclick="setMode('day', this)">Day</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="calendarViewport" class="planner-viewport" style="width:100%; display:flex; flex-direction:column; gap:10px;"></div>
                         </div>
 
                         <!-- PANEL 2: PETA -->
                         <div id="panelMap" style="display:none; min-width:0;">
-                            <div class="panel-split-label"><i class="fas fa-map-marked-alt" style="margin-right:6px; color:var(--neon-main);"></i>Peta Kunjungan</div>
+                            <div class="panel-split-label"><i class="fas fa-map-marked-alt" style="margin-right:6px; color:#ffffff;"></i>Peta Kunjungan</div>
+                            
+                            <!-- Map Panel Dedicated Subtoolbar -->
+                            <div class="panel-subtoolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 12px; border-radius:12px; margin-bottom:10px;">
+                                <div style="font-size:0.85rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-map-marked-alt" style="color:#aaa;"></i> Peta Kunjungan
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:6px 12px; font-size:0.78rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; outline:none;">
+                                        <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
+                                        <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
+                                        <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
+                                        <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
+                                    </select>
+                                    <button type="button" onclick="loadMapMeetings()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                </div>
+                            </div>
+
                             <div class="map-container-inner" style="height:520px;">
                                 <div id="meetingMap" style="width:100%; height:100%;"></div>
                             </div>
@@ -1183,7 +1188,16 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
                         <!-- PANEL 3: GALERI VISIT -->
                         <div id="panelGallery" style="display:none; min-width:0; max-height:600px; overflow-y:auto; padding-right:4px;">
-                            <div class="panel-split-label"><i class="fas fa-images" style="margin-right:6px; color:var(--neon-main);"></i>Galeri Visit</div>
+                            <div class="panel-split-label"><i class="fas fa-images" style="margin-right:6px; color:#ffffff;"></i>Galeri Visit</div>
+                            
+                            <!-- Gallery Panel Dedicated Subtoolbar -->
+                            <div class="panel-subtoolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 12px; border-radius:12px; margin-bottom:10px;">
+                                <div style="font-size:0.85rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-images" style="color:#aaa;"></i> Dokumentasi Visit
+                                </div>
+                                <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            </div>
+
                             <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px;"></div>
                         </div>
 
@@ -1988,8 +2002,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const panelCal  = document.getElementById('panelCalendar');
             const panelMap  = document.getElementById('panelMap');
             const panelGal  = document.getElementById('panelGallery');
-            const ctrlCal   = document.getElementById('plannerCalControls');
-            const ctrlMap   = document.getElementById('plannerMapControls');
             const mapInner  = document.querySelector('.map-container-inner');
 
             // Update split buttons active state
@@ -2006,15 +2018,11 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             if (mode === 3 && isWide) {
                 container.style.gridTemplateColumns = '1fr 1fr 1fr';
-                panelCal.style.display = 'flex';
-                panelCal.style.flexDirection = 'column';
-                panelCal.style.minHeight = '520px';
+                panelCal.style.display = 'block';
                 panelMap.style.display = 'block';
                 panelGal.style.display = 'block';
                 panelGal.style.maxHeight = '560px';
                 if(mapInner) mapInner.style.height = '520px';
-                ctrlCal.style.display  = 'flex';
-                ctrlMap.style.display  = 'flex';
                 // Load gallery and refresh map
                 loadGalleryVisits();
                 setTimeout(() => {
@@ -2025,14 +2033,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             } else if (mode === 2 && isWide) {
                 container.style.gridTemplateColumns = '1fr 1fr';
                 // In 2-panel mode: show Calendar + Map (main two), hide gallery
-                panelCal.style.display = 'flex';
-                panelCal.style.flexDirection = 'column';
-                panelCal.style.minHeight = '520px';
+                panelCal.style.display = 'block';
                 panelMap.style.display = 'block';
                 panelGal.style.display = 'none';
                 if(mapInner) mapInner.style.height = '520px';
-                ctrlCal.style.display  = 'flex';
-                ctrlMap.style.display  = 'flex';
                 setTimeout(() => {
                     if (!_leafletMap) initMeetingMap();
                     else _leafletMap.invalidateSize();
@@ -2042,8 +2046,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 // Mode 1: single tab, reset
                 currentSplitMode = 1;
                 container.style.gridTemplateColumns = '1fr';
-                panelCal.style.minHeight = '';
-                panelCal.style.flexDirection = '';
                 panelCal.style.display = 'block';
                 panelMap.style.display = 'none';
                 panelGal.style.display = 'none';
@@ -2070,23 +2072,17 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const panelCal   = document.getElementById('panelCalendar');
             const panelMap   = document.getElementById('panelMap');
             const panelGal   = document.getElementById('panelGallery');
-            const ctrlCal    = document.getElementById('plannerCalControls');
-            const ctrlMap    = document.getElementById('plannerMapControls');
             const btnCal     = document.getElementById('tabBtnCalendar');
             const btnMap     = document.getElementById('tabBtnMap');
             const btnGal     = document.getElementById('tabBtnGallery');
-            const neon       = getComputedStyle(document.documentElement).getPropertyValue('--neon-main').trim() || '#a1ff5a';
 
             // Reset tab buttons
             [btnCal, btnMap, btnGal].forEach(b => { b.style.background = 'transparent'; b.style.color = '#888'; });
             // Hide all panels
             [panelCal, panelMap, panelGal].forEach(p => p.style.display = 'none');
-            ctrlCal.style.display = 'none';
-            ctrlMap.style.display = 'none';
 
             if (tab === 'map') {
                 panelMap.style.display  = 'block';
-                ctrlMap.style.display   = 'flex';
                 btnMap.style.background = '#ffffff';
                 btnMap.style.color      = '#000';
                 setTimeout(() => {
@@ -2100,7 +2096,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 loadGalleryVisits();
             } else {
                 panelCal.style.display  = 'block';
-                ctrlCal.style.display   = 'flex';
                 btnCal.style.background = '#ffffff';
                 btnCal.style.color      = '#000';
             }

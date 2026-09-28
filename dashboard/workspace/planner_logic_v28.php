@@ -220,4 +220,3 @@ elseif($mode == 'day') {
     echo '</div>';
 }
 ?>
-?>
