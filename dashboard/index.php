@@ -68,9 +68,11 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         if(mysqli_num_rows($chk_lng) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lng` FLOAT DEFAULT NULL");
         $chk_cr = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'coords_raw'");
         if(mysqli_num_rows($chk_cr) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `coords_raw` VARCHAR(255) DEFAULT NULL");
+        $chk_ph = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'photos'");
+        if(mysqli_num_rows($chk_ph) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `photos` TEXT DEFAULT NULL");
 
         $rows = [];
-        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, coords_raw, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
+        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, coords_raw, event_date, time_start, meeting_type, meeting_mode, log_hasil, photos FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
         if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
         echo json_encode($rows); exit;
     }
@@ -105,7 +107,8 @@ if(isset($_POST['save_event'])){
         'log_hasil'    => "TEXT DEFAULT NULL",
         'lat'          => "FLOAT DEFAULT NULL",
         'lng'          => "FLOAT DEFAULT NULL",
-        'coords_raw'   => "VARCHAR(255) DEFAULT NULL"
+        'coords_raw'   => "VARCHAR(255) DEFAULT NULL",
+        'photos'       => "TEXT DEFAULT NULL"
     ];
     foreach($cols as $col => $def){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
@@ -732,6 +735,85 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
         .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; }
         .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #a1ff5a; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #fff; box-shadow: 0 0 15px rgba(161,255,90,0.6); }
+
+        /* ══ SPLIT LAYOUT SYSTEM ══ */
+        .split-layout-bar {
+            display: flex; gap: 3px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; padding: 3px;
+        }
+        .split-layout-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 11px; border-radius: 7px;
+            border: none; font-size: 0.75rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s ease;
+            background: transparent; color: rgba(255,255,255,0.35);
+            white-space: nowrap; font-family: inherit;
+            position: relative; overflow: hidden;
+        }
+        .split-layout-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.06); }
+        .split-layout-btn.active {
+            background: var(--neon-main); color: #000;
+            box-shadow: 0 0 12px rgba(161,255,90,0.4);
+        }
+        /* SVG grid icons for split buttons */
+        .split-icon { display: flex; gap: 1.5px; align-items: center; }
+        .split-icon-1 { width: 14px; height: 14px; background: currentColor; border-radius: 2px; }
+        .split-icon-2 { display: flex; gap: 1.5px; }
+        .split-icon-2 span { width: 6px; height: 14px; background: currentColor; border-radius: 2px; }
+        .split-icon-3 { display: flex; gap: 1.5px; }
+        .split-icon-3 span { width: 4px; height: 14px; background: currentColor; border-radius: 2px; }
+
+        /* Panels Container Layout Transitions */
+        #panelsContainer {
+            transition: grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1),
+                        gap 0.35s ease;
+        }
+
+        /* Panel wrappers — each gets a label row in split mode */
+        .panel-split-label {
+            display: none;
+            font-size: 0.62rem; font-weight: 800; letter-spacing: 2px;
+            text-transform: uppercase; color: rgba(255,255,255,0.3);
+            padding: 0 2px 8px 2px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 10px;
+        }
+        .split-mode-active .panel-split-label { display: block; }
+
+        /* Calendar panel: always allow scroll, never collapse */
+        #panelCalendar { min-height: 480px; }
+
+        /* Map panel: fixed height container */
+        #panelMap .map-container-inner {
+            position: relative; width: 100%;
+            border-radius: 14px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        #panelMap .map-container-inner #meetingMap {
+            width: 100%; height: 100%;
+            background: #0c0c0c; z-index: 1;
+        }
+
+        /* Gallery panel scroll */
+        #panelGallery { overflow-y: auto; padding-right: 4px; }
+
+        /* Responsive: force single column on small/medium screens */
+        @media (max-width: 1100px) {
+            #panelsContainer {
+                grid-template-columns: 1fr !important;
+            }
+            #panelCalendar, #panelMap, #panelGallery {
+                display: block !important;
+            }
+            .split-layout-btn[data-mode="2"],
+            .split-layout-btn[data-mode="3"] {
+                opacity: 0.4;
+                pointer-events: none;
+            }
+        }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1021,59 +1103,94 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             <div class="zenith-grid-layout">
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
 
-                    <!-- ── TAB BAR ── -->
+                    <!-- ── TAB BAR & SPLIT LAYOUT SWITCHER ── -->
                     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding: 4px 4px 0;">
-                        <!-- Tab Switcher (kiri) -->
-                        <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
-                            <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:var(--neon-main); color:#111;"><i class="fas fa-calendar-alt"></i> Kalender</button>
-                            <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                        <!-- Left: Tab Switcher & Split Mode Controls -->
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
+                                <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:var(--neon-main); color:#111;"><i class="fas fa-calendar-alt"></i> Kalender</button>
+                                <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                <button id="tabBtnGallery" onclick="switchPlannerTab('gallery')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-images"></i> Galeri Visit</button>
+                            </div>
+
+                            <!-- Split Layout Mode Switcher -->
+                            <div id="splitModeBar" class="split-layout-bar" title="Layout Panel">
+                                <button id="btnSplit1" class="split-layout-btn active" data-mode="1" onclick="setSplitLayout(1)" title="1 Panel – Full Width">
+                                    <span class="split-icon"><span class="split-icon-1"></span></span>
+                                    <span class="split-btn-label">Full</span>
+                                </button>
+                                <button id="btnSplit2" class="split-layout-btn" data-mode="2" onclick="setSplitLayout(2)" title="2 Panel – Split 50/50">
+                                    <span class="split-icon split-icon-2"><span></span><span></span></span>
+                                    <span class="split-btn-label">Split 2</span>
+                                </button>
+                                <button id="btnSplit3" class="split-layout-btn" data-mode="3" onclick="setSplitLayout(3)" title="3 Panel – Semua Tab Tampil">
+                                    <span class="split-icon split-icon-3"><span></span><span></span><span></span></span>
+                                    <span class="split-btn-label">Split 3</span>
+                                </button>
+                            </div>
                         </div>
-                        <!-- Controls area (kanan) — berubah sesuai tab aktif -->
-                        <div id="plannerCalControls" style="display:flex; align-items:center; gap:8px;">
-                            <div class="panel-header-v30" style="padding:0; border:none; background:none;">
-                                <div class="ph-left">
-                                    <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
-                                        <h2 id="plannerTitle" style="margin:0; font-size:1.1rem;">...</h2>
-                                        <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
-                                    </label>
-                                    <div class="ph-nav-group">
-                                        <button class="btn-today-v30" onclick="goToday()">TODAY</button>
-                                        <div class="arrow-nav-v30">
-                                            <button onclick="navigatePlanner(-1)" class="nav-arrow-v30"><i class="fas fa-chevron-left"></i></button>
-                                            <button onclick="navigatePlanner(1)" class="nav-arrow-v30"><i class="fas fa-chevron-right"></i></button>
+
+                        <!-- Right: Controls area -->
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <div id="plannerCalControls" style="display:flex; align-items:center; gap:8px;">
+                                <div class="panel-header-v30" style="padding:0; border:none; background:none;">
+                                    <div class="ph-left">
+                                        <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
+                                            <h2 id="plannerTitle" style="margin:0; font-size:1.1rem;">...</h2>
+                                            <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
+                                        </label>
+                                        <div class="ph-nav-group">
+                                            <button class="btn-today-v30" onclick="goToday()">TODAY</button>
+                                            <div class="arrow-nav-v30">
+                                                <button onclick="navigatePlanner(-1)" class="nav-arrow-v30"><i class="fas fa-chevron-left"></i></button>
+                                                <button onclick="navigatePlanner(1)" class="nav-arrow-v30"><i class="fas fa-chevron-right"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="ph-right">
+                                        <div class="mode-switch-v30">
+                                            <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
+                                            <button id="btn-week" onclick="setMode('week', this)">Week</button>
+                                            <button id="btn-day" onclick="setMode('day', this)">Day</button>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="ph-right">
-                                    <div class="mode-switch-v30">
-                                        <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
-                                        <button id="btn-week" onclick="setMode('week', this)">Week</button>
-                                        <button id="btn-day" onclick="setMode('day', this)">Day</button>
-                                    </div>
-                                </div>
+                            </div>
+                            <div id="plannerMapControls" style="display:none; align-items:center; gap:8px;">
+                                <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:7px 12px; font-size:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; outline:none;">
+                                    <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
+                                    <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
+                                    <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
+                                    <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
+                                </select>
+                                <button type="button" onclick="loadMapMeetings()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:8px 14px;border-radius:10px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
                             </div>
                         </div>
-                        <div id="plannerMapControls" style="display:none; align-items:center; gap:8px;">
-                            <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:7px 12px; font-size:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; outline:none;">
-                                <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
-                                <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
-                                <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
-                                <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
-                            </select>
-                            <button type="button" onclick="loadMapMeetings()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:8px 14px;border-radius:10px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
-                        </div>
                     </div>
 
-                    <!-- ── PANEL: KALENDER ── -->
-                    <div id="panelCalendar" style="display:block;">
-                        <div id="calendarViewport" class="planner-viewport" style="width:100%; display:flex; flex-direction:column; gap:10px;"></div>
-                    </div>
+                    <!-- ── PANELS CONTAINER (DYNAMIC GRID SPLIT) ── -->
+                    <div id="panelsContainer" style="display:grid; grid-template-columns:1fr; gap:16px; width:100%; padding-top:8px; align-items:start;">
 
-                    <!-- ── PANEL: PETA ── (DOM selalu ada, hanya visibility yang toggle) -->
-                    <div id="panelMap" style="display:none; padding: 6px 0 4px;">
-                        <div style="position:relative; width:100%; height:520px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); box-shadow:inset 0 0 20px rgba(0,0,0,0.8);">
-                            <div id="meetingMap" style="width:100%; height:100%; background:#0c0c0c; z-index:1;"></div>
+                        <!-- PANEL 1: KALENDER -->
+                        <div id="panelCalendar" style="display:block; min-width:0; overflow-x:auto; min-height:480px;">
+                            <div class="panel-split-label"><i class="fas fa-calendar-alt" style="margin-right:6px; color:var(--neon-main);"></i>Kalender</div>
+                            <div id="calendarViewport" class="planner-viewport" style="width:100%; display:flex; flex-direction:column; gap:10px;"></div>
                         </div>
+
+                        <!-- PANEL 2: PETA -->
+                        <div id="panelMap" style="display:none; min-width:0;">
+                            <div class="panel-split-label"><i class="fas fa-map-marked-alt" style="margin-right:6px; color:var(--neon-main);"></i>Peta Kunjungan</div>
+                            <div class="map-container-inner" style="height:520px;">
+                                <div id="meetingMap" style="width:100%; height:100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- PANEL 3: GALERI VISIT -->
+                        <div id="panelGallery" style="display:none; min-width:0; max-height:600px; overflow-y:auto; padding-right:4px;">
+                            <div class="panel-split-label"><i class="fas fa-images" style="margin-right:6px; color:var(--neon-main);"></i>Galeri Visit</div>
+                            <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px;"></div>
+                        </div>
+
                     </div>
 
                     <!-- Floating Add Button -->
@@ -1578,13 +1695,98 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 .catch(()=>alert('Gagal hapus.'));
         }
 
+        let existingPhotos = [];
+        let newPhotoBlobs = [];
+
+        async function compressImageToWebP(file, maxDimension = 1200, quality = 0.82) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+                        if(width > maxDimension || height > maxDimension) {
+                            if(width > height) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob(blob => {
+                            resolve(blob);
+                        }, 'image/webp', quality);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handlePhotoUpload(input) {
+            if(!input.files || input.files.length === 0) return;
+            const previewWrap = document.getElementById('photoPreviewWrap');
+            for(let i = 0; i < input.files.length; i++) {
+                const file = input.files[i];
+                try {
+                    const webpBlob = await compressImageToWebP(file, 1200, 0.82);
+                    newPhotoBlobs.push(webpBlob);
+                    const url = URL.createObjectURL(webpBlob);
+                    const thumbIdx = newPhotoBlobs.length - 1;
+                    const thumbDiv = document.createElement('div');
+                    thumbDiv.className = 'photo-thumb-item';
+                    thumbDiv.style.cssText = 'position:relative; width:70px; height:70px; border-radius:8px; overflow:hidden; border:1px solid rgba(161,255,90,0.4);';
+                    thumbDiv.innerHTML = `
+                        <img src="${url}" style="width:100%; height:100%; object-fit:cover;">
+                        <button type="button" onclick="removeNewPhoto(${thumbIdx}, this)" style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.7); border:none; color:#ff5a5a; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+                    `;
+                    previewWrap.appendChild(thumbDiv);
+                } catch(e) {
+                    console.error("Failed to compress image", e);
+                }
+            }
+            input.value = '';
+        }
+
+        function removeExistingPhoto(photoUrl, btnEl) {
+            existingPhotos = existingPhotos.filter(p => p !== photoUrl);
+            btnEl.closest('.photo-thumb-item').remove();
+        }
+
+        function removeNewPhoto(idx, btnEl) {
+            newPhotoBlobs[idx] = null;
+            btnEl.closest('.photo-thumb-item').remove();
+        }
+
         async function openEditEvent(id) {
             const res = await fetch(`/dashboard/workspace/index.php?get_event=1&id=${id}`).then(r=>r.json());
             const ev = res.event;
             const teams = res.teams || [];
             if(!ev) return;
 
+            newPhotoBlobs = [];
+            try {
+                existingPhotos = ev.photos ? (typeof ev.photos==='string' ? JSON.parse(ev.photos) : ev.photos) : [];
+            } catch(e) { existingPhotos = []; }
+
             document.getElementById('detailModalTitle').innerHTML = '<i class="fas fa-edit" style="color:#a1ff5a;margin-right:8px;"></i>Edit Meeting';
+            
+            let existingPhotosHtml = existingPhotos.map(p => `
+                <div class="photo-thumb-item" style="position:relative; width:70px; height:70px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15);">
+                    <img src="${p}" style="width:100%; height:100%; object-fit:cover;" onclick="openPhotoLightbox('${p}')">
+                    <button type="button" onclick="removeExistingPhoto('${p}', this)" style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.7); border:none; color:#ff5a5a; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+                </div>
+            `).join('');
+
             document.getElementById('detailContent').innerHTML = `
                 <div style="margin-bottom:12px;">
                     <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Jenis Meeting</label>
@@ -1630,16 +1832,24 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         ${teams.map(tm=>{ const checked=(ev.teams_involved||'').split(',').map(s=>s.trim()).includes(tm); return `<label style="cursor:pointer;display:flex;align-items:center;gap:5px;background:${checked?'rgba(161,255,90,0.1)':'rgba(255,255,255,0.04)'};border:1px solid ${checked?'rgba(161,255,90,0.4)':'rgba(255,255,255,0.08)'};border-radius:8px;padding:5px 10px;transition:0.2s;" class="team-check-label"><input type="checkbox" name="em_teams[]" value="${tm}" ${checked?'checked':''} style="display:none;" class="team-cb" onchange="this.parentElement.style.background = this.checked ? 'rgba(161,255,90,0.1)' : 'rgba(255,255,255,0.04)'; this.parentElement.style.borderColor = this.checked ? 'rgba(161,255,90,0.4)' : 'rgba(255,255,255,0.08)';"><span style="font-size:0.8rem;color:#ccc;">${tm}</span></label>`; }).join('')}
                     </div>
                 </div>
-                <div style="margin-bottom:6px;">
+                <div style="margin-bottom:12px;">
                     <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Log Hasil Meeting</label>
                     <textarea id="em_log" rows="3" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:8px;padding:10px;font-family:inherit;resize:none;">${ev.log_hasil||''}</textarea>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;"><i class="fas fa-camera" style="margin-right:4px;color:var(--neon-main);"></i>Foto Visit / Dokumentasi (Auto Compress WebP)</label>
+                    <input type="file" id="em_photos_input" accept="image/*" multiple style="display:none;" onchange="handlePhotoUpload(this)">
+                    <div id="photoPreviewWrap" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                        ${existingPhotosHtml}
+                    </div>
+                    <button type="button" onclick="document.getElementById('em_photos_input').click()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#ccc; padding:7px 14px; border-radius:8px; font-size:0.78rem; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-upload" style="color:#4efdc4;"></i> Upload Foto Visit</button>
                 </div>
             `;
             document.getElementById('detailFooter').innerHTML = `
                 <button onclick="showEventDetail('${ev.title}','${ev.event_date}','${ev.time_start}','${ev.detail||''}','${ev.color}',${id})" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;">← Kembali</button>
                 <button onclick="saveEditEvent(${id})" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-save"></i> Simpan</button>
             `;
-            // Activate radio chips logic inline
             document.querySelectorAll('#detailContent input[name=em_meet_type]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#editMeetTypes .meet-type-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
             document.querySelectorAll('#detailContent input[name=em_mode]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#detailContent .meet-mode-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
 
@@ -1670,11 +1880,16 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             fd.append('location', location);
             fd.append('coords', coords);
             fd.append('log_hasil', log_hasil);
+            fd.append('existing_photos', JSON.stringify(existingPhotos));
             teams.forEach(t => fd.append('teams_involved[]', t));
+
+            newPhotoBlobs.forEach((blob, idx) => {
+                if(blob) fd.append('event_photos[]', blob, `photo_${idx}.webp`);
+            });
 
             fetch('/dashboard/workspace/index.php', {method:'POST', body:fd})
                 .then(r=>r.json())
-                .then(res=>{ if(res.ok){ closeModal('detailModal'); refreshPlanner(); loadMapMeetings(); } })
+                .then(res=>{ if(res.ok){ closeModal('detailModal'); refreshPlanner(); loadMapMeetings(); if(document.getElementById('panelGallery')?.style.display==='block') loadGalleryVisits(); } })
                 .catch(()=>alert('Gagal simpan.'));
         }
 
@@ -1708,43 +1923,219 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             loadMapMeetings('month');
         }
 
-        // ── Tab switcher: Kalender ↔ Peta ──
+        // ── Tab switcher & Split Layout System ──
+        let currentSplitMode = 1;
+        let currentActiveTab = 'calendar';
+
+        // ── Split Layout Manager ──
+        function setSplitLayout(mode) {
+            currentSplitMode = mode;
+            const container = document.getElementById('panelsContainer');
+            const panelCal  = document.getElementById('panelCalendar');
+            const panelMap  = document.getElementById('panelMap');
+            const panelGal  = document.getElementById('panelGallery');
+            const ctrlCal   = document.getElementById('plannerCalControls');
+            const ctrlMap   = document.getElementById('plannerMapControls');
+            const mapInner  = document.querySelector('.map-container-inner');
+
+            // Update split buttons active state
+            document.querySelectorAll('.split-layout-btn').forEach(btn => {
+                const bMode = parseInt(btn.getAttribute('data-mode'));
+                btn.classList.toggle('active', bMode === mode);
+            });
+
+            // Toggle split label visibility on container
+            container.classList.toggle('split-mode-active', mode > 1);
+
+            // Responsive guard: if viewport < 1100px, stay at 1 column
+            const isWide = window.innerWidth >= 1100;
+
+            if (mode === 3 && isWide) {
+                container.style.gridTemplateColumns = '1fr 1fr 1fr';
+                panelCal.style.display = 'flex';
+                panelCal.style.flexDirection = 'column';
+                panelCal.style.minHeight = '520px';
+                panelMap.style.display = 'block';
+                panelGal.style.display = 'block';
+                panelGal.style.maxHeight = '560px';
+                if(mapInner) mapInner.style.height = '520px';
+                ctrlCal.style.display  = 'flex';
+                ctrlMap.style.display  = 'flex';
+                // Load gallery and refresh map
+                loadGalleryVisits();
+                setTimeout(() => {
+                    if (!_leafletMap) initMeetingMap();
+                    else _leafletMap.invalidateSize();
+                }, 200);
+
+            } else if (mode === 2 && isWide) {
+                container.style.gridTemplateColumns = '1fr 1fr';
+                // In 2-panel mode: show Calendar + Map (main two), hide gallery
+                panelCal.style.display = 'flex';
+                panelCal.style.flexDirection = 'column';
+                panelCal.style.minHeight = '520px';
+                panelMap.style.display = 'block';
+                panelGal.style.display = 'none';
+                if(mapInner) mapInner.style.height = '520px';
+                ctrlCal.style.display  = 'flex';
+                ctrlMap.style.display  = 'flex';
+                setTimeout(() => {
+                    if (!_leafletMap) initMeetingMap();
+                    else _leafletMap.invalidateSize();
+                }, 200);
+
+            } else {
+                // Mode 1: single tab, reset
+                currentSplitMode = 1;
+                container.style.gridTemplateColumns = '1fr';
+                panelCal.style.minHeight = '';
+                panelCal.style.flexDirection = '';
+                panelCal.style.display = 'block';
+                panelMap.style.display = 'none';
+                panelGal.style.display = 'none';
+                panelGal.style.maxHeight = '600px';
+                if(mapInner) mapInner.style.height = '520px';
+                // Update split buttons to mode 1 if forced
+                document.querySelectorAll('.split-layout-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-mode') === '1');
+                });
+                // Restore tab state
+                switchPlannerTab(currentActiveTab);
+            }
+        }
+
+        // ── Tab Switcher (mode 1 only) ──
         function switchPlannerTab(tab) {
+            currentActiveTab = tab;
+            // In split mode, re-apply layout instead
+            if(currentSplitMode !== 1) {
+                setSplitLayout(currentSplitMode);
+                return;
+            }
+
             const panelCal   = document.getElementById('panelCalendar');
             const panelMap   = document.getElementById('panelMap');
+            const panelGal   = document.getElementById('panelGallery');
             const ctrlCal    = document.getElementById('plannerCalControls');
             const ctrlMap    = document.getElementById('plannerMapControls');
             const btnCal     = document.getElementById('tabBtnCalendar');
             const btnMap     = document.getElementById('tabBtnMap');
+            const btnGal     = document.getElementById('tabBtnGallery');
             const neon       = getComputedStyle(document.documentElement).getPropertyValue('--neon-main').trim() || '#a1ff5a';
 
+            // Reset tab buttons
+            [btnCal, btnMap, btnGal].forEach(b => { b.style.background = 'transparent'; b.style.color = '#888'; });
+            // Hide all panels
+            [panelCal, panelMap, panelGal].forEach(p => p.style.display = 'none');
+            ctrlCal.style.display = 'none';
+            ctrlMap.style.display = 'none';
+
             if (tab === 'map') {
-                panelCal.style.display  = 'none';
                 panelMap.style.display  = 'block';
-                ctrlCal.style.display   = 'none';
                 ctrlMap.style.display   = 'flex';
-                btnCal.style.background = 'transparent';
-                btnCal.style.color      = '#888';
                 btnMap.style.background = neon;
                 btnMap.style.color      = '#111';
-                // Leaflet HARUS invalidateSize setelah container visible
                 setTimeout(() => {
-                    if (!_leafletMap) {
-                        initMeetingMap();
-                    } else {
-                        _leafletMap.invalidateSize();
-                    }
+                    if (!_leafletMap) initMeetingMap();
+                    else _leafletMap.invalidateSize();
                 }, 80);
+            } else if (tab === 'gallery') {
+                panelGal.style.display  = 'block';
+                btnGal.style.background = neon;
+                btnGal.style.color      = '#111';
+                loadGalleryVisits();
             } else {
                 panelCal.style.display  = 'block';
-                panelMap.style.display  = 'none';
                 ctrlCal.style.display   = 'flex';
-                ctrlMap.style.display   = 'none';
                 btnCal.style.background = neon;
                 btnCal.style.color      = '#111';
-                btnMap.style.background = 'transparent';
-                btnMap.style.color      = '#888';
             }
+        }
+
+        // Re-apply layout on window resize to handle responsive breakpoints
+        let _resizeDebounce;
+        window.addEventListener('resize', () => {
+            clearTimeout(_resizeDebounce);
+            _resizeDebounce = setTimeout(() => setSplitLayout(currentSplitMode), 250);
+        });
+
+        async function loadGalleryVisits() {
+            const grid = document.getElementById('galleryGrid');
+            if(!grid) return;
+            grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Galeri Visit...</div>';
+            
+            const fd = new FormData();
+            fd.append('ajax_action', 'get_map_meetings');
+            fd.append('period', 'all');
+            
+            try {
+                const meetings = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
+                if(!meetings || meetings.length === 0) {
+                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data kunjungan/visit.</div>';
+                    return;
+                }
+                
+                let html = '';
+                meetings.slice().reverse().forEach((m, idx) => {
+                    const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                    let photosArr = [];
+                    try { photosArr = m.photos ? (typeof m.photos === 'string' ? JSON.parse(m.photos) : m.photos) : []; } catch(e){}
+                    
+                    let photoBanner = '';
+                    if(photosArr && photosArr.length > 0) {
+                        photoBanner = `
+                            <div style="position:relative; width:100%; height:160px; overflow:hidden; border-radius:12px 12px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                                <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                <div style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); padding:3px 8px; border-radius:6px; font-size:0.68rem; color:#fff; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="color:var(--neon-main);"></i> ${photosArr.length} Foto</div>
+                            </div>
+                        `;
+                    } else {
+                        photoBanner = `
+                            <div style="width:100%; height:90px; background:linear-gradient(135deg, rgba(161,255,90,0.05), rgba(78,253,196,0.05)); border-radius:12px 12px 0 0; display:flex; align-items:center; justify-content:center; color:#666; font-size:0.8rem; font-style:italic;">
+                                <i class="fas fa-map-marker-alt" style="margin-right:6px; color:var(--neon-main);"></i> ${escHtml(m.location || 'Dokumentasi Visit')}
+                            </div>
+                        `;
+                    }
+                    
+                    let gmapsQuery = m.coords_raw ? encodeURIComponent(m.coords_raw.trim()) : (m.lat && m.lng ? `${m.lat},${m.lng}` : encodeURIComponent(m.location || ''));
+                    let gmapsUrl = gmapsQuery ? `https://www.google.com/maps/search/?api=1&query=${gmapsQuery}` : '';
+
+                    html += `
+                        <div style="background:rgba(18,18,18,0.8); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.borderColor='rgba(161,255,90,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                            ${photoBanner}
+                            <div style="padding:14px; flex:1; display:flex; flex-direction:column;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size:0.68rem; color:var(--neon-main); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${escHtml(m.meeting_type || 'VISIT')}</span>
+                                    <span style="font-size:0.7rem; color:#888;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice}</span>
+                                </div>
+                                <div style="font-size:0.95rem; font-weight:800; color:#fff; margin-bottom:4px; line-height:1.3;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
+                                ${m.target_name ? `<div style="font-size:0.75rem; color:var(--neon-sec); font-weight:600; margin-bottom:6px;"><i class="fas fa-building" style="margin-right:4px;"></i>${escHtml(m.target_name)}</div>` : ''}
+                                ${m.location ? `<div style="font-size:0.73rem; color:#aaa; margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43; margin-right:4px;"></i>${escHtml(m.location)}</div>` : ''}
+                                ${m.log_hasil ? `<div style="font-size:0.73rem; color:#888; background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); margin-bottom:10px; line-height:1.3;">${escHtml(m.log_hasil)}</div>` : ''}
+                                
+                                <div style="margin-top:auto; display:flex; gap:6px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:rgba(161,255,90,0.12); border:1px solid rgba(161,255,90,0.3); color:#a1ff5a; padding:6px 8px; border-radius:8px; font-size:0.72rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(78,253,196,0.12); border:1px solid rgba(78,253,196,0.3); color:#4efdc4; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
+                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:6px 10px; border-radius:8px; font-size:0.72rem; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                grid.innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                grid.innerHTML = '<div style="color:#ff5a5a; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat galeri visit.</div>';
+            }
+        }
+
+        function focusMeetingOnMap(lat, lng, eventId) {
+            switchPlannerTab('map');
+            setTimeout(() => {
+                if(_leafletMap && !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+                    _leafletMap.setView([lat, lng], 16);
+                }
+            }, 200);
         }
 
         async function loadMapMeetings(period) {
@@ -1825,7 +2216,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     });
 
                     const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                    // Google Maps: prefer coords_raw (supports Plus Code), then decimal lat/lng, then location name
                     let gmapsQuery = '';
                     if(m.coords_raw && m.coords_raw.trim() !== '') {
                         gmapsQuery = encodeURIComponent(m.coords_raw.trim());
@@ -1836,24 +2226,43 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     }
                     const gmapsUrl = gmapsQuery ? `https://www.google.com/maps/search/?api=1&query=${gmapsQuery}` : '';
 
+                    let photosArr = [];
+                    try { photosArr = m.photos ? (typeof m.photos === 'string' ? JSON.parse(m.photos) : m.photos) : []; } catch(e){}
+
+                    let photoHtml = '';
+                    if(photosArr && photosArr.length > 0) {
+                        photoHtml = `
+                            <div style="width:100px; height:90px; flex-shrink:0; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.12); cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                                <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                            </div>
+                        `;
+                    }
+
                     const popupContent = `
-                        <div style="padding: 4px; min-width: 220px;">
-                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</div>
-                            <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-top: 2px;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
-                            <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
-                            <div style="font-size: 0.75rem; color: #ccc; margin-top: 4px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
-                            ${m.log_hasil ? `<div style="font-size: 0.72rem; color: #999; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); line-height: 1.4;">${escHtml(m.log_hasil).substring(0, 100)}...</div>` : ''}
+                        <div style="padding: 2px; min-width: 280px; max-width: 330px;">
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                ${photoHtml}
+                                <div style="flex:1; min-width:0;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size: 0.62rem; color: #a1ff5a; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</span>
+                                        ${photosArr.length > 1 ? `<span style="font-size:0.6rem; background:rgba(78,253,196,0.15); color:#4efdc4; padding:1px 5px; border-radius:4px;"><i class="fas fa-camera"></i> ${photosArr.length}</span>` : ''}
+                                    </div>
+                                    <div style="font-size: 0.88rem; font-weight: 800; color: #fff; margin-top: 2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(m.title || m.target_name || 'Meeting')}">${escHtml(m.title || m.target_name || 'Meeting')}</div>
+                                    <div style="font-size: 0.72rem; color: #aaa; margin-top: 3px;"><i class="far fa-calendar-alt" style="margin-right:4px; color:#a1ff5a;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
+                                    <div style="font-size: 0.72rem; color: #ccc; margin-top: 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
+                                </div>
+                            </div>
+                            ${m.log_hasil ? `<div style="font-size: 0.7rem; color: #888; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); line-height: 1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
                             
-                            <div style="display:flex; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-                                ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(78,253,196,0.15); border:1px solid rgba(78,253,196,0.4); color:#4efdc4; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; text-decoration:none;"><i class="fas fa-directions"></i> Google Maps</a>` : ''}
-                                <button onclick="openEditEvent(${m.id})" style="display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(161,255,90,0.15); border:1px solid rgba(161,255,90,0.4); color:#a1ff5a; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i> Edit</button>
+                            <div style="display:flex; gap:6px; margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.08);">
+                                ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(78,253,196,0.12); border:1px solid rgba(78,253,196,0.3); color:#4efdc4; padding:5px 8px; border-radius:7px; font-size:0.7rem; font-weight:700; text-decoration:none;"><i class="fas fa-directions"></i> Google Maps</a>` : ''}
+                                <button onclick="openEditEvent(${m.id})" style="display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(161,255,90,0.12); border:1px solid rgba(161,255,90,0.3); color:#a1ff5a; padding:5px 10px; border-radius:7px; font-size:0.7rem; font-weight:700; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i> Edit</button>
                             </div>
                         </div>
                     `;
 
-                    L.marker(latLng, { icon: customIcon })
-                        .bindPopup(popupContent)
-                        .addTo(_mapMarkersLayer);
+                    const marker = L.marker(latLng, { icon: customIcon }).bindPopup(popupContent).addTo(_mapMarkersLayer);
+                    marker.on('mouseover', function() { this.openPopup(); });
                 }
             }
 
@@ -1983,6 +2392,26 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const dd = document.getElementById('shortcutDropdown');
             if(wrap && dd && !wrap.contains(e.target)) dd.classList.remove('active');
         });
+
+        // Photo Lightbox
+        function openPhotoLightbox(src) {
+            const modal = document.getElementById('imageLightboxModal');
+            const img = document.getElementById('lightboxImage');
+            if(modal && img) {
+                img.src = src;
+                modal.style.display = 'flex';
+            }
+        }
+        function closePhotoLightbox() {
+            const modal = document.getElementById('imageLightboxModal');
+            if(modal) modal.style.display = 'none';
+        }
     </script>
+
+    <!-- Photo Lightbox Modal -->
+    <div id="imageLightboxModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.92); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;" onclick="closePhotoLightbox()">
+        <img id="lightboxImage" src="" style="max-width:92vw; max-height:88vh; border-radius:12px; border:1px solid rgba(255,255,255,0.2); box-shadow:0 25px 60px rgba(0,0,0,0.8); object-fit:contain;">
+        <button type="button" style="position:absolute; top:20px; right:25px; background:rgba(255,255,255,0.12); border:none; color:#fff; border-radius:50%; width:42px; height:42px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="closePhotoLightbox()">&times;</button>
+    </div>
 </body>
 </html>
