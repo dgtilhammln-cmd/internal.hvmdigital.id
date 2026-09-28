@@ -1082,27 +1082,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             </div>
 
 
-            <!-- ══ STATS ROW ══ -->
-            <div class="stats-row">
-                <div class="glass-card stat-mini">
-                    <div class="card-label">NEW CLIENTS</div>
-                    <div class="small-val text-green">+<?php echo $new_clients; ?></div>
-                    <p style="font-size:0.8rem;color:#aaa;">Converted this month</p>
-                </div>
-                <div class="glass-card stat-mini">
-                    <div class="card-label">RETENTION RATE</div>
-                    <div class="small-val text-cyan">98.4%</div>
-                    <p style="font-size:0.8rem;color:#aaa;">High trust clients</p>
-                </div>
 
-                <!-- AI Email CTA -->
-                <div class="glass-card stat-mini ai-cta-card" onclick="window.location='/dashboard/ai-email/'">
-                    <div class="ai-cta-icon email-icon"><i class="fas fa-paper-plane"></i></div>
-                    <div class="card-label" style="color:#4efdc4;margin-top:8px;">AI EMAIL BLAST</div>
-                    <p style="font-size:0.78rem;color:#aaa;margin-top:3px;">Smart email marketing</p>
-                    <div class="ai-cta-arrow"><i class="fas fa-arrow-right"></i></div>
-                </div>
-            </div>
 
             <!-- ══ SERVICES + CLIENT LIST ══ -->
             <div class="services-section">
@@ -1791,6 +1771,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             const points = [];
             const bounds = L.latLngBounds();
             let displayedCount = 0;
+            const usedCoords = {};
 
             for(let i = 0; i < meetings.length; i++) {
                 const m = meetings[i];
@@ -1817,6 +1798,19 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 }
 
                 if(!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+                    // Spiral offset for duplicate/overlapping coordinates so all markers remain visible
+                    const _dKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+                    if(usedCoords[_dKey] !== undefined) {
+                        const _n = usedCoords[_dKey];
+                        const _angle = _n * 2.3999632; // golden angle (~137.5 deg)
+                        const _r = 0.00018 * Math.sqrt(_n); // ~20m step spiral offset
+                        lat = lat + Math.cos(_angle) * _r;
+                        lng = lng + Math.sin(_angle) * _r;
+                        usedCoords[_dKey]++;
+                    } else {
+                        usedCoords[_dKey] = 1;
+                    }
+
                     displayedCount++;
                     const latLng = [lat, lng];
                     points.push(latLng);
