@@ -65,14 +65,32 @@ if($q_ev && mysqli_num_rows($q_ev) > 0) {
     mysqli_query($conn, "ALTER TABLE `events` MODIFY COLUMN `target_id` VARCHAR(50) DEFAULT NULL");
 }
 
-// ═══ BULK AUTO-SYNC: Prospek Deal → Client ═══
-// (Removed to prevent aggressive syncing on page load. Sync now relies on AJAX 'Deal' status change or manual pull in Client dashboard)
-
-
 // 3. AJAX ACTIONS
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     $act = $_POST['ajax_action'];
+
+    if($act === 'get') {
+        $id = intval($_POST['id'] ?? 0);
+        $q = mysqli_query($conn, "SELECT * FROM prospects WHERE id=$id");
+        $row = mysqli_fetch_assoc($q);
+        if($row) {
+            // Get meetings
+            $row['meetings'] = [];
+            $q_m = mysqli_query($conn, "SELECT * FROM events WHERE target_id='$id' AND target_type='Prospect' ORDER BY event_date DESC");
+            if($q_m) while($m = mysqli_fetch_assoc($q_m)) $row['meetings'][] = $m;
+
+            // Get invoices
+            $row['invoices_hist'] = [];
+            $q_i = mysqli_query($conn, "SELECT * FROM invoices WHERE client_ref_id='$id' AND client_ref_type='Prospect' ORDER BY inv_date DESC");
+            if($q_i) while($inv = mysqli_fetch_assoc($q_i)) $row['invoices_hist'][] = $inv;
+
+            echo json_encode($row);
+        } else {
+            echo json_encode(null);
+        }
+        exit;
+    }
 
     if($act === 'save') {
         $id          = intval($_POST['id'] ?? 0);
@@ -86,7 +104,20 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $catatan     = mysqli_real_escape_string($conn, trim($_POST['catatan'] ?? ''));
         $status      = mysqli_real_escape_string($conn, $_POST['status'] ?? 'Prospecting');
         $tier        = mysqli_real_escape_string($conn, $_POST['tier'] ?? 'UMKM');
-        $deal_status = isset($_POST['deal_status']) && $_POST['deal_status'] ? "'".mysqli_real_escape_string($conn, $_POST['deal_status'])."'" : "NULL";
+        $deal_raw    = isset($_POST['deal_status']) ? trim($_POST['deal_status']) : '';
+
+        // Auto-synchronize status and deal_status to prevent counting "Gak Deal" as "Deal"
+        if($deal_raw === 'Gak Deal' || $deal_raw === 'Ghosting') {
+            $status = 'Lost';
+        } elseif($deal_raw === 'Deal') {
+            $status = 'Deal';
+        } elseif($status === 'Lost' && empty($deal_raw)) {
+            $deal_raw = 'Gak Deal';
+        } elseif($status === 'Deal' && empty($deal_raw)) {
+            $deal_raw = 'Deal';
+        }
+
+        $deal_status = !empty($deal_raw) ? "'".mysqli_real_escape_string($conn, $deal_raw)."'" : "NULL";
 
         if(empty($company)) { echo json_encode(['ok'=>false,'msg'=>'Nama perusahaan wajib diisi.']); exit; }
 
@@ -104,7 +135,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         if($status === 'Deal') {
             $q_syn = mysqli_query($conn, "SELECT is_synced FROM prospects WHERE id=$new_id");
             $r_syn = mysqli_fetch_assoc($q_syn);
-            if(!$r_syn['is_synced']) {
+            if($r_syn && !$r_syn['is_synced']) {
                 $q_id = mysqli_query($conn,"SELECT MAX(CAST(client_id AS UNSIGNED)) as max_id FROM clients WHERE client_id NOT LIKE 'cli_%'");
                 $r_id = mysqli_fetch_assoc($q_id);
                 $client_id_new = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
@@ -138,76 +169,52 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
             $r_id = mysqli_fetch_assoc($q_id);
             $client_id = str_pad((int)($r_id['max_id'] ?? 0) + 1, 4, "0", STR_PAD_LEFT);
             
-            $company = mysqli_real_escape_string($conn, $row['company_name']);
-            $pic = mysqli_real_escape_string($conn, $row['pic']);
-            $jabatan = mysqli_real_escape_string($conn, $row['jabatan']);
-            $wa = mysqli_real_escape_string($conn, $row['wa']);
-            $alamat = mysqli_real_escape_string($conn, $row['alamat']);
-            $notes = mysqli_real_escape_string($conn, $row['catatan']);
-            $domain = mysqli_real_escape_string($conn, $row['domain']);
+            $c_company = mysqli_real_escape_string($conn, $row['company_name']);
+            $c_pic     = mysqli_real_escape_string($conn, $row['pic'] ?? '');
+            $c_jab     = mysqli_real_escape_string($conn, $row['jabatan'] ?? '');
+            $c_wa      = mysqli_real_escape_string($conn, $row['wa'] ?? '');
+            $c_alamat  = mysqli_real_escape_string($conn, $row['alamat'] ?? '');
+            $c_notes   = mysqli_real_escape_string($conn, $row['catatan'] ?? '');
+            $c_dom     = mysqli_real_escape_string($conn, $row['domain'] ?? '');
             
-            mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id', '$company', '$pic', '$jabatan', '$wa', '$alamat', '$notes', '$domain', 'Active', '[]', '[]')");
-            mysqli_query($conn, "UPDATE prospects SET is_synced=1 WHERE id=$id");
-            mysqli_query($conn, "UPDATE events SET target_id='$client_id', target_type='Client', target_name='$company' WHERE target_id='$id' AND target_type='Prospect'");
-            mysqli_query($conn, "UPDATE invoices SET client_ref_id='$client_id', client_ref_type='Client', client_name='$company' WHERE client_ref_id='$id' AND client_ref_type='Prospect'");
-            
+            mysqli_query($conn, "INSERT INTO clients (client_id, company_name, pic_name, pic_position, whatsapp, address, notes, link_other, status, services_data, credentials_data) VALUES ('$client_id', '$c_company', '$c_pic', '$c_jab', '$c_wa', '$c_alamat', '$c_notes', '$c_dom', 'Active', '[]', '[]')");
+            mysqli_query($conn, "UPDATE prospects SET is_synced=1, status='Deal', deal_status='Deal' WHERE id=$id");
+            mysqli_query($conn, "UPDATE events SET target_id='$client_id', target_type='Client', target_name='$c_company' WHERE target_id='$id' AND target_type='Prospect'");
+            mysqli_query($conn, "UPDATE invoices SET client_ref_id='$client_id', client_ref_type='Client', client_name='$c_company' WHERE client_ref_id='$id' AND client_ref_type='Prospect'");
+
             echo json_encode(['ok'=>true, 'client_id'=>$client_id]);
         } else {
-            echo json_encode(['ok'=>false, 'msg'=>'Gagal sinkronisasi atau sudah disinkronkan.']);
+            echo json_encode(['ok'=>false, 'msg'=>'Prospek tidak ditemukan atau sudah disinkronkan.']);
         }
         exit;
     }
-
-    if($act === 'get') {
-        $id = intval($_POST['id'] ?? 0);
-        $q = mysqli_query($conn, "SELECT * FROM prospects WHERE id=$id");
-        $row = mysqli_fetch_assoc($q);
-        if($row) {
-            $meetings = [];
-            $chk_log = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'log_hasil'");
-            if(mysqli_num_rows($chk_log) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `log_hasil` TEXT DEFAULT NULL");
-            
-            $chk_tid = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_id'");
-            if(mysqli_num_rows($chk_tid) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_id` INT DEFAULT NULL");
-            
-            $chk_ttype = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'target_type'");
-            if(mysqli_num_rows($chk_ttype) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `target_type` ENUM('Client','Prospect') DEFAULT NULL");
-
-
-            $chk_teams = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'teams_involved'");
-            if(mysqli_num_rows($chk_teams) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `teams_involved` TEXT DEFAULT NULL");
-
-            $q_meet = mysqli_query($conn, "SELECT id, title, event_date, time_start, meeting_type, meeting_mode, location, log_hasil, teams_involved FROM events WHERE (target_id=$id AND target_type='Prospect') OR (target_type='Prospect' AND target_name='".mysqli_real_escape_string($conn,$row['company_name'])."') ORDER BY event_date DESC");
-            if($q_meet) while($r=mysqli_fetch_assoc($q_meet)) $meetings[] = $r;
-            $row['meetings'] = $meetings;
-
-            $invoices_hist = [];
-            $chk_inv = mysqli_query($conn, "SHOW TABLES LIKE 'invoices'");
-            if(mysqli_num_rows($chk_inv) > 0) {
-                $q_inv = mysqli_query($conn, "SELECT id, inv_no, service_label, inv_date, total FROM invoices WHERE (client_ref_id='$id' AND client_ref_type='Prospect') AND status='Lunas' ORDER BY inv_date DESC LIMIT 20");
-                if($q_inv) while($r=mysqli_fetch_assoc($q_inv)) $invoices_hist[] = $r;
-            }
-            $row['invoices_hist'] = $invoices_hist;
-        }
-        echo json_encode($row ?: null);
-        exit;
-    }
-    exit;
 }
 
 // 4. LOAD DATA
 $search = trim($_GET['s'] ?? '');
 $status_filter = trim($_GET['st'] ?? '');
 $period_filter = trim($_GET['period'] ?? '');
+$start_date    = trim($_GET['start_date'] ?? '');
+$end_date      = trim($_GET['end_date'] ?? '');
+
 $where = "1=1";
 if($search) $where .= " AND (company_name LIKE '%".mysqli_real_escape_string($conn,$search)."%' OR pic LIKE '%".mysqli_real_escape_string($conn,$search)."%' OR domain LIKE '%".mysqli_real_escape_string($conn,$search)."%')";
 if($status_filter) $where .= " AND status='".mysqli_real_escape_string($conn,$status_filter)."'";
-// Period filter (by last activity/updated_at)
+
+// Period filter
 $period_days = 0;
-if($period_filter === '3d') $period_days = 3;
-elseif($period_filter === '7d') $period_days = 7;
+if($period_filter === '7d') $period_days = 7;
 elseif($period_filter === '30d') $period_days = 30;
-if($period_days > 0) $where .= " AND updated_at >= DATE_SUB(NOW(), INTERVAL $period_days DAY)";
+elseif($period_filter === '1y' || $period_filter === '365d') $period_days = 365;
+
+if($period_days > 0) {
+    $where .= " AND updated_at >= DATE_SUB(NOW(), INTERVAL $period_days DAY)";
+} elseif($period_filter === 'custom' && !empty($start_date) && !empty($end_date)) {
+    $s = mysqli_real_escape_string($conn, $start_date . ' 00:00:00');
+    $e = mysqli_real_escape_string($conn, $end_date . ' 23:59:59');
+    $where .= " AND updated_at BETWEEN '$s' AND '$e'";
+}
+
 $q = mysqli_query($conn, "SELECT * FROM prospects WHERE $where ORDER BY FIELD(status,'Negotiation','Follow Up','Prospecting','Deal','Lost'), updated_at DESC");
 $prospects = [];
 while($row = mysqli_fetch_assoc($q)) $prospects[] = $row;
@@ -224,14 +231,18 @@ while($r = mysqli_fetch_assoc($q_c)) { $counts[$r['status']] = ($counts[$r['stat
 $q_t = mysqli_query($conn, "SELECT tier, COUNT(*) as c FROM prospects GROUP BY tier");
 while($r = mysqli_fetch_assoc($q_t)) { $tier_counts[$r['tier']] = $r['c']; }
 ?>
-<?php include '../sidebar.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prospects - HVM Digital</title>
-<link rel="shortcut icon" href="/uploads/icon.png?v=<?= time() ?>">
+
+<!-- FAVICON -->
+<link rel="icon" type="image/png" href="/uploads/icon.png">
+<link rel="shortcut icon" href="/uploads/icon.png">
+<link rel="apple-touch-icon" href="/uploads/icon.png">
+
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
@@ -242,8 +253,6 @@ while($r = mysqli_fetch_assoc($q_t)) { $tier_counts[$r['tier']] = $r['c']; }
     --green:   #a1ff5a;
     --teal:    #4efdc4;
     --muted:   #888;
-    --red:     #ff6b6b;
-    --orange:  #fca311;
 }
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
 body { background:var(--bg); color:#fff; min-height:100vh; }
@@ -266,61 +275,53 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 /* Stat cards */
 .stat-row { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
 .stat-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 22px; min-width:120px; cursor:pointer; transition:border-color 0.2s,background 0.2s; }
-.stat-card:hover, .stat-card.active { border-color:rgba(161,255,90,0.3); background:rgba(161,255,90,0.05); }
-.stat-card .val { font-size:1.6rem; font-weight:800; }
+.stat-card:hover, .stat-card.active { border-color:rgba(161,255,90,0.35); background:rgba(161,255,90,0.06); }
+.stat-card .val { font-size:1.6rem; font-weight:800; color:var(--green); }
 .stat-card .lbl { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
-.s-hot  .val { color:var(--red); }
-.s-warm .val { color:var(--orange); }
-.s-cold .val { color:#94a3b8; }
-.s-closed .val { color:var(--muted); }
 
 /* Search & filter */
 .toolbar { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
 .search-wrap { position:relative; flex:1; min-width:200px; }
 .search-wrap i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:0.85rem; }
 .search-input { width:100%; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:10px; padding:10px 14px 10px 38px; font-family:inherit; font-size:0.85rem; outline:none; transition:border-color 0.2s; }
-.search-input:focus { border-color:rgba(255,255,255,0.25); }
+.search-input:focus { border-color:rgba(161,255,90,0.4); }
 .search-input::placeholder { color:var(--muted); }
 .period-chips { display:flex; gap:8px; flex-wrap:wrap; }
 .period-chip { padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:0.72rem; font-weight:700; cursor:pointer; transition:all 0.2s; letter-spacing:0.3px; }
-.period-chip:hover { border-color:rgba(255,255,255,0.3); color:#fff; }
-.period-chip.active { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.35); color:#fff; }
+.period-chip:hover { border-color:rgba(161,255,90,0.3); color:#fff; }
+.period-chip.active { background:rgba(161,255,90,0.12); border-color:rgba(161,255,90,0.35); color:var(--green); }
 
 /* Table */
 .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; overflow-x:auto; }
 .ptable { width:100%; border-collapse:collapse; min-width:700px; }
 .ptable thead tr { background:rgba(255,255,255,0.025); border-bottom:1px solid var(--border); }
 .ptable th { padding:11px 16px; font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); text-align:left; white-space:nowrap; }
-.ptable tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; cursor:pointer; }
+.ptable tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; }
 .ptable tbody tr:last-child { border-bottom:none; }
 .ptable tbody tr:hover { background:rgba(255,255,255,0.03); }
 .ptable td { padding:12px 16px; font-size:0.82rem; vertical-align:middle; }
 .company-name { font-weight:700; color:#fff; }
 .company-sub  { font-size:0.72rem; color:var(--muted); margin-top:2px; }
-.last-visit-tag { font-size:0.72rem; color:#94a3b8; }
-.last-visit-tag.recent { color:#4efdc4; }
+.last-visit-tag { font-size:0.72rem; color:#888; }
+.last-visit-tag.recent { color:var(--teal); }
 .last-visit-tag.none { color:#555; font-style:italic; }
 
-.badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:0.68rem; font-weight:700; letter-spacing:0.3px; }
-.b-hot    { background:rgba(255,107,107,0.1); color:var(--red); border:1px solid rgba(255,107,107,0.2); }
-.b-warm   { background:rgba(252,163,17,0.1); color:var(--orange); border:1px solid rgba(252,163,17,0.2); }
-.b-cold   { background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); }
-.b-closed { background:rgba(255,255,255,0.05); color:var(--muted); border:1px solid #333; }
-/* Stat card active — pakai putih bukan hijau */
-.stat-card:hover, .stat-card.active { border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.06); }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:0.68rem; font-weight:700; letter-spacing:0.3px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:#ccc; }
+.b-deal { background:rgba(161,255,90,0.12); color:var(--green); border-color:rgba(161,255,90,0.3); }
+.b-lost { background:rgba(255,255,255,0.04); color:#777; border-color:rgba(255,255,255,0.08); }
 
 .act-btns { display:flex; gap:6px; }
 .act-btn { width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.78rem; transition:all 0.2s; background:rgba(255,255,255,0.05); color:#aaa; }
-.act-btn:hover { background:rgba(255,255,255,0.12); color:#fff; transform:scale(1.1); }
-.act-btn.del:hover { background:rgba(255,107,107,0.12); color:var(--red); }
-.act-btn.wa-btn { color:#25d366; }
-.act-btn.wa-btn:hover { background:rgba(37,211,102,0.12); }
+.act-btn:hover { background:rgba(161,255,90,0.12); color:var(--green); transform:scale(1.1); }
+.act-btn.del:hover { background:rgba(255,255,255,0.1); color:#ff6b6b; }
+.act-btn.wa-btn { color:var(--teal); }
+.act-btn.wa-btn:hover { background:rgba(78,253,196,0.12); color:#fff; }
 
 .empty-state { text-align:center; padding:60px; color:var(--muted); }
 .empty-state i { font-size:3rem; margin-bottom:12px; opacity:0.3; display:block; }
 
-/* Custom Scrollbar for Webkit */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
@@ -366,6 +367,9 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
 </style>
 </head>
 <body>
+
+<?php include '../sidebar.php'; ?>
+
 <div class="ambient-glow glow-1"></div>
 <div class="ambient-glow glow-2"></div>
 <div class="main-content">
@@ -386,34 +390,35 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
             <div class="val"><?= $counts['all'] ?></div>
             <div class="lbl">Semua</div>
         </div>
-        <div class="stat-card s-hot <?= $status_filter=='Negotiation'?'active':'' ?>" onclick="filterStatus('Negotiation')">
+        <div class="stat-card <?= $status_filter=='Negotiation'?'active':'' ?>" onclick="filterStatus('Negotiation')">
             <div class="val"><?= $counts['Negotiation'] ?? 0 ?></div>
             <div class="lbl"><i class="fas fa-handshake"></i> Negosiasi</div>
         </div>
-        <div class="stat-card s-warm <?= $status_filter=='Follow Up'?'active':'' ?>" onclick="filterStatus('Follow Up')">
+        <div class="stat-card <?= $status_filter=='Follow Up'?'active':'' ?>" onclick="filterStatus('Follow Up')">
             <div class="val"><?= $counts['Follow Up'] ?? 0 ?></div>
             <div class="lbl"><i class="fas fa-phone-alt"></i> Follow Up</div>
         </div>
-        <div class="stat-card s-cold <?= $status_filter=='Prospecting'?'active':'' ?>" onclick="filterStatus('Prospecting')">
+        <div class="stat-card <?= $status_filter=='Prospecting'?'active':'' ?>" onclick="filterStatus('Prospecting')">
             <div class="val"><?= $counts['Prospecting'] ?? 0 ?></div>
             <div class="lbl"><i class="fas fa-crosshairs"></i> Prospecting</div>
         </div>
-        <div class="stat-card s-closed <?= $status_filter=='Deal'?'active':'' ?>" onclick="filterStatus('Deal')">
+        <div class="stat-card <?= $status_filter=='Deal'?'active':'' ?>" onclick="filterStatus('Deal')">
             <div class="val"><?= $counts['Deal'] ?? 0 ?></div>
             <div class="lbl"><i class="fas fa-check-circle"></i> Deal</div>
         </div>
-        <div class="stat-card" style="border-color:rgba(255,90,90,0.3);" <?= $status_filter=='Lost'?'active':'' ?> onclick="filterStatus('Lost')">
-            <div class="val" style="color:#ff5a5a;"><?= $counts['Lost'] ?? 0 ?></div>
-            <div class="lbl" style="color:#ff5a5a;"><i class="fas fa-times-circle"></i> Lost</div>
+        <div class="stat-card <?= $status_filter=='Lost'?'active':'' ?>" onclick="filterStatus('Lost')">
+            <div class="val" style="color:#aaa;"><?= $counts['Lost'] ?? 0 ?></div>
+            <div class="lbl"><i class="fas fa-times-circle"></i> Lost</div>
         </div>
     </div>
+
     <!-- TIER CHIPS -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
-        <span style="font-size:0.72rem;color:#666;line-height:28px;font-weight:700;">SKALA USAHA:</span>
-        <span class="badge" style="background:rgba(78,253,196,0.08);border-color:rgba(78,253,196,0.25);color:#4efdc4;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-store" style="margin-right:4px;"></i>UMKM: <?= $tier_counts['UMKM'] ?></span>
-        <span class="badge" style="background:rgba(252,163,17,0.08);border-color:rgba(252,163,17,0.25);color:#fca311;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-building" style="margin-right:4px;"></i>Menengah: <?= $tier_counts['Perusahaan Menengah'] ?></span>
-        <span class="badge" style="background:rgba(161,255,90,0.08);border-color:rgba(161,255,90,0.25);color:#a1ff5a;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-city" style="margin-right:4px;"></i>Korporasi: <?= $tier_counts['Korporasi'] ?></span>
-        <span class="badge" style="background:rgba(100,149,237,0.08);border-color:rgba(100,149,237,0.25);color:#6495ed;padding:4px 12px;font-size:0.72rem;cursor:default;"><i class="fas fa-landmark" style="margin-right:4px;"></i>Instansi: <?= $tier_counts['Instansi / Pemerintah'] ?></span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;">
+        <span style="font-size:0.72rem;color:var(--muted);font-weight:700;">SKALA USAHA:</span>
+        <span class="badge"><i class="fas fa-store" style="margin-right:4px;color:var(--teal);"></i>UMKM: <?= $tier_counts['UMKM'] ?></span>
+        <span class="badge"><i class="fas fa-building" style="margin-right:4px;color:var(--teal);"></i>Menengah: <?= $tier_counts['Perusahaan Menengah'] ?></span>
+        <span class="badge"><i class="fas fa-city" style="margin-right:4px;color:var(--green);"></i>Korporasi: <?= $tier_counts['Korporasi'] ?></span>
+        <span class="badge"><i class="fas fa-landmark" style="margin-right:4px;color:var(--green);"></i>Instansi: <?= $tier_counts['Instansi / Pemerintah'] ?></span>
     </div>
 
     <!-- TOOLBAR -->
@@ -424,10 +429,20 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
         </div>
         <div class="period-chips">
             <div class="period-chip <?= !$period_filter?'active':'' ?>" onclick="filterPeriod('')">Semua</div>
-            <div class="period-chip <?= $period_filter==='3d'?'active':'' ?>" onclick="filterPeriod('3d')">3 Hari</div>
             <div class="period-chip <?= $period_filter==='7d'?'active':'' ?>" onclick="filterPeriod('7d')">7 Hari</div>
             <div class="period-chip <?= $period_filter==='30d'?'active':'' ?>" onclick="filterPeriod('30d')">30 Hari</div>
+            <div class="period-chip <?= $period_filter==='1y'?'active':'' ?>" onclick="filterPeriod('1y')">1 Tahun</div>
+            <div class="period-chip <?= $period_filter==='custom'?'active':'' ?>" onclick="toggleCustomDate()">Custom</div>
         </div>
+    </div>
+
+    <!-- CUSTOM DATE RANGE INPUTS -->
+    <div id="customDateWrap" style="display:<?= $period_filter==='custom'?'flex':'none' ?>; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:wrap; background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:10px; border:1px solid var(--border);">
+        <span style="font-size:0.75rem; color:var(--muted); font-weight:600;"><i class="fas fa-calendar-alt" style="margin-right:6px; color:var(--green);"></i>Periode Custom:</span>
+        <input type="date" id="startDateInput" value="<?= htmlspecialchars($start_date) ?>" style="background:rgba(0,0,0,0.5); border:1px solid var(--border); color:#fff; padding:6px 12px; border-radius:8px; font-size:0.78rem; outline:none;">
+        <span style="font-size:0.75rem; color:var(--muted);">s/d</span>
+        <input type="date" id="endDateInput" value="<?= htmlspecialchars($end_date) ?>" style="background:rgba(0,0,0,0.5); border:1px solid var(--border); color:#fff; padding:6px 12px; border-radius:8px; font-size:0.78rem; outline:none;">
+        <button type="button" onclick="applyCustomDate()" style="background:linear-gradient(135deg,var(--green),var(--teal)); color:#000; border:none; padding:6px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer;">Filter</button>
     </div>
 
     <!-- TABLE -->
@@ -451,49 +466,55 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     <div style="font-size:0.8rem;margin-top:6px;">Klik "Tambah Prospek" untuk mulai menambahkan.</div>
                 </td></tr>
             <?php else: foreach($prospects as $p):
-                $badgeClass = 'b-'.strtolower($p['status']);
+                $badgeClass = ($p['status']==='Deal') ? 'b-deal' : (($p['status']==='Lost') ? 'b-lost' : '');
                 $waLink = $p['wa'] ? 'https://wa.me/'.preg_replace('/[^0-9]/','',$p['wa']) : '#';
                 $lv_date = $last_visit_map[$p['id']] ?? null;
                 $lv_class = 'none';
                 $lv_text = 'Belum ada visit';
                 if($lv_date) {
                     $lv_diff = (new DateTime())->diff(new DateTime($lv_date));
-                    $lv_days = $lv_diff->days;
-                    $lv_fmt = (new DateTime($lv_date))->format('d M Y');
-                    $lv_class = $lv_days <= 7 ? 'recent' : '';
-                    $lv_text = $lv_fmt . ($lv_days == 0 ? ' (hari ini)' : ($lv_days == 1 ? ' (kemarin)' : " ($lv_days hari lalu)"));
+                    if($lv_diff->days == 0) $lv_text = 'Hari ini';
+                    elseif($lv_diff->days == 1) $lv_text = 'Kemarin';
+                    else $lv_text = $lv_diff->days . ' hari lalu';
+                    $lv_class = ($lv_diff->days <= 7) ? 'recent' : '';
                 }
             ?>
-                <tr onclick="editProspect(<?= $p['id'] ?>)">
+                <tr>
                     <td>
                         <div class="company-name"><?= htmlspecialchars($p['company_name']) ?></div>
-                        <?php if($p['pic']): ?><div class="company-sub"><i class="fas fa-user" style="margin-right:4px;"></i><?= htmlspecialchars($p['pic']) ?><?= $p['jabatan'] ? ' &middot; '.$p['jabatan'] : '' ?></div><?php endif; ?>
+                        <div class="company-sub"><?= htmlspecialchars($p['pic'] ?? '') ?><?= $p['jabatan'] ? ' ('.htmlspecialchars($p['jabatan']).')' : '' ?></div>
                     </td>
-                    <td style="color:var(--muted); font-size:0.8rem;"><?= htmlspecialchars($p['wa'] ?: '-') ?></td>
-                    <td style="font-size:0.8rem;">
-                        <?php if($p['domain']): ?>
-                            <a href="https://<?= htmlspecialchars($p['domain']) ?>" target="_blank" onclick="event.stopPropagation()" style="color:#94a3b8; text-decoration:none;" onmouseover="this.style.color='#4efdc4'" onmouseout="this.style.color='#94a3b8'"><?= htmlspecialchars($p['domain']) ?></a>
-                        <?php else: ?><span style="color:var(--muted);">-</span><?php endif; ?>
-                    </td>
-                    <td><span class="last-visit-tag <?= $lv_class ?>"><i class="fas fa-calendar-check" style="margin-right:4px;opacity:0.7;"></i><?= $lv_text ?></span></td>
                     <td>
-                        <?php
-                        $tier_val = $p['tier'] ?? 'UMKM';
-                        $tier_icons = ['UMKM'=>'fa-store','Perusahaan Menengah'=>'fa-building','Korporasi'=>'fa-city','Instansi / Pemerintah'=>'fa-landmark'];
-                        $tier_colors = ['UMKM'=>'#4efdc4','Perusahaan Menengah'=>'#fca311','Korporasi'=>'#a1ff5a','Instansi / Pemerintah'=>'#6495ed'];
-                        $tier_color = $tier_colors[$tier_val] ?? '#888';
-                        $tier_icon  = $tier_icons[$tier_val] ?? 'fa-store';
-                        $status_colors = ['Prospecting'=>'b-cold','Follow Up'=>'b-warm','Negotiation'=>'b-hot','Deal'=>'b-closed','Lost'=>'b-lost'];
-                        $sBadge = $status_colors[$p['status']] ?? 'b-cold';
-                        ?>
-                        <span class="badge" style="background:rgba(<?= implode(',',sscanf($tier_color,'#%02x%02x%02x')) ?>,0.1);border-color:<?= $tier_color ?>33;color:<?= $tier_color ?>;font-size:0.65rem;"><i class="fas <?= $tier_icon ?>" style="margin-right:4px;"></i><?= $tier_val ?></span>
-                        <br><span class="badge <?= $sBadge ?>" style="margin-top:4px;"><?= $p['status'] ?></span>
-                        <?php if($p['is_synced']): ?>
-                            <span class="badge" style="background:rgba(78,253,196,0.06);color:#4efdc4;border-color:rgba(78,253,196,0.2);font-size:0.62rem;margin-top:2px;"><i class="fas fa-check"></i> Synced</span>
+                        <?php if($p['wa']): ?>
+                        <a href="<?= $waLink ?>" target="_blank" style="color:var(--teal);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                            <i class="fab fa-whatsapp"></i> <?= htmlspecialchars($p['wa']) ?>
+                        </a>
+                        <?php else: ?>
+                        <span style="color:#555;">-</span>
                         <?php endif; ?>
                     </td>
                     <td>
-                        <div class="act-btns" onclick="event.stopPropagation()">
+                        <?php if($p['domain']): ?>
+                        <a href="https://<?= preg_replace('/^https?:\/\//','',$p['domain']) ?>" target="_blank" style="color:#aaa;text-decoration:none;">
+                            <?= htmlspecialchars($p['domain']) ?> <i class="fas fa-external-link-alt" style="font-size:0.68rem;"></i>
+                        </a>
+                        <?php else: ?>
+                        <span style="color:#555;">-</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <span class="last-visit-tag <?= $lv_class ?>">
+                            <i class="fas fa-calendar-day" style="margin-right:3px;"></i><?= $lv_text ?>
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-start;">
+                            <span class="badge"><?= htmlspecialchars($p['tier'] ?? 'UMKM') ?></span>
+                            <span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($p['status']) ?><?= ($p['deal_status'] ? ' ('.$p['deal_status'].')' : '') ?></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="act-btns">
                             <?php if($p['wa']): ?>
                             <a href="<?= $waLink ?>" target="_blank" class="act-btn wa-btn" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
                             <?php endif; ?>
@@ -502,7 +523,7 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                             <?php endif; ?>
                             <button class="act-btn" onclick="editProspect(<?= $p['id'] ?>)" title="Detail &amp; Riwayat"><i class="fas fa-eye"></i></button>
                             <?php if($p['status'] === 'Deal' && !$p['is_synced']): ?>
-                            <button class="act-btn" style="color:#4efdc4;border-color:rgba(78,253,196,0.3);" onclick="syncToClient(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Sinkron ke Client"><i class="fas fa-user-plus"></i></button>
+                            <button class="act-btn" style="color:var(--teal);border-color:rgba(78,253,196,0.3);" onclick="syncToClient(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Sinkron ke Client"><i class="fas fa-user-plus"></i></button>
                             <?php endif; ?>
                             <button class="act-btn del" onclick="deleteProspect(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['company_name'])) ?>')" title="Hapus"><i class="fas fa-trash"></i></button>
                         </div>
@@ -554,7 +575,7 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                     </div>
                     <div class="form-grp">
                         <label><i class="fas fa-route" style="margin-right:6px;color:var(--green);"></i>Status Pipeline</label>
-                        <select id="f_status">
+                        <select id="f_status" onchange="onStatusSelectChange()">
                             <option value="Prospecting">Prospecting</option>
                             <option value="Follow Up">Follow Up</option>
                             <option value="Negotiation">Negosiasi</option>
@@ -577,20 +598,20 @@ body { background:var(--bg); color:#fff; min-height:100vh; }
                         <label>Hasil Akhir (Deal Status)</label>
                         <div style="display:flex; gap:10px; margin-top:4px;" id="dealStatusGroup">
                             <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
-                                <input type="radio" name="f_deal_status" value="" checked style="display:none;" onchange="updateDealChips()">
+                                <input type="radio" name="f_deal_status" value="" checked style="display:none;" onchange="onDealRadioChange()">
                                 <span style="font-size:0.75rem; color:#aaa; font-weight:600;"><i class="fas fa-minus-circle" style="margin-right:6px;"></i>Belum Ditentukan</span>
                             </label>
                             <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
-                                <input type="radio" name="f_deal_status" value="Deal" style="display:none;" onchange="updateDealChips()">
+                                <input type="radio" name="f_deal_status" value="Deal" style="display:none;" onchange="onDealRadioChange()">
                                 <span style="font-size:0.75rem; color:var(--green); font-weight:600;"><i class="fas fa-handshake" style="margin-right:6px;"></i>Deal</span>
                             </label>
                             <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
-                                <input type="radio" name="f_deal_status" value="Gak Deal" style="display:none;" onchange="updateDealChips()">
-                                <span style="font-size:0.75rem; color:var(--red); font-weight:600;"><i class="fas fa-times-circle" style="margin-right:6px;"></i>Gak Deal</span>
+                                <input type="radio" name="f_deal_status" value="Gak Deal" style="display:none;" onchange="onDealRadioChange()">
+                                <span style="font-size:0.75rem; color:#aaa; font-weight:600;"><i class="fas fa-times-circle" style="margin-right:6px;"></i>Gak Deal</span>
                             </label>
                             <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; padding:8px 14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; transition:0.3s;" class="deal-chip">
-                                <input type="radio" name="f_deal_status" value="Ghosting" style="display:none;" onchange="updateDealChips()">
-                                <span style="font-size:0.75rem; color:#a55eea; font-weight:600;"><i class="fas fa-ghost" style="margin-right:6px;"></i>Ghosting</span>
+                                <input type="radio" name="f_deal_status" value="Ghosting" style="display:none;" onchange="onDealRadioChange()">
+                                <span style="font-size:0.75rem; color:#aaa; font-weight:600;"><i class="fas fa-ghost" style="margin-right:6px;"></i>Ghosting</span>
                             </label>
                         </div>
                     </div>
@@ -657,8 +678,33 @@ function filterStatus(st) {
 
 function filterPeriod(p) {
     const url = new URL(window.location);
-    if(p) url.searchParams.set('period', p);
-    else url.searchParams.delete('period');
+    if(p) {
+        url.searchParams.set('period', p);
+        url.searchParams.delete('start_date');
+        url.searchParams.delete('end_date');
+    } else {
+        url.searchParams.delete('period');
+        url.searchParams.delete('start_date');
+        url.searchParams.delete('end_date');
+    }
+    window.location = url;
+}
+
+function toggleCustomDate() {
+    const wrap = document.getElementById('customDateWrap');
+    if(wrap) {
+        wrap.style.display = (wrap.style.display === 'none' || !wrap.style.display) ? 'flex' : 'none';
+    }
+}
+
+function applyCustomDate() {
+    const s = document.getElementById('startDateInput').value;
+    const e = document.getElementById('endDateInput').value;
+    if(!s || !e) return showToast('Pilih tanggal awal dan akhir!', true);
+    const url = new URL(window.location);
+    url.searchParams.set('period', 'custom');
+    url.searchParams.set('start_date', s);
+    url.searchParams.set('end_date', e);
     window.location = url;
 }
 
@@ -666,6 +712,31 @@ function openMaps(inputId) {
     const val = document.getElementById(inputId).value.trim();
     if(!val) return showToast('Alamat masih kosong!', true);
     window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(val), '_blank');
+}
+
+function onDealRadioChange() {
+    let selected = '';
+    document.getElementsByName('f_deal_status').forEach(r => { if(r.checked) selected = r.value; });
+    const statusSelect = document.getElementById('f_status');
+    if(selected === 'Gak Deal' || selected === 'Ghosting') {
+        statusSelect.value = 'Lost';
+    } else if(selected === 'Deal') {
+        statusSelect.value = 'Deal';
+    }
+    updateDealChips();
+}
+
+function onStatusSelectChange() {
+    const val = document.getElementById('f_status').value;
+    const dealRadios = document.getElementsByName('f_deal_status');
+    if(val === 'Lost') {
+        dealRadios.forEach(r => { if(r.value === 'Gak Deal') r.checked = true; });
+    } else if(val === 'Deal') {
+        dealRadios.forEach(r => { if(r.value === 'Deal') r.checked = true; });
+    } else {
+        dealRadios[0].checked = true; // Belum ditentukan
+    }
+    updateDealChips();
 }
 
 function openModal(data = null) {
@@ -682,7 +753,7 @@ function openModal(data = null) {
     document.getElementById('f_tier').value = data ? (data.tier||'UMKM') : 'UMKM';
     
     const dealRadios = document.getElementsByName('f_deal_status');
-    dealRadios[0].checked = true; // default belum ditentukan
+    dealRadios[0].checked = true;
     if(data && data.deal_status) {
         dealRadios.forEach(r => { if(r.value === data.deal_status) r.checked = true; });
     }
@@ -692,9 +763,7 @@ function openModal(data = null) {
     updateDealChips();
 
     // Render History Section
-    const histSec = document.getElementById('prospectHistorySection');
     if(data && data.id) {
-        // reset tabs
         switchModalTab('data', document.querySelector('.m-tab'));
     
         // Meetings
@@ -709,7 +778,7 @@ function openModal(data = null) {
                 const timeStr = m.time_start || '';
                 let logHtml = m.log_hasil ? `<div style="font-size:0.75rem;color:#ccc;background:rgba(255,255,255,0.03);padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;margin-bottom:8px;">${m.log_hasil}</div>` : `<div style="font-size:0.75rem;color:#666;font-style:italic;margin-bottom:8px;">Belum ada log/catatan.</div>`;
                 const editBtn = `<button type="button" onclick="editMeetingLog(${m.id})" style="padding:4px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--green);border-radius:4px;font-size:0.7rem;cursor:pointer;"><i class="fas fa-edit"></i> Edit Log Hasil</button>`;
-                const locHtml = m.location ? `<div style="font-size:0.72rem;color:#aaa;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><i class="fas fa-map-marker-alt" style="color:var(--orange);flex-shrink:0;"></i><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}" target="_blank" style="color:#aaa;text-decoration:none;flex:1;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='#aaa'">${m.location}</a></div>` : '';
+                const locHtml = m.location ? `<div style="font-size:0.72rem;color:#aaa;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><i class="fas fa-map-marker-alt" style="color:var(--teal);flex-shrink:0;"></i><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}" target="_blank" style="color:#aaa;text-decoration:none;flex:1;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='#aaa'">${m.location}</a></div>` : '';
                 const teamsHtml = m.teams_involved ? `<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;">${m.teams_involved.split(',').filter(t=>t.trim()).map(t=>`<span style="font-size:0.68rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:2px 8px;border-radius:20px;font-weight:600;"><i class="fas fa-user" style="margin-right:3px;font-size:0.6rem;"></i>${t.trim()}</span>`).join('')}</div>` : '';
                 pMeet.innerHTML += `
                     <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">
@@ -851,8 +920,8 @@ async function syncToClient(id, name) {
 function showToast(msg, isErr = false) {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.style.borderColor = isErr ? 'var(--red)' : 'var(--green)';
-    t.style.color = isErr ? 'var(--red)' : 'var(--green)';
+    t.style.borderColor = isErr ? '#ff6b6b' : 'var(--green)';
+    t.style.color = isErr ? '#ff6b6b' : 'var(--green)';
     t.classList.add('show');
     setTimeout(() => { t.classList.remove('show'); }, 3000);
 }
@@ -862,10 +931,10 @@ function updateDealChips() {
     chips.forEach(chip => {
         const input = chip.querySelector('input');
         if (input.checked) {
-            if(input.value === 'Deal') { chip.style.background = 'rgba(161,255,90,0.1)'; chip.style.borderColor = 'var(--green)'; }
-            else if(input.value === 'Gak Deal') { chip.style.background = 'rgba(255,107,107,0.1)'; chip.style.borderColor = 'var(--red)'; }
-            else if(input.value === 'Ghosting') { chip.style.background = 'rgba(165,94,234,0.1)'; chip.style.borderColor = '#a55eea'; }
-            else { chip.style.background = 'rgba(255,255,255,0.05)'; chip.style.borderColor = '#888'; }
+            if(input.value === 'Deal') { chip.style.background = 'rgba(161,255,90,0.12)'; chip.style.borderColor = 'var(--green)'; }
+            else if(input.value === 'Gak Deal') { chip.style.background = 'rgba(255,255,255,0.06)'; chip.style.borderColor = '#888'; }
+            else if(input.value === 'Ghosting') { chip.style.background = 'rgba(255,255,255,0.06)'; chip.style.borderColor = '#888'; }
+            else { chip.style.background = 'rgba(255,255,255,0.05)'; chip.style.borderColor = '#666'; }
         } else {
             chip.style.background = 'transparent';
             chip.style.borderColor = 'rgba(255,255,255,0.1)';
@@ -885,13 +954,12 @@ function saveMeetingLog(id) {
     fd.append('event_id', id);
     fd.append('log_hasil', val);
     
-    // We send this to the main dashboard endpoint where update_log is handled
     fetch('../index.php', { method:'POST', body:fd })
         .then(r=>r.json())
         .then(res => {
             if(res.ok) {
                 showToast('Log meeting berhasil disimpan');
-                editProspect(document.getElementById('f_id').value); // Refresh modal
+                editProspect(document.getElementById('f_id').value);
             } else {
                 showToast('Gagal menyimpan log', true);
             }
