@@ -16,8 +16,10 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `invoices` (
     `client_ref_id`   VARCHAR(50)  DEFAULT NULL,
     `service_label`   VARCHAR(255) DEFAULT NULL,
     `inv_date`        DATE         DEFAULT NULL,
+    `due_date`        DATE         DEFAULT NULL,
     `subtotal`        BIGINT       DEFAULT 0,
     `ppn`             TINYINT      DEFAULT 11,
+    `pph`             FLOAT        DEFAULT 0,
     `total`           BIGINT       DEFAULT 0,
     `status`          ENUM('Pending','DP','Lunas','Overdue') DEFAULT 'Pending',
     `bank`            VARCHAR(100) DEFAULT NULL,
@@ -34,6 +36,16 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `invoices` (
     `created_at`      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )");
+
+// Auto-migrate columns if table existed prior
+$chk_pph = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'pph'");
+if($chk_pph && mysqli_num_rows($chk_pph) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `pph` FLOAT DEFAULT 0 AFTER `ppn`");
+}
+$chk_due = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'due_date'");
+if($chk_due && mysqli_num_rows($chk_due) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `due_date` DATE DEFAULT NULL AFTER `inv_date`");
+}
 
 // Auto-create bank_accounts table
 mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `bank_accounts` (
@@ -54,6 +66,31 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $q = mysqli_query($conn, "SELECT * FROM invoices ORDER BY inv_date DESC, created_at DESC");
         if($q) while($r = mysqli_fetch_assoc($q)) { $r['items'] = json_decode($r['items_json'] ?? '[]', true) ?: []; $rows[] = $r; }
         echo json_encode($rows); exit;
+    }
+
+    if($act === 'get_next_no') {
+        $date = $_POST['date'] ?? date('Y-m-d');
+        $ts = strtotime($date);
+        if(!$ts) $ts = time();
+        $year = date('Y', $ts);
+        $month = date('m', $ts);
+        $prefix = "HVM/$year/$month/";
+        
+        $q = mysqli_query($conn, "SELECT inv_no FROM invoices WHERE inv_no LIKE '" . mysqli_real_escape_string($conn, $prefix) . "%'");
+        $maxSeq = 0;
+        if($q) {
+            while($r = mysqli_fetch_assoc($q)) {
+                $parts = explode('/', $r['inv_no']);
+                $lastPart = end($parts);
+                $num = intval($lastPart);
+                if($num > $maxSeq) {
+                    $maxSeq = $num;
+                }
+            }
+        }
+        $nextSeq = str_pad($maxSeq + 1, 3, '0', STR_PAD_LEFT);
+        $nextNo = $prefix . $nextSeq;
+        echo json_encode(['no' => $nextNo]); exit;
     }
 
     if($act === 'get_banks') {
@@ -103,8 +140,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $ref_id   = mysqli_real_escape_string($conn, $d['client_ref_id'] ?? '');
         $service  = mysqli_real_escape_string($conn, $d['service'] ?? '');
         $inv_date = mysqli_real_escape_string($conn, $d['date'] ?? date('Y-m-d'));
+        $due_date = mysqli_real_escape_string($conn, $d['due_date'] ?? '');
         $subtotal = (int)($d['subtotal'] ?? 0);
         $ppn      = (int)($d['ppn'] ?? 11);
+        $pph      = (float)($d['pph'] ?? 0);
         $total    = (int)($d['total'] ?? 0);
         $status   = mysqli_real_escape_string($conn, $d['status'] ?? 'Pending');
         $bank     = mysqli_real_escape_string($conn, $d['bank'] ?? '');
@@ -121,9 +160,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
 
         $chk = mysqli_query($conn, "SELECT id FROM invoices WHERE id='$id'");
         if(mysqli_num_rows($chk) > 0) {
-            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', subtotal=$subtotal, ppn=$ppn, total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
+            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', due_date='$due_date', subtotal=$subtotal, ppn=$ppn, pph=$pph, total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
         } else {
-            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,client_ref_type,client_ref_id,service_label,inv_date,subtotal,ppn,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$ref_type','$ref_id','$service','$inv_date',$subtotal,$ppn,$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
+            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,pph,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$ref_type','$ref_id','$service','$inv_date','$due_date',$subtotal,$ppn,$pph,$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
         }
         echo json_encode(['ok'=>(bool)$ok]); exit;
     }
@@ -171,10 +210,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
 body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; overflow-x:hidden; }
 
-.ambient-glow { position:fixed; border-radius:50%; filter:blur(150px); opacity:0.06; z-index:-1; animation:floatGlow 15s infinite alternate; pointer-events:none; }
+.ambient-glow { position:fixed; border-radius:50%; filter:blur(120px); opacity:0.04; z-index:-1; pointer-events:none; will-change:transform; transform:translateZ(0); }
 .glow-1 { top:-100px; left:-100px; width:600px; height:600px; background:#a1ff5a; }
 .glow-2 { bottom:-100px; right:-100px; width:600px; height:600px; background:#4efdc4; }
-@keyframes floatGlow { from{transform:scale(1);}to{transform:scale(1.1);} }
 
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background:#0a0a0a; }
@@ -202,12 +240,11 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 /* STAT CARDS */
 .stat-cards-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
 .stat-card {
-    background: var(--card-bg);
+    background: rgba(20,20,20,0.85);
     border: 1px solid var(--card-border);
     border-radius: 16px; padding: 20px 24px;
     display: flex; align-items: center; gap: 16px;
     position: relative; overflow: hidden;
-    backdrop-filter: blur(10px);
 }
 .stat-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0; }
 .stat-num { font-size:1.6rem;font-weight:800;line-height:1; }
@@ -250,7 +287,7 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
 .btn-outline:hover { background:rgba(255,255,255,0.05); }
 
 /* TABLE */
-.invoice-table-wrap { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; overflow:hidden; backdrop-filter:blur(10px); }
+.invoice-table-wrap { background:rgba(14,14,14,0.92); border:1px solid var(--card-border); border-radius:16px; overflow:hidden; }
 .invoice-table { width:100%; border-collapse:collapse; }
 .invoice-table thead tr { background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); }
 .invoice-table th { padding:14px 18px; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); text-align:left; }
@@ -671,12 +708,31 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                     <div class="form-section-title"><i class="fas fa-info-circle"></i> Informasi Invoice</div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>No. Invoice</label>
-                            <input type="text" class="form-input" id="f_invNo" placeholder="Cth: 0980526">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                                <label>No. Invoice</label>
+                                <button type="button" onclick="autoGenInvNo()" style="background:none;border:none;color:var(--neon-main);font-size:0.7rem;cursor:pointer;font-weight:600;"><i class="fas fa-magic"></i> Auto-Gen</button>
+                            </div>
+                            <input type="text" class="form-input" id="f_invNo" placeholder="Cth: HVM/2026/09/001">
                         </div>
                         <div class="form-group">
-                            <label>Tanggal</label>
-                            <input type="date" class="form-input" id="f_invDate">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                                <label>Tanggal Issued</label>
+                                <button type="button" onclick="setIssuedToday()" style="background:none;border:none;color:var(--neon-main);font-size:0.7rem;cursor:pointer;font-weight:600;"><i class="fas fa-calendar-day"></i> Hari Ini</button>
+                            </div>
+                            <input type="date" class="form-input" id="f_invDate" onchange="onIssuedDateChange()">
+                        </div>
+                        <div class="form-group full" style="display:grid;grid-template-columns:1fr;gap:10px;">
+                            <div class="form-group">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                                    <label>Tanggal Due (Jatuh Tempo)</label>
+                                    <div style="display:flex;gap:4px;">
+                                        <button type="button" onclick="setDueDays(7)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#aaa;font-size:0.68rem;padding:2px 8px;border-radius:4px;cursor:pointer;">+7 Hari</button>
+                                        <button type="button" onclick="setDueDays(14)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#aaa;font-size:0.68rem;padding:2px 8px;border-radius:4px;cursor:pointer;">+14 Hari</button>
+                                        <button type="button" onclick="setDueDays(30)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#aaa;font-size:0.68rem;padding:2px 8px;border-radius:4px;cursor:pointer;">+30 Hari</button>
+                                    </div>
+                                </div>
+                                <input type="date" class="form-input" id="f_dueDate">
+                            </div>
                         </div>
                         <div class="form-group full">
                             <label>Klien / Perusahaan</label>
@@ -715,9 +771,14 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             <div class="totals-line"><span class="tl-label">Sub Total</span><span class="tl-val" id="tSubtotal">Rp 0</span></div>
                             <div class="totals-line">
                                 <span class="tl-label">PPN (%)</span>
-                                <input type="number" id="ppnInput" class="form-input" style="width:80px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="11" oninput="recalcTotals()">
+                                <input type="number" id="ppnInput" class="form-input" style="width:80px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="11" step="0.5" oninput="recalcTotals()">
                             </div>
                             <div class="totals-line"><span class="tl-label">Nilai PPN</span><span class="tl-val" id="tPPN">Rp 0</span></div>
+                            <div class="totals-line">
+                                <span class="tl-label">PPh (%)</span>
+                                <input type="number" id="pphInput" class="form-input" style="width:80px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="0" step="0.5" oninput="recalcTotals()">
+                            </div>
+                            <div class="totals-line"><span class="tl-label">Nilai PPh</span><span class="tl-val" id="tPPh" style="color:var(--neon-red);">- Rp 0</span></div>
                             <hr class="totals-divider">
                             <div class="totals-grand">
                                 <span class="tg-label">TOTAL</span>
@@ -1099,8 +1160,8 @@ function loadInvoices() {
     fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
         invoices = data.map(i => ({
             id: i.id, no: i.inv_no, client: i.client_name, refType: i.client_ref_type, refId: i.client_ref_id,
-            service: i.service_label, date: i.inv_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn),
-            total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
+            service: i.service_label, date: i.inv_date, dueDate: i.due_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn||0),
+            pph: parseFloat(i.pph||0), total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
             payType: i.pay_type, dp1Pct: parseFloat(i.dp1_pct), sigName: i.sig_name, sigRole: i.sig_role,
             contact: i.contact, email: i.email, note: i.note, items: i.items
         }));
@@ -1147,8 +1208,9 @@ function renderTable(data){
         const statusClass = {Lunas:'status-paid',Pending:'status-pending',DP:'status-dp',Overdue:'status-overdue'}[inv.status]||'status-pending';
         const statusDot = {Lunas:'●',Pending:'○',DP:'◐',Overdue:'✕'}[inv.status]||'○';
         const tr = document.createElement('tr');
+        const displayNo = inv.no && inv.no.startsWith('HVM') ? inv.no : ('#' + inv.no);
         tr.innerHTML = `
-            <td><span class="inv-number">#${inv.no}</span></td>
+            <td><span class="inv-number">${esc(displayNo)}</span></td>
             <td><div class="inv-client">${inv.client}<small>${inv.service}</small></div></td>
             <td><span class="inv-date" style="font-size:0.75rem;color:#555;">${inv.service}</span></td>
             <td class="inv-date">${fmtDate(inv.date)}</td>
@@ -1167,21 +1229,28 @@ function renderTable(data){
     updateStats();
 }
 
+let _filterTimer = null;
 function filterInvoices(){
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const s = document.getElementById('filterStatus').value;
-    const filtered = invoices.filter(inv =>
-        (!q || inv.no.toLowerCase().includes(q) || inv.client.toLowerCase().includes(q)) &&
-        (!s || inv.status === s)
-    );
-    renderTable(filtered);
+    if(_filterTimer) cancelAnimationFrame(_filterTimer);
+    _filterTimer = requestAnimationFrame(() => {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const s = document.getElementById('filterStatus').value;
+        const filtered = invoices.filter(inv =>
+            (!q || inv.no.toLowerCase().includes(q) || inv.client.toLowerCase().includes(q)) &&
+            (!s || inv.status === s)
+        );
+        renderTable(filtered);
+    });
 }
 
 function updateStats(){
     document.getElementById('statTotal').innerText = invoices.length;
     document.getElementById('statPaid').innerText = invoices.filter(i=>i.status==='Lunas').length;
     document.getElementById('statPending').innerText = invoices.filter(i=>i.status==='Pending'||i.status==='DP').length;
-    const total = invoices.reduce((a,b)=>a+b.total,0);
+    
+    // Perbaikan: Total revenue hanya menghitung invoice yang sudah deal (Lunas / DP)
+    const dealInvoices = invoices.filter(i => i.status === 'Lunas' || i.status === 'DP');
+    const total = dealInvoices.reduce((a,b)=>a+b.total, 0);
     document.getElementById('statRevenue').innerText = total>=1000000 ? (total/1000000).toFixed(1)+' Jt' : fmtRp(total);
 }
 
@@ -1204,22 +1273,30 @@ function addItem(name='', subs='', qty=1, price=0){
 
 function removeItem(btn){ btn.closest('.item-row').remove(); recalcTotals(); }
 
+let _recalcTimer = null;
 function recalcTotals(){
-    let sub = 0;
-    document.querySelectorAll('#itemsBody .item-row').forEach(row => {
-        const qty = parseFloat(row.querySelectorAll('.item-num-input')[0].value)||0;
-        const price = parseFloat(row.querySelectorAll('.item-num-input')[1].value)||0;
-        const t = qty*price;
-        row.querySelector('.item-total').innerText = fmtRp(t);
-        sub += t;
+    if(_recalcTimer) cancelAnimationFrame(_recalcTimer);
+    _recalcTimer = requestAnimationFrame(() => {
+        let sub = 0;
+        document.querySelectorAll('#itemsBody .item-row').forEach(row => {
+            const qty = parseFloat(row.querySelectorAll('.item-num-input')[0].value)||0;
+            const price = parseFloat(row.querySelectorAll('.item-num-input')[1].value)||0;
+            const t = qty*price;
+            row.querySelector('.item-total').innerText = fmtRp(t);
+            sub += t;
+        });
+        const ppnPct = parseFloat(document.getElementById('ppnInput').value)||0;
+        const pphPct = parseFloat(document.getElementById('pphInput').value)||0;
+        const ppnVal = sub * (ppnPct/100);
+        const pphVal = sub * (pphPct/100);
+        const total = sub + ppnVal - pphVal;
+        
+        document.getElementById('tSubtotal').innerText = fmtRp(sub);
+        document.getElementById('tPPN').innerText = fmtRp(ppnVal);
+        document.getElementById('tPPh').innerText = '- ' + fmtRp(pphVal);
+        document.getElementById('tTotal').innerText = fmtRp(total);
+        recalcDP();
     });
-    const ppnPct = parseFloat(document.getElementById('ppnInput').value)||0;
-    const ppnVal = sub*(ppnPct/100);
-    const total = sub+ppnVal;
-    document.getElementById('tSubtotal').innerText = fmtRp(sub);
-    document.getElementById('tPPN').innerText = fmtRp(ppnVal);
-    document.getElementById('tTotal').innerText = fmtRp(total);
-    recalcDP();
 }
 
 function recalcDP(){
@@ -1240,12 +1317,49 @@ function setPayType(btn){
     document.getElementById('dpSection').style.display = payType==='DP' ? 'block' : 'none';
 }
 
+function setIssuedToday() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('f_invDate').value = today;
+    onIssuedDateChange();
+}
+
+function onIssuedDateChange() {
+    const d = document.getElementById('f_invDate').value;
+    if(d) {
+        setDueDays(30);
+        if(!editingId) {
+            autoGenInvNo(d);
+        }
+    }
+}
+
+function setDueDays(days) {
+    const issuedVal = document.getElementById('f_invDate').value;
+    const base = issuedVal ? new Date(issuedVal) : new Date();
+    const due = new Date(base.getTime() + days * 86400000);
+    document.getElementById('f_dueDate').value = due.toISOString().split('T')[0];
+}
+
+function autoGenInvNo(dateStr) {
+    const d = dateStr || document.getElementById('f_invDate').value || new Date().toISOString().split('T')[0];
+    const fd = new FormData();
+    fd.append('inv_ajax', 'get_next_no');
+    fd.append('date', d);
+    fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+        if(res && res.no) {
+            document.getElementById('f_invNo').value = res.no;
+        }
+    });
+}
+
 function openCreateModal(){
     editingId = null;
     document.getElementById('modalTitleText').innerText = 'Buat Invoice Baru';
     resetForm();
-    document.getElementById('f_invDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('f_invNo').value = String(parseInt(Date.now().toString().slice(-6))).padStart(7,'0');
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('f_invDate').value = today;
+    setDueDays(30);
+    autoGenInvNo(today);
     document.getElementById('invModal').classList.add('active');
     if(document.getElementById('itemsBody').children.length===0) addItem();
 }
@@ -1253,10 +1367,11 @@ function openCreateModal(){
 function closeModal(){ document.getElementById('invModal').classList.remove('active'); }
 
 function resetForm(){
-    ['f_clientName','f_invNo','f_invDate'].forEach(id=>document.getElementById(id).value='');
+    ['f_clientName','f_invNo','f_invDate','f_dueDate'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('itemsBody').innerHTML='';
-    recalcTotals();
     document.getElementById('ppnInput').value='11';
+    document.getElementById('pphInput').value='0';
+    recalcTotals();
     document.getElementById('f_bankSelect').value='';
     document.getElementById('f_bank').value='';
     document.getElementById('f_rekening').value='';
@@ -1279,9 +1394,11 @@ function editInvoice(id){
     editingId = id;
     document.getElementById('modalTitleText').innerText = 'Edit Invoice #'+inv.no;
     document.getElementById('f_invNo').value = inv.no;
-    document.getElementById('f_invDate').value = inv.date;
+    document.getElementById('f_invDate').value = inv.date || new Date().toISOString().split('T')[0];
+    document.getElementById('f_dueDate').value = inv.dueDate || '';
     document.getElementById('f_clientName').value = inv.client;
     document.getElementById('ppnInput').value = inv.ppn;
+    document.getElementById('pphInput').value = inv.pph || 0;
     
     // Auto-select bank if exists
     document.getElementById('f_bankSelect').value = '';
@@ -1314,6 +1431,7 @@ function editInvoice(id){
     document.getElementById('f_dp1Pct').value = inv.dp1Pct;
     document.getElementById('itemsBody').innerHTML='';
     inv.items.forEach(item=>addItem(item.name,item.subs,item.qty,item.price));
+    recalcTotals();
     document.getElementById('invModal').classList.add('active');
 }
 
@@ -1331,7 +1449,10 @@ function saveInvoice(){
         items.push({name,subs,qty,price}); sub += qty*price;
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
-    const total = sub + sub*(ppn/100);
+    const pph = parseFloat(document.getElementById('pphInput').value)||0;
+    const ppnVal = sub*(ppn/100);
+    const pphVal = sub*(pph/100);
+    const total = sub + ppnVal - pphVal;
     const id = editingId || ('INV-'+String(Date.now()).slice(-6));
     
     const fd = new FormData();
@@ -1343,8 +1464,10 @@ function saveInvoice(){
     fd.append('client_ref_id', document.getElementById('f_clientRefId').value);
     fd.append('service', items[0]?.name || 'Layanan');
     fd.append('date', document.getElementById('f_invDate').value || new Date().toISOString().split('T')[0]);
+    fd.append('due_date', document.getElementById('f_dueDate').value || '');
     fd.append('subtotal', sub);
     fd.append('ppn', ppn);
+    fd.append('pph', pph);
     fd.append('total', total);
     fd.append('status', document.getElementById('f_status').value);
     fd.append('bank', document.getElementById('f_bank').value);
@@ -1384,7 +1507,11 @@ function deleteInvoice(id){
 }
 
 function buildInvoiceHTML(inv) {
-    const ppnVal = inv.subtotal*(inv.ppn/100);
+    const subtotal = parseFloat(inv.subtotal) || 0;
+    const ppnPct = parseFloat(inv.ppn) || 0;
+    const pphPct = parseFloat(inv.pph) || 0;
+    const ppnVal = subtotal * (ppnPct / 100);
+    const pphVal = subtotal * (pphPct / 100);
     
     let watermarkHtml = '';
     if (centerLogoDataUrl) {
@@ -1399,18 +1526,22 @@ function buildInvoiceHTML(inv) {
             <td><strong>${fmtRp(item.qty*item.price)}</strong></td>
         </tr>`;
     }).join('');
-    const today = new Date();
-    const due = inv.date ? new Date(new Date(inv.date).getTime() + 30*86400000) : today;
+    
+    const issuedDate = inv.date ? inv.date : new Date().toISOString().split('T')[0];
+    const dueDate = inv.dueDate ? inv.dueDate : new Date(new Date(issuedDate).getTime() + 30*86400000).toISOString().split('T')[0];
+    
     const statusColors = {
         Lunas: 'lunas', DP: 'dp', Pending: 'pending', Overdue: 'overdue'
     };
     const statusCls = statusColors[inv.status] || 'pending';
+    const displayInvNo = inv.no && inv.no.startsWith('HVM') ? inv.no : ('HVM-' + esc(inv.no));
+
     return `<div class="invoice-paper-dark" style="position:relative;">
         ${watermarkHtml}
         <div class="dark-inv-body" style="position:relative;z-index:1;">
             <div class="dark-inv-logo-row">
                 <img src="/uploads/logohvm.png" style="height:36px;width:auto;object-fit:contain;" alt="HVM Digital">
-                <div class="dark-inv-number">HVM-${esc(inv.no)}</div>
+                <div class="dark-inv-number">${esc(displayInvNo)}</div>
             </div>
             <div class="dark-inv-title">INVOICE</div>
             <div class="dark-inv-status-badge ${statusCls}">
@@ -1429,9 +1560,9 @@ function buildInvoiceHTML(inv) {
                 </div>
                 <div style="text-align:right;">
                     <div class="dark-inv-party-label">Issued</div>
-                    <div class="dark-inv-party-name">${fmtDate(inv.date)}</div>
+                    <div class="dark-inv-party-name">${fmtDate(issuedDate)}</div>
                     <div class="dark-inv-party-label" style="margin-top:10px;">Due</div>
-                    <div class="dark-inv-party-name">${fmtDate(due.toISOString().split('T')[0])}</div>
+                    <div class="dark-inv-party-name">${fmtDate(dueDate)}</div>
                 </div>
             </div>
             <table class="dark-inv-table">
@@ -1445,8 +1576,9 @@ function buildInvoiceHTML(inv) {
             </table>
             <div class="dark-inv-totals">
                 <div class="dark-inv-totals-box">
-                    <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(inv.subtotal)}</span></div>
-                    ${inv.ppn?`<div class="dark-inv-totals-line"><span>Tax (${inv.ppn}%)</span><span>${fmtRp(ppnVal)}</span></div>`:''}
+                    <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(subtotal)}</span></div>
+                    ${ppnPct > 0 ? `<div class="dark-inv-totals-line"><span>PPN (${ppnPct}%)</span><span>${fmtRp(ppnVal)}</span></div>` : ''}
+                    ${pphPct > 0 ? `<div class="dark-inv-totals-line" style="color:#ff8888;"><span>PPh (${pphPct}%)</span><span>- ${fmtRp(pphVal)}</span></div>` : ''}
                     <hr class="dark-inv-totals-div">
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
@@ -1463,7 +1595,7 @@ function buildInvoiceHTML(inv) {
                 </div>
                 <!-- RIGHT COLUMN: QR Code & Signature -->
                 <div style="text-align:right;flex-shrink:0;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://wa.me/6285179982373?text=Halo%20HVM%20Digital,%20saya%20ingin%20konfirmasi%20pembayaran%20untuk%20Invoice%20HVM-' + esc(inv.no))}" style="width:90px;height:90px;border-radius:4px;border:3px solid #fff;background:#fff;margin-bottom:8px;display:inline-block;" alt="QR">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://wa.me/6285179982373?text=Halo%20HVM%20Digital,%20saya%20ingin%20konfirmasi%20pembayaran%20untuk%20Invoice%20' + esc(displayInvNo))}" style="width:90px;height:90px;border-radius:4px;border:3px solid #fff;background:#fff;margin-bottom:8px;display:inline-block;" alt="QR">
                     <div style="font-size:0.72rem;color:#ccc;line-height:1.4;">
                         <div style="color:#fff;">${esc(inv.sigName||'')} | <span style="color:#a1ff5a;">${esc(inv.sigRole||'')}</span></div>
                         <div style="font-size:0.68rem;margin-top:2px;">${esc(inv.contact||'')} | ${esc(inv.email||'')}</div>
@@ -1492,13 +1624,27 @@ function previewInvoice(doPrint){
         items.push({name,subs,qty,price}); sub += qty*price;
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
-    const inv = { no, client, status, date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
-        subtotal: sub, ppn, total: sub+sub*(ppn/100),
-        bank: document.getElementById('f_bank').value, rekening: document.getElementById('f_rekening').value,
-        atasNama: document.getElementById('f_atasNama').value, payType, dp1Pct: parseFloat(document.getElementById('f_dp1Pct').value)||50,
-        sigName: document.getElementById('f_sigName').value, sigRole: document.getElementById('f_sigRole').value,
-        contact: document.getElementById('f_contact').value, email: document.getElementById('f_email').value,
-        note: document.getElementById('f_note').value, items };
+    const pph = parseFloat(document.getElementById('pphInput').value)||0;
+    const ppnVal = sub*(ppn/100);
+    const pphVal = sub*(pph/100);
+    const total = sub + ppnVal - pphVal;
+    
+    const inv = { 
+        no, client, status, 
+        date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
+        dueDate: document.getElementById('f_dueDate').value||'',
+        subtotal: sub, ppn, pph, total,
+        bank: document.getElementById('f_bank').value, 
+        rekening: document.getElementById('f_rekening').value,
+        atasNama: document.getElementById('f_atasNama').value, 
+        payType, dp1Pct: parseFloat(document.getElementById('f_dp1Pct').value)||50,
+        sigName: document.getElementById('f_sigName').value, 
+        sigRole: document.getElementById('f_sigRole').value,
+        contact: document.getElementById('f_contact').value, 
+        email: document.getElementById('f_email').value,
+        note: document.getElementById('f_note').value, 
+        items 
+    };
     const html = buildInvoiceHTML(inv);
     document.getElementById('invoicePaper').innerHTML = html;
     const pm = document.getElementById('previewModal');
@@ -1547,8 +1693,8 @@ function closePreview(){ document.getElementById('previewModal').style.display='
 
 function exportCSV(){
     if(!invoices.length){ showPopup('error','Tidak ada data untuk diekspor.'); return; }
-    const header = ['No. Invoice','Klien','Layanan','Tanggal','Subtotal','PPN%','Total','Status'];
-    const rows = invoices.map(i=>[i.no,i.client,i.service,i.date,i.subtotal,i.ppn,i.total,i.status]);
+    const header = ['No. Invoice','Klien','Layanan','Tanggal Issued','Tanggal Due','Subtotal','PPN%','PPh%','Total','Status'];
+    const rows = invoices.map(i=>[i.no,i.client,i.service,i.date,i.dueDate||'',i.subtotal,i.ppn,i.pph||0,i.total,i.status]);
     const csv = [header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
     const a = document.createElement('a'); a.href=URL.createObjectURL(blob);

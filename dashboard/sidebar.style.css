@@ -22,11 +22,12 @@ body {
 .sidebar {
     position: fixed;
     z-index: 9999;
-    background: var(--bg-glass);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    background: rgba(10, 10, 10, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border-glass);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    transition: width 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+    will-change: width, transform;
 }
 
 /* --- TAMPILAN DESKTOP (SIDEBAR) --- */

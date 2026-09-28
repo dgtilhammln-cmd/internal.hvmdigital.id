@@ -44,6 +44,48 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
         echo json_encode($rows); exit;
     }
+
+    // Get meetings for interactive map
+    if($act === 'get_map_meetings') {
+        $period = $_POST['period'] ?? 'month';
+        $where = "1=1";
+        if($period === '7d') {
+            $startDate = date('Y-m-d', strtotime('-7 days'));
+            $where = "event_date >= '$startDate'";
+        } else if($period === '30d') {
+            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $where = "event_date >= '$startDate'";
+        } else if($period === 'month') {
+            $m = date('m'); $y = date('Y');
+            $where = "MONTH(event_date) = '$m' AND YEAR(event_date) = '$y'";
+        }
+        
+        $chk_lat = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lat'");
+        if(mysqli_num_rows($chk_lat) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lat` FLOAT DEFAULT NULL");
+        $chk_lng = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lng'");
+        if(mysqli_num_rows($chk_lng) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lng` FLOAT DEFAULT NULL");
+
+        $rows = [];
+        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND location != '') ORDER BY event_date ASC, time_start ASC");
+        if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
+        echo json_encode($rows); exit;
+    }
+
+    // Save geocoded coordinates back to DB
+    if($act === 'update_meeting_coords') {
+        $id = intval($_POST['event_id'] ?? 0);
+        $lat = floatval($_POST['lat'] ?? 0);
+        $lng = floatval($_POST['lng'] ?? 0);
+        if($id > 0 && ($lat != 0 || $lng != 0)) {
+            $chk_lat = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lat'");
+            if(mysqli_num_rows($chk_lat) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lat` FLOAT DEFAULT NULL");
+            $chk_lng = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lng'");
+            if(mysqli_num_rows($chk_lng) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lng` FLOAT DEFAULT NULL");
+            mysqli_query($conn, "UPDATE events SET lat=$lat, lng=$lng WHERE id=$id");
+        }
+        echo json_encode(['ok'=>true]); exit;
+    }
+
     exit;
 }
 
@@ -56,7 +98,9 @@ if(isset($_POST['save_event'])){
         'target_name'  => "VARCHAR(255) DEFAULT NULL",
         'target_id'    => "INT DEFAULT NULL",
         'location'     => "TEXT DEFAULT NULL",
-        'log_hasil'    => "TEXT DEFAULT NULL"
+        'log_hasil'    => "TEXT DEFAULT NULL",
+        'lat'          => "FLOAT DEFAULT NULL",
+        'lng'          => "FLOAT DEFAULT NULL"
     ];
     foreach($cols as $col => $def){
         $chk = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE '$col'");
@@ -72,12 +116,14 @@ if(isset($_POST['save_event'])){
     $target_name = mysqli_real_escape_string($conn, $_POST['target_name'] ?? '');
     $target_id   = intval($_POST['target_id'] ?? 0);
     $location    = mysqli_real_escape_string($conn, $_POST['location'] ?? '');
+    $lat         = isset($_POST['lat']) && $_POST['lat'] !== '' ? floatval($_POST['lat']) : "NULL";
+    $lng         = isset($_POST['lng']) && $_POST['lng'] !== '' ? floatval($_POST['lng']) : "NULL";
     $teams_raw   = $_POST['teams_involved'] ?? [];
     $teams_str   = mysqli_real_escape_string($conn, implode(',', $teams_raw));
     if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', '$teams_str')");
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, lat, lng, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', $lat, $lng, '$teams_str')");
     header("Location: /dashboard/"); exit;
 }
 
@@ -665,8 +711,14 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .detail-label { font-size: 0.65rem; color: #777; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 6px; font-weight: 700; }
         .detail-val { font-size: 1rem; color: #eaeaea; font-weight: 600; line-height: 1.4; }
         .detail-desc { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
-        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        /* --- LEAFLET DARK MAP STYLES --- */
+        .leaflet-container { background: #0b0b0d !important; font-family: 'Montserrat', sans-serif !important; }
+        .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
+        .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; }
+        .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #a1ff5a; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #fff; box-shadow: 0 0 15px rgba(161,255,90,0.6); }
     </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -717,10 +769,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         </div>
                     </div>
 
-                    <!-- AI Tool Buttons -->
-                    <a href="/dashboard/chatbot-wa/" class="btn-ai btn-wa">
-                        <i class="fab fa-whatsapp"></i><span>WA Bot</span>
-                    </a>
+                    <!-- AI Tool Buttons (chatbot-wa removed) -->
                     <!-- Shortcut Menu -->
                     <div class="shortcut-menu" id="shortcutMenuWrap">
                         <button class="shortcut-btn" onclick="toggleShortcutMenu()">
@@ -986,6 +1035,38 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 </div>
             </div>
 
+            <!-- ══ LOKASI / PETA KUNJUNGAN MEETING (16:9 Landscape Aspect Ratio) ══ -->
+            <div class="map-card-container" style="margin-top:24px; margin-bottom:24px;">
+                <div class="glass-card" style="background: rgba(14, 14, 14, 0.92); border: 1px solid var(--card-border); border-radius: 20px; padding: 20px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(161,255,90,0.12); color: var(--neon-main); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                <i class="fas fa-map-marked-alt"></i>
+                            </div>
+                            <div>
+                                <h3 style="font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0;">Peta Kunjungan Meeting</h3>
+                                <p style="font-size: 0.76rem; color: #888; margin-top: 3px;">Titik lokasi & rute perjalanan meeting yang sudah dikunjungi</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <select id="mapFilterPeriod" class="form-input" style="width: 170px; padding: 7px 12px; font-size: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color:#fff;" onchange="loadMapMeetings(this.value)">
+                                <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
+                                <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
+                                <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
+                                <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
+                            </select>
+                            <button type="button" onclick="loadMapMeetings()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #ccc; padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;" title="Refresh Peta">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 16:9 Landscape Aspect Ratio Box -->
+                    <div style="position: relative; width: 100%; padding-top: 56.25%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                        <div id="meetingMap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0c0c0c; z-index: 1;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ══ STATS ROW ══ -->
             <div class="stats-row">
                 <div class="glass-card stat-mini">
@@ -998,13 +1079,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     <div class="small-val text-cyan">98.4%</div>
                     <p style="font-size:0.8rem;color:#aaa;">High trust clients</p>
                 </div>
-                <!-- WA Bot CTA -->
-                <div class="glass-card stat-mini ai-cta-card" onclick="window.location='/dashboard/wa-bot/'">
-                    <div class="ai-cta-icon wa-icon"><i class="fab fa-whatsapp"></i></div>
-                    <div class="card-label" style="color:#25D366;margin-top:8px;">WA CHATBOT</div>
-                    <p style="font-size:0.78rem;color:#aaa;margin-top:3px;">Auto reply &amp; broadcast</p>
-                    <div class="ai-cta-arrow"><i class="fas fa-arrow-right"></i></div>
-                </div>
+
                 <!-- AI Email CTA -->
                 <div class="glass-card stat-mini ai-cta-card" onclick="window.location='/dashboard/ai-email/'">
                     <div class="ai-cta-icon email-icon"><i class="fas fa-paper-plane"></i></div>
@@ -1189,8 +1264,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px;">
-                    <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;" id="d-loc-label">Link Meeting (Google Meet / Zoom)</label>
-                    <input type="text" name="location" class="form-input" id="d-loc-input" placeholder="https://meet.google.com/...">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin:0;" id="d-loc-label">Link Meeting (Google Meet / Zoom)</label>
+                        <span id="geoStatusMsg" style="font-size:0.68rem;color:#a1ff5a;display:none;"><i class="fas fa-map-pin"></i> Koordinat terdeteksi</span>
+                    </div>
+                    <input type="text" name="location" class="form-input" id="d-loc-input" placeholder="https://meet.google.com/..." onchange="dashGeocodeLocation()">
+                    <input type="hidden" name="lat" id="d-lat-input" value="">
+                    <input type="hidden" name="lng" id="d-lng-input" value="">
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px;">
@@ -1591,7 +1671,161 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         }
 
         
-        window.addEventListener('load', function() { refreshPlanner(); });
+        window.addEventListener('load', function() { 
+            refreshPlanner(); 
+            initMeetingMap();
+        });
+
+        // --- INTERACTIVE OPENSTREETMAP / LEAFLET LOGIC ---
+        let _leafletMap = null;
+        let _mapMarkersLayer = null;
+        let _mapPolylineLayer = null;
+
+        function initMeetingMap() {
+            const mapEl = document.getElementById('meetingMap');
+            if(!mapEl || _leafletMap) return;
+            
+            // Center default: Surabaya (-7.2575, 112.7521)
+            _leafletMap = L.map('meetingMap', { zoomControl: true }).setView([-7.2575, 112.7521], 12);
+            
+            // CartoDB Dark Matter Tile Layer (Dark Mode)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(_leafletMap);
+
+            _mapMarkersLayer = L.layerGroup().addTo(_leafletMap);
+            _mapPolylineLayer = L.layerGroup().addTo(_leafletMap);
+
+            loadMapMeetings('month');
+        }
+
+        async function loadMapMeetings(period) {
+            const p = period || document.getElementById('mapFilterPeriod')?.value || 'month';
+            if(!_leafletMap) { initMeetingMap(); return; }
+            
+            const fd = new FormData();
+            fd.append('ajax_action', 'get_map_meetings');
+            fd.append('period', p);
+            
+            try {
+                const res = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
+                renderMapMeetings(res);
+            } catch(e) { console.error("Failed to load map meetings", e); }
+        }
+
+        async function renderMapMeetings(meetings) {
+            if(!_mapMarkersLayer || !_mapPolylineLayer) return;
+            _mapMarkersLayer.clearLayers();
+            _mapPolylineLayer.clearLayers();
+
+            if(!meetings || meetings.length === 0) return;
+
+            const points = [];
+            const bounds = L.latLngBounds();
+
+            for(let i = 0; i < meetings.length; i++) {
+                const m = meetings[i];
+                let lat = parseFloat(m.lat);
+                let lng = parseFloat(m.lng);
+
+                if((isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) && m.location) {
+                    const coords = await geocodeAddress(m.location);
+                    if(coords) {
+                        lat = coords.lat;
+                        lng = coords.lng;
+                        saveCoordsToDB(m.id, lat, lng);
+                    }
+                }
+
+                if(!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+                    const latLng = [lat, lng];
+                    points.push(latLng);
+                    bounds.extend(latLng);
+
+                    const pinHtml = `<div class="map-marker-pin">${i+1}</div>`;
+                    const customIcon = L.divIcon({
+                        html: pinHtml,
+                        className: '',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    const dateNice = new Date(m.event_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const popupContent = `
+                        <div style="padding: 4px; min-width: 180px;">
+                            <div style="font-size: 0.65rem; color: #a1ff5a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Kunjungan #${i+1}</div>
+                            <div style="font-size: 0.92rem; font-weight: 800; color: #fff; margin-top: 2px;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
+                            <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
+                            <div style="font-size: 0.75rem; color: #ccc; margin-top: 4px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location)}</div>
+                            ${m.log_hasil ? `<div style="font-size: 0.72rem; color: #999; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); line-height: 1.4;">${escHtml(m.log_hasil).substring(0, 100)}...</div>` : ''}
+                        </div>
+                    `;
+
+                    L.marker(latLng, { icon: customIcon })
+                        .bindPopup(popupContent)
+                        .addTo(_mapMarkersLayer);
+                }
+            }
+
+            if(points.length > 1) {
+                L.polyline(points, {
+                    color: '#a1ff5a',
+                    weight: 3,
+                    opacity: 0.85,
+                    dashArray: '6, 8'
+                }).addTo(_mapPolylineLayer);
+            }
+
+            if(points.length > 0) {
+                _leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+            }
+        }
+
+        async function geocodeAddress(query) {
+            if(!query) return null;
+            let cleanQuery = query.trim();
+            if(cleanQuery.startsWith('http://') || cleanQuery.startsWith('https://')) return null;
+            
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`;
+                const res = await fetch(url).then(r => r.json());
+                if(res && res.length > 0) {
+                    return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon) };
+                }
+            } catch(e) { console.error("Geocoding failed for", query); }
+            return null;
+        }
+
+        function saveCoordsToDB(eventId, lat, lng) {
+            const fd = new FormData();
+            fd.append('ajax_action', 'update_meeting_coords');
+            fd.append('event_id', eventId);
+            fd.append('lat', lat);
+            fd.append('lng', lng);
+            fetch('', { method: 'POST', body: fd });
+        }
+
+        async function dashGeocodeLocation() {
+            const locInp = document.getElementById('d-loc-input');
+            const msg = document.getElementById('geoStatusMsg');
+            const latInp = document.getElementById('d-lat-input');
+            const lngInp = document.getElementById('d-lng-input');
+            if(!locInp || !locInp.value.trim()) { if(msg) msg.style.display='none'; return; }
+            
+            const coords = await geocodeAddress(locInp.value.trim());
+            if(coords) {
+                if(latInp) latInp.value = coords.lat;
+                if(lngInp) lngInp.value = coords.lng;
+                if(msg) {
+                    msg.style.display = 'inline';
+                    msg.innerHTML = '<i class="fas fa-check-circle"></i> Koordinat terdeteksi (' + coords.lat.toFixed(4) + ', ' + coords.lng.toFixed(4) + ')';
+                }
+            } else {
+                if(msg) msg.style.display = 'none';
+            }
+        }
 
         // Shortcut Menu Toggle
         function toggleShortcutMenu() {
