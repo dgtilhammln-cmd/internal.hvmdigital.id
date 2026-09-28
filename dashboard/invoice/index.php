@@ -950,11 +950,11 @@ select.form-input optgroup {
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Nama Penandatangan</label>
-                            <input type="text" class="form-input" id="f_sigName" value="Casandra">
+                            <input type="text" class="form-input" id="f_sigName" value="HIVIA">
                         </div>
                         <div class="form-group">
                             <label>Jabatan</label>
-                            <input type="text" class="form-input" id="f_sigRole" value="Finance Dept.">
+                            <input type="text" class="form-input" id="f_sigRole" value="Public Relations">
                         </div>
                         <div class="form-group">
                             <label>No. HP / WA</label>
@@ -1494,7 +1494,7 @@ function resetForm(){
     document.getElementById('f_rekening').value='';
     document.getElementById('f_atasNama').value='';
     document.getElementById('f_sigName').value='HIVIA';
-    document.getElementById('f_sigRole').value='CS Support.';
+    document.getElementById('f_sigRole').value='Public Relations';
     document.getElementById('f_contact').value='0851-7998-2373';
     document.getElementById('f_email').value='bisnis@hvmdigital.id';
     document.getElementById('f_note').value='Mohon konfirmasi setelah melakukan pembayaran, untuk kami lanjut ke tahap selanjutnya untuk proses optimalisasi.';
