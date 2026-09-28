@@ -46,6 +46,18 @@ $chk_due = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'due_date'");
 if($chk_due && mysqli_num_rows($chk_due) == 0) {
     mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `due_date` DATE DEFAULT NULL AFTER `inv_date`");
 }
+$chk_npwp = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'npwp'");
+if($chk_npwp && mysqli_num_rows($chk_npwp) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `npwp` VARCHAR(100) DEFAULT NULL AFTER `client_name`");
+}
+$chk_ppnb = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'ppn_bearer'");
+if($chk_ppnb && mysqli_num_rows($chk_ppnb) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `ppn_bearer` VARCHAR(20) DEFAULT 'client' AFTER `ppn`");
+}
+$chk_pphb = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'pph_bearer'");
+if($chk_pphb && mysqli_num_rows($chk_pphb) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `pph_bearer` VARCHAR(20) DEFAULT 'hvm' AFTER `pph`");
+}
 
 // Auto-create bank_accounts table
 mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `bank_accounts` (
@@ -133,36 +145,39 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
 
     if($act === 'save') {
         $d = $_POST;
-        $id       = mysqli_real_escape_string($conn, $d['id']);
-        $inv_no   = mysqli_real_escape_string($conn, $d['no'] ?? '');
-        $client   = mysqli_real_escape_string($conn, $d['client'] ?? '');
-        $ref_type = mysqli_real_escape_string($conn, $d['client_ref_type'] ?? '');
-        $ref_id   = mysqli_real_escape_string($conn, $d['client_ref_id'] ?? '');
-        $service  = mysqli_real_escape_string($conn, $d['service'] ?? '');
-        $inv_date = mysqli_real_escape_string($conn, $d['date'] ?? date('Y-m-d'));
-        $due_date = mysqli_real_escape_string($conn, $d['due_date'] ?? '');
-        $subtotal = (int)($d['subtotal'] ?? 0);
-        $ppn      = (int)($d['ppn'] ?? 11);
-        $pph      = (float)($d['pph'] ?? 0);
-        $total    = (int)($d['total'] ?? 0);
-        $status   = mysqli_real_escape_string($conn, $d['status'] ?? 'Pending');
-        $bank     = mysqli_real_escape_string($conn, $d['bank'] ?? '');
-        $rek      = mysqli_real_escape_string($conn, $d['rekening'] ?? '');
-        $an       = mysqli_real_escape_string($conn, $d['atasNama'] ?? '');
-        $pt       = mysqli_real_escape_string($conn, $d['payType'] ?? 'Lunas');
-        $dp1      = (int)($d['dp1Pct'] ?? 100);
-        $sn       = mysqli_real_escape_string($conn, $d['sigName'] ?? '');
-        $sr       = mysqli_real_escape_string($conn, $d['sigRole'] ?? '');
-        $ct       = mysqli_real_escape_string($conn, $d['contact'] ?? '');
-        $em       = mysqli_real_escape_string($conn, $d['email'] ?? '');
-        $note     = mysqli_real_escape_string($conn, $d['note'] ?? '');
-        $items    = mysqli_real_escape_string($conn, $d['items_json'] ?? '[]');
+        $id         = mysqli_real_escape_string($conn, $d['id']);
+        $inv_no     = mysqli_real_escape_string($conn, $d['no'] ?? '');
+        $client     = mysqli_real_escape_string($conn, $d['client'] ?? '');
+        $npwp       = mysqli_real_escape_string($conn, $d['npwp'] ?? '');
+        $ref_type   = mysqli_real_escape_string($conn, $d['client_ref_type'] ?? '');
+        $ref_id     = mysqli_real_escape_string($conn, $d['client_ref_id'] ?? '');
+        $service    = mysqli_real_escape_string($conn, $d['service'] ?? '');
+        $inv_date   = mysqli_real_escape_string($conn, $d['date'] ?? date('Y-m-d'));
+        $due_date   = mysqli_real_escape_string($conn, $d['due_date'] ?? '');
+        $subtotal   = (int)($d['subtotal'] ?? 0);
+        $ppn        = (int)($d['ppn'] ?? 11);
+        $ppn_bearer = mysqli_real_escape_string($conn, $d['ppn_bearer'] ?? 'client');
+        $pph        = (float)($d['pph'] ?? 0);
+        $pph_bearer = mysqli_real_escape_string($conn, $d['pph_bearer'] ?? 'hvm');
+        $total      = (int)($d['total'] ?? 0);
+        $status     = mysqli_real_escape_string($conn, $d['status'] ?? 'Pending');
+        $bank       = mysqli_real_escape_string($conn, $d['bank'] ?? '');
+        $rek        = mysqli_real_escape_string($conn, $d['rekening'] ?? '');
+        $an         = mysqli_real_escape_string($conn, $d['atasNama'] ?? '');
+        $pt         = mysqli_real_escape_string($conn, $d['payType'] ?? 'Lunas');
+        $dp1        = (int)($d['dp1Pct'] ?? 100);
+        $sn         = mysqli_real_escape_string($conn, $d['sigName'] ?? '');
+        $sr         = mysqli_real_escape_string($conn, $d['sigRole'] ?? '');
+        $ct         = mysqli_real_escape_string($conn, $d['contact'] ?? '');
+        $em         = mysqli_real_escape_string($conn, $d['email'] ?? '');
+        $note       = mysqli_real_escape_string($conn, $d['note'] ?? '');
+        $items      = mysqli_real_escape_string($conn, $d['items_json'] ?? '[]');
 
         $chk = mysqli_query($conn, "SELECT id FROM invoices WHERE id='$id'");
         if(mysqli_num_rows($chk) > 0) {
-            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', due_date='$due_date', subtotal=$subtotal, ppn=$ppn, pph=$pph, total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
+            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', npwp='$npwp', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', due_date='$due_date', subtotal=$subtotal, ppn=$ppn, ppn_bearer='$ppn_bearer', pph=$pph, pph_bearer='$pph_bearer', total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
         } else {
-            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,pph,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$ref_type','$ref_id','$service','$inv_date','$due_date',$subtotal,$ppn,$pph,$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
+            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,npwp,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,ppn_bearer,pph,pph_bearer,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$npwp','$ref_type','$ref_id','$service','$inv_date','$due_date',$subtotal,$ppn,'$ppn_bearer',$pph,'$pph_bearer',$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
         }
         echo json_encode(['ok'=>(bool)$ok]); exit;
     }
@@ -207,8 +222,24 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
     --text-white:  #ffffff;
     --text-muted:  #a0a0a0;
 }
+html, body, select, option { color-scheme: dark !important; }
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif; }
 body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; overflow-x:hidden; }
+
+select, .form-select, select.form-input, .filter-select {
+    background-color: #141416 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+}
+select option, .form-select option, select.form-input option, .filter-select option {
+    background-color: #141416 !important;
+    color: #ffffff !important;
+    padding: 12px 16px !important;
+}
+select option:hover, select option:focus, select option:active, select option:checked {
+    background-color: #262630 !important;
+    color: #a1ff5a !important;
+}
 
 .ambient-glow { position:fixed; border-radius:50%; filter:blur(120px); opacity:0.04; z-index:-1; pointer-events:none; will-change:transform; transform:translateZ(0); }
 .glow-1 { top:-100px; left:-100px; width:600px; height:600px; background:#a1ff5a; }
@@ -352,19 +383,41 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
     width:100%;
 }
 .form-input:focus { border-color:var(--neon-main); }
-.form-select {
+select.form-input {
     cursor:pointer;
+    color-scheme: dark;
+    background-color: rgba(255,255,255,0.04);
+    color: #fff;
     appearance:none;
     -webkit-appearance:none;
     -moz-appearance:none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    padding-right: 36px;
+}
+select.form-input option,
+select.form-input optgroup {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 8px 10px;
+}
+.form-select {
+    cursor:pointer;
+    color-scheme: dark;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 14px center;
     background-size: 16px;
     padding-right: 40px;
 }
-.form-select option {
-    background: #1a1a1a;
+.form-select option,
+.form-select optgroup {
+    background: #1a1a2e;
     color: #fff;
     padding: 10px;
 }
@@ -748,6 +801,10 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                             </select>
                             <input type="text" class="form-input" id="f_clientName" placeholder="Ketik nama klien manual..." style="display:none;">
                         </div>
+                        <div class="form-group full">
+                            <label>No. NPWP Klien / Perusahaan (Opsional)</label>
+                            <input type="text" class="form-input" id="f_npwp" placeholder="contoh: 01.234.567.8-012.000">
+                        </div>
                     </div>
                 </div>
 
@@ -767,18 +824,31 @@ body { background:var(--bg-dark); color:var(--text-white); min-height:100vh; ove
                         </button>
                     </div>
                     <div class="totals-row">
-                        <div class="totals-box">
+                        <div class="totals-box" style="width:360px;">
                             <div class="totals-line"><span class="tl-label">Sub Total</span><span class="tl-val" id="tSubtotal">Rp 0</span></div>
-                            <div class="totals-line">
+                            <div class="totals-line" style="margin-top:6px;">
                                 <span class="tl-label">PPN (%)</span>
-                                <input type="number" id="ppnInput" class="form-input" style="width:80px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="11" step="0.5" oninput="recalcTotals()">
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <input type="number" id="ppnInput" class="form-input" style="width:70px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="11" step="0.5" oninput="recalcTotals()">
+                                    <select id="ppnBearer" class="form-input" style="width:145px;padding:4px 6px;font-size:0.75rem;" onchange="recalcTotals()">
+                                        <option value="client">+ Ditanggung Klien</option>
+                                        <option value="hvm">- Ditanggung HVM</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="totals-line"><span class="tl-label">Nilai PPN</span><span class="tl-val" id="tPPN">Rp 0</span></div>
-                            <div class="totals-line">
+                            
+                            <div class="totals-line" style="margin-top:8px;">
                                 <span class="tl-label">PPh (%)</span>
-                                <input type="number" id="pphInput" class="form-input" style="width:80px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="0" step="0.5" oninput="recalcTotals()">
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <input type="number" id="pphInput" class="form-input" style="width:70px;padding:4px 8px;font-size:0.8rem;text-align:right;" min="0" max="100" value="0" step="0.5" oninput="recalcTotals()">
+                                    <select id="pphBearer" class="form-input" style="width:145px;padding:4px 6px;font-size:0.75rem;" onchange="recalcTotals()">
+                                        <option value="hvm">- Ditanggung HVM</option>
+                                        <option value="client">+ Ditanggung Klien</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="totals-line"><span class="tl-label">Nilai PPh</span><span class="tl-val" id="tPPh" style="color:var(--neon-red);">- Rp 0</span></div>
+                            <div class="totals-line"><span class="tl-label">Nilai PPh</span><span class="tl-val" id="tPPh">Rp 0</span></div>
                             <hr class="totals-divider">
                             <div class="totals-grand">
                                 <span class="tg-label">TOTAL</span>
@@ -1159,9 +1229,9 @@ function loadInvoices() {
     const fd = new FormData(); fd.append('inv_ajax', 'get_all');
     fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
         invoices = data.map(i => ({
-            id: i.id, no: i.inv_no, client: i.client_name, refType: i.client_ref_type, refId: i.client_ref_id,
+            id: i.id, no: i.inv_no, client: i.client_name, npwp: i.npwp||'', refType: i.client_ref_type, refId: i.client_ref_id,
             service: i.service_label, date: i.inv_date, dueDate: i.due_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn||0),
-            pph: parseFloat(i.pph||0), total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
+            ppnBearer: i.ppn_bearer||'client', pph: parseFloat(i.pph||0), pphBearer: i.pph_bearer||'hvm', total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
             payType: i.pay_type, dp1Pct: parseFloat(i.dp1_pct), sigName: i.sig_name, sigRole: i.sig_role,
             contact: i.contact, email: i.email, note: i.note, items: i.items
         }));
@@ -1285,15 +1355,35 @@ function recalcTotals(){
             row.querySelector('.item-total').innerText = fmtRp(t);
             sub += t;
         });
+
+        const ppnBearer = document.getElementById('ppnBearer')?.value || 'client';
+        const pphBearer = document.getElementById('pphBearer')?.value || 'hvm';
+
         const ppnPct = parseFloat(document.getElementById('ppnInput').value)||0;
         const pphPct = parseFloat(document.getElementById('pphInput').value)||0;
         const ppnVal = sub * (ppnPct/100);
         const pphVal = sub * (pphPct/100);
-        const total = sub + ppnVal - pphVal;
+
+        let total = sub;
+        if(ppnPct > 0) {
+            if(ppnBearer === 'client') total += ppnVal;
+            else if(ppnBearer === 'hvm') total -= ppnVal;
+        }
+        if(pphPct > 0) {
+            if(pphBearer === 'client') total += pphVal;
+            else if(pphBearer === 'hvm') total -= pphVal;
+        }
         
         document.getElementById('tSubtotal').innerText = fmtRp(sub);
-        document.getElementById('tPPN').innerText = fmtRp(ppnVal);
-        document.getElementById('tPPh').innerText = '- ' + fmtRp(pphVal);
+        
+        const ppnElem = document.getElementById('tPPN');
+        ppnElem.innerText = (ppnBearer === 'client' ? '+ ' : '- ') + fmtRp(ppnVal);
+        ppnElem.style.color = ppnBearer === 'client' ? '#a1ff5a' : '#ff8888';
+
+        const pphElem = document.getElementById('tPPh');
+        pphElem.innerText = (pphBearer === 'client' ? '+ ' : '- ') + fmtRp(pphVal);
+        pphElem.style.color = pphBearer === 'client' ? '#a1ff5a' : '#ff8888';
+
         document.getElementById('tTotal').innerText = fmtRp(total);
         recalcDP();
     });
@@ -1367,10 +1457,12 @@ function openCreateModal(){
 function closeModal(){ document.getElementById('invModal').classList.remove('active'); }
 
 function resetForm(){
-    ['f_clientName','f_invNo','f_invDate','f_dueDate'].forEach(id=>document.getElementById(id).value='');
+    ['f_clientName','f_npwp','f_invNo','f_invDate','f_dueDate'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('itemsBody').innerHTML='';
     document.getElementById('ppnInput').value='11';
+    document.getElementById('ppnBearer').value='client';
     document.getElementById('pphInput').value='0';
+    document.getElementById('pphBearer').value='hvm';
     recalcTotals();
     document.getElementById('f_bankSelect').value='';
     document.getElementById('f_bank').value='';
@@ -1397,8 +1489,11 @@ function editInvoice(id){
     document.getElementById('f_invDate').value = inv.date || new Date().toISOString().split('T')[0];
     document.getElementById('f_dueDate').value = inv.dueDate || '';
     document.getElementById('f_clientName').value = inv.client;
+    document.getElementById('f_npwp').value = inv.npwp || '';
     document.getElementById('ppnInput').value = inv.ppn;
+    document.getElementById('ppnBearer').value = inv.ppnBearer || 'client';
     document.getElementById('pphInput').value = inv.pph || 0;
+    document.getElementById('pphBearer').value = inv.pphBearer || 'hvm';
     
     // Auto-select bank if exists
     document.getElementById('f_bankSelect').value = '';
@@ -1438,6 +1533,7 @@ function editInvoice(id){
 function saveInvoice(){
     const no = document.getElementById('f_invNo').value.trim();
     const client = document.getElementById('f_clientName').value.trim();
+    const npwp = document.getElementById('f_npwp').value.trim();
     if(!no||!client){ showPopup('error','Isi No. Invoice dan Nama Klien terlebih dahulu.'); return; }
     const items = [];
     let sub = 0;
@@ -1449,10 +1545,23 @@ function saveInvoice(){
         items.push({name,subs,qty,price}); sub += qty*price;
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
+    const ppnBearer = document.getElementById('ppnBearer')?.value || 'client';
     const pph = parseFloat(document.getElementById('pphInput').value)||0;
+    const pphBearer = document.getElementById('pphBearer')?.value || 'hvm';
+    
     const ppnVal = sub*(ppn/100);
     const pphVal = sub*(pph/100);
-    const total = sub + ppnVal - pphVal;
+    
+    let total = sub;
+    if(ppn > 0) {
+        if(ppnBearer === 'client') total += ppnVal;
+        else if(ppnBearer === 'hvm') total -= ppnVal;
+    }
+    if(pph > 0) {
+        if(pphBearer === 'client') total += pphVal;
+        else if(pphBearer === 'hvm') total -= pphVal;
+    }
+
     const id = editingId || ('INV-'+String(Date.now()).slice(-6));
     
     const fd = new FormData();
@@ -1460,6 +1569,7 @@ function saveInvoice(){
     fd.append('id', id);
     fd.append('no', no);
     fd.append('client', client);
+    fd.append('npwp', npwp);
     fd.append('client_ref_type', document.getElementById('f_clientRefType').value);
     fd.append('client_ref_id', document.getElementById('f_clientRefId').value);
     fd.append('service', items[0]?.name || 'Layanan');
@@ -1467,7 +1577,9 @@ function saveInvoice(){
     fd.append('due_date', document.getElementById('f_dueDate').value || '');
     fd.append('subtotal', sub);
     fd.append('ppn', ppn);
+    fd.append('ppn_bearer', ppnBearer);
     fd.append('pph', pph);
+    fd.append('pph_bearer', pphBearer);
     fd.append('total', total);
     fd.append('status', document.getElementById('f_status').value);
     fd.append('bank', document.getElementById('f_bank').value);
@@ -1510,6 +1622,8 @@ function buildInvoiceHTML(inv) {
     const subtotal = parseFloat(inv.subtotal) || 0;
     const ppnPct = parseFloat(inv.ppn) || 0;
     const pphPct = parseFloat(inv.pph) || 0;
+    const ppnBearer = inv.ppnBearer || 'client';
+    const pphBearer = inv.pphBearer || 'hvm';
     const ppnVal = subtotal * (ppnPct / 100);
     const pphVal = subtotal * (pphPct / 100);
     
@@ -1557,6 +1671,7 @@ function buildInvoiceHTML(inv) {
                 <div>
                     <div class="dark-inv-party-label">Bill To</div>
                     <div class="dark-inv-party-name">${esc(inv.client)}</div>
+                    ${inv.npwp ? `<div class="dark-inv-party-info" style="margin-top:2px;">NPWP: ${esc(inv.npwp)}</div>` : ''}
                 </div>
                 <div style="text-align:right;">
                     <div class="dark-inv-party-label">Issued</div>
@@ -1577,8 +1692,8 @@ function buildInvoiceHTML(inv) {
             <div class="dark-inv-totals">
                 <div class="dark-inv-totals-box">
                     <div class="dark-inv-totals-line"><span>Subtotal</span><span>${fmtRp(subtotal)}</span></div>
-                    ${ppnPct > 0 ? `<div class="dark-inv-totals-line"><span>PPN (${ppnPct}%)</span><span>${fmtRp(ppnVal)}</span></div>` : ''}
-                    ${pphPct > 0 ? `<div class="dark-inv-totals-line" style="color:#ff8888;"><span>PPh (${pphPct}%)</span><span>- ${fmtRp(pphVal)}</span></div>` : ''}
+                    ${ppnPct > 0 ? `<div class="dark-inv-totals-line" style="color:${ppnBearer==='client'?'#a1ff5a':'#ff8888'};"><span>PPN (${ppnPct}%)</span><span>${ppnBearer==='client'?'+':'-'} ${fmtRp(ppnVal)}</span></div>` : ''}
+                    ${pphPct > 0 ? `<div class="dark-inv-totals-line" style="color:${pphBearer==='client'?'#a1ff5a':'#ff8888'};"><span>PPh (${pphPct}%)</span><span>${pphBearer==='client'?'+':'-'} ${fmtRp(pphVal)}</span></div>` : ''}
                     <hr class="dark-inv-totals-div">
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
                 </div>
@@ -1625,15 +1740,20 @@ function previewInvoice(doPrint){
     });
     const ppn = parseFloat(document.getElementById('ppnInput').value)||0;
     const pph = parseFloat(document.getElementById('pphInput').value)||0;
+    const ppnBearer = document.getElementById('ppnBearer')?.value || 'client';
+    const pphBearer = document.getElementById('pphBearer')?.value || 'hvm';
+    const npwp = document.getElementById('f_npwp')?.value || '';
     const ppnVal = sub*(ppn/100);
     const pphVal = sub*(pph/100);
-    const total = sub + ppnVal - pphVal;
+    let total = sub;
+    if(ppn > 0) { if(ppnBearer === 'client') total += ppnVal; else total -= ppnVal; }
+    if(pph > 0) { if(pphBearer === 'client') total += pphVal; else total -= pphVal; }
     
     const inv = { 
-        no, client, status, 
+        no, client, npwp, status, 
         date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
         dueDate: document.getElementById('f_dueDate').value||'',
-        subtotal: sub, ppn, pph, total,
+        subtotal: sub, ppn, ppnBearer, pph, pphBearer, total,
         bank: document.getElementById('f_bank').value, 
         rekening: document.getElementById('f_rekening').value,
         atasNama: document.getElementById('f_atasNama').value, 
