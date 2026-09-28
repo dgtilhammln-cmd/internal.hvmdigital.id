@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
 
@@ -995,7 +995,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         <span class="tp-stat-label">Gap ke Target</span>
                         <span class="tp-stat-val">
                             <?php echo (12 - $meetings_done) > 0 ? (12 - $meetings_done).' meet' : 'DONE!'; ?>
-                        </span>            <!-- ══ PLANNER / CALENDAR + PETA (TABBED) ══ -->
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- PLANNER / CALENDAR + PETA (TABBED) -->
             <div class="zenith-grid-layout">
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
 
