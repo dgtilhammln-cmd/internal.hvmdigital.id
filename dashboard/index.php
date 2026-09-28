@@ -1254,7 +1254,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                 <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
                             </div>
 
-                            <div id="galleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; padding-right:4px;"></div>
+                            <div id="galleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding-right:4px;"></div>
                         </div>
 
                     </div>
@@ -1513,7 +1513,13 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         </div>
     </div>
 
+    <!-- CALENDAR INTERACTIVE HOVER OVERVIEW TOOLTIP -->
+    <div id="calHoverTooltip" style="position:fixed; display:none; z-index:999999; background:rgba(12,12,14,0.96); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.18); border-radius:12px; padding:12px 14px; width:260px; box-shadow:0 15px 40px rgba(0,0,0,0.9); pointer-events:none; transition:opacity 0.15s ease, transform 0.15s ease; opacity:0; transform:scale(0.95); font-family:inherit;">
+    </div>
+
     <script>
+        function escHtml(s) { if(!s) return ''; const d=document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+
         // Clock
         function updateClock() {
             const now = new Date();
@@ -2213,6 +2219,102 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             _resizeDebounce = setTimeout(() => setSplitLayout(currentSplitMode), 250);
         });
 
+        // --- INTERACTIVE CALENDAR HOVER TOOLTIP LOGIC ---
+        document.addEventListener('mouseover', function(e) {
+            const cell = e.target.closest('.cal-day-cell');
+            if (cell) {
+                const dateNice = cell.getAttribute('data-date-nice');
+                const rawEv = cell.getAttribute('data-events');
+                const holiday = cell.getAttribute('data-holiday');
+                
+                let events = [];
+                if (rawEv) {
+                    try { events = JSON.parse(rawEv); } catch(err){}
+                }
+                
+                if (dateNice && (events.length > 0 || holiday)) {
+                    showCalTooltip(e, dateNice, events, holiday);
+                }
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            const cell = e.target.closest('.cal-day-cell');
+            if (cell) {
+                moveCalTooltip(e);
+            }
+        });
+
+        document.addEventListener('mouseout', function(e) {
+            const cell = e.target.closest('.cal-day-cell');
+            if (cell && (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.cal-day-cell'))) {
+                hideCalTooltip();
+            }
+        });
+
+        function showCalTooltip(e, dateNice, events, holiday) {
+            const tip = document.getElementById('calHoverTooltip');
+            if (!tip) return;
+            
+            let evHtml = '';
+            if (events && events.length > 0) {
+                events.forEach(ev => {
+                    const timeStr = ev.time_start ? ev.time_start.substring(0,5) : '00:00';
+                    evHtml += `
+                        <div style="margin-bottom:6px; background:rgba(255,255,255,0.04); border-left:3px solid #ffffff; padding:6px 8px; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; color:#888; margin-bottom:2px;">
+                                <span style="font-weight:700; color:#fff;"><i class="far fa-clock" style="margin-right:3px;"></i>${escHtml(timeStr)}</span>
+                                <span style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px; font-size:0.6rem; color:#ccc; font-weight:700;">${escHtml(ev.meeting_type || 'Meeting')}</span>
+                            </div>
+                            <div style="font-size:0.78rem; font-weight:800; color:#fff; line-height:1.25;" class="sensor-blur">${escHtml(ev.title || ev.target_name || 'Meeting')}</div>
+                            ${ev.target_name ? `<div style="font-size:0.7rem; color:#aaa; margin-top:2px;" class="sensor-blur"><i class="fas fa-building" style="font-size:0.65rem; margin-right:3px;"></i>${escHtml(ev.target_name)}</div>` : ''}
+                            ${ev.location ? `<div style="font-size:0.68rem; color:#888; margin-top:1px;" class="sensor-blur"><i class="fas fa-map-marker-alt" style="font-size:0.65rem; margin-right:3px;"></i>${escHtml(ev.location)}</div>` : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            let holidayHtml = holiday ? `<div style="font-size:0.7rem; color:#ffffff; font-weight:700; margin-bottom:6px; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.2);"><i class="fas fa-star" style="margin-right:4px;"></i>${escHtml(holiday)}</div>` : '';
+
+            tip.innerHTML = `
+                <div style="font-size:0.75rem; font-weight:800; color:#fff; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="far fa-calendar-alt" style="margin-right:5px; color:#ffffff;"></i>${escHtml(dateNice)}</span>
+                    <span style="font-size:0.65rem; color:#888; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${events ? events.length : 0} Meeting</span>
+                </div>
+                ${holidayHtml}
+                ${evHtml}
+                <div style="font-size:0.62rem; color:#666; margin-top:6px; text-align:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:4px;">💡 Klik tanggal untuk melihat / menambah detail</div>
+            `;
+
+            tip.style.display = 'block';
+            requestAnimationFrame(() => {
+                tip.style.opacity = '1';
+                tip.style.transform = 'scale(1)';
+            });
+            moveCalTooltip(e);
+        }
+
+        function moveCalTooltip(e) {
+            const tip = document.getElementById('calHoverTooltip');
+            if (!tip || tip.style.display === 'none') return;
+            let x = e.clientX + 14;
+            let y = e.clientY + 14;
+            if (x + 270 > window.innerWidth) x = e.clientX - 275;
+            if (y + tip.offsetHeight > window.innerHeight) y = e.clientY - tip.offsetHeight - 10;
+            tip.style.left = x + 'px';
+            tip.style.top = y + 'px';
+        }
+
+        function hideCalTooltip() {
+            const tip = document.getElementById('calHoverTooltip');
+            if (!tip) return;
+            tip.style.opacity = '0';
+            tip.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                if (tip.style.opacity === '0') tip.style.display = 'none';
+            }, 150);
+        }
+
         function openPhotoLightbox(url) {
             const img = document.getElementById('lightboxImg');
             const modal = document.getElementById('lightboxModal');
@@ -2238,33 +2340,34 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             fd.append('is_gallery', '1');
             
             try {
-                const meetings = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
-                if(!meetings || meetings.length === 0) {
+                const res = await fetch('', { method: 'POST', body: fd });
+                const meetings = await res.json();
+                if(!meetings || !Array.isArray(meetings) || meetings.length === 0) {
                     grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data dokumentasi meeting.</div>';
                     return;
                 }
                 
                 let html = '';
-                meetings.slice().reverse().forEach((m, idx) => {
+                meetings.slice().reverse().forEach((m) => {
                     const dateNice = m.event_date ? new Date(m.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+                    const timeNice = m.time_start ? m.time_start.substring(0, 5) : '';
                     let photosArr = [];
                     try { photosArr = m.photos ? (typeof m.photos === 'string' ? JSON.parse(m.photos) : m.photos) : []; } catch(e){}
                     
                     let photoBanner = '';
                     if(photosArr && photosArr.length > 0) {
                         photoBanner = `
-                            <div style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:10px 10px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                            <div style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:10px 10px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 <div style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); padding:2px 7px; border-radius:6px; font-size:0.65rem; color:#fff; display:flex; align-items:center; gap:4px; font-weight:700;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
                             </div>
                         `;
                     } else {
                         photoBanner = `
-                            <div style="width:100%; padding:8px 10px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                <div style="font-size:0.72rem; color:#777; display:flex; align-items:center; gap:5px;">
-                                    <i class="fas fa-camera" style="color:#555;"></i> Belum ada foto
-                                </div>
-                                <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:3px 8px; border-radius:6px; font-size:0.65rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-upload"></i> + Upload</button>
+                            <div style="position:relative; width:100%; aspect-ratio:1/1; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); border-radius:10px 10px 0 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:12px; text-align:center;">
+                                <i class="fas fa-camera" style="font-size:1.8rem; color:rgba(255,255,255,0.15);"></i>
+                                <span style="font-size:0.68rem; color:#666;">Belum ada foto</span>
+                                <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 10px; border-radius:6px; font-size:0.68rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-upload"></i> + Upload Foto</button>
                             </div>
                         `;
                     }
@@ -2275,20 +2378,20 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     html += `
                         <div style="background:rgba(18,18,18,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; transition:all 0.2s ease;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
                             ${photoBanner}
-                            <div style="padding:10px 12px; flex:1; display:flex; flex-direction:column;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:4px;">
-                                    <span style="font-size:0.65rem; color:#888; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${escHtml(m.meeting_type || 'MEETING')}</span>
-                                    <span style="font-size:0.68rem; color:#888; white-space:nowrap;"><i class="far fa-calendar-alt" style="margin-right:3px;"></i>${dateNice}</span>
+                            <div style="padding:10px; flex:1; display:flex; flex-direction:column; gap:4px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                                    <span style="font-size:0.6rem; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${escHtml(m.meeting_type || 'MEETING')}</span>
+                                    <span style="font-size:0.65rem; color:#888; white-space:nowrap;"><i class="far fa-calendar-alt" style="margin-right:3px;"></i>${dateNice} ${timeNice ? '• '+timeNice : ''}</span>
                                 </div>
-                                <div style="font-size:0.85rem; font-weight:800; color:#fff; margin-bottom:3px; line-height:1.25;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
-                                ${m.target_name ? `<div style="font-size:0.72rem; color:#bbb; font-weight:600; margin-bottom:4px;"><i class="fas fa-building" style="margin-right:4px; color:#888;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
-                                ${m.location ? `<div style="font-size:0.7rem; color:#888; margin-bottom:6px; line-height:1.2;"><i class="fas fa-map-marker-alt" style="color:#888; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
-                                ${m.log_hasil ? `<div style="font-size:0.7rem; color:#aaa; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); margin-bottom:8px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
+                                <div style="font-size:0.82rem; font-weight:800; color:#fff; line-height:1.2; margin-top:2px;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
+                                ${m.target_name ? `<div style="font-size:0.7rem; color:#bbb; font-weight:600;"><i class="fas fa-building" style="margin-right:4px; color:#888;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
+                                ${m.location ? `<div style="font-size:0.68rem; color:#888; line-height:1.2;"><i class="fas fa-map-marker-alt" style="color:#888; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
+                                ${m.log_hasil ? `<div style="font-size:0.68rem; color:#aaa; background:rgba(255,255,255,0.02); padding:5px 7px; border-radius:5px; border:1px solid rgba(255,255,255,0.04); margin-top:2px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
                                 
                                 <div style="margin-top:auto; display:flex; gap:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
-                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:5px 6px; border-radius:6px; font-size:0.68rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:5px 8px; border-radius:6px; font-size:0.68rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
-                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:5px 8px; border-radius:6px; font-size:0.68rem; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i></button>
+                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:5px 4px; border-radius:6px; font-size:0.65rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:5px 6px; border-radius:6px; font-size:0.65rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
+                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:5px 6px; border-radius:6px; font-size:0.65rem; cursor:pointer; font-family:inherit;" title="Edit Meeting / Upload Foto"><i class="fas fa-edit"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -2297,7 +2400,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                 grid.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat dokumentasi meeting.</div>';
+                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat dokumentasi meeting: '+e.message+'</div>';
             }
         }
 

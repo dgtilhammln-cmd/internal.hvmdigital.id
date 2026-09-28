@@ -135,15 +135,11 @@ if($mode == 'month') {
         $isHoliday = isset($holidays[$currentDate]) ? 'is-holiday' : '';
         $holidayDot = isset($holidays[$currentDate]) ? "<span style='font-size:0.55rem; color:#aaaaaa;' title='".htmlspecialchars($holidays[$currentDate], ENT_QUOTES)."'><i class='fas fa-star'></i></span>" : "";
 
-        // Cell Click Handler
-        if($hasEvents) {
-            $jsonEv = htmlspecialchars(json_encode(array_values($events[$currentDate])), ENT_QUOTES, 'UTF-8');
-            $clickAttr = "onclick=\"handleDayClick('$currentDate', $jsonEv)\"";
-        } else {
-            $clickAttr = "onclick=\"openEventModal('$currentDate')\"";
-        }
+        $dateNice = date('j M Y', strtotime($currentDate));
+        $jsonEvAttr = $hasEvents ? htmlspecialchars(json_encode(array_values($events[$currentDate])), ENT_QUOTES, 'UTF-8') : '';
+        $clickAttr = $hasEvents ? "onclick=\"handleDayClick('$currentDate', $jsonEvAttr)\"" : "onclick=\"openEventModal('$currentDate')\"";
 
-        echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' $clickAttr title='{$d} " . date('F Y', $timestamp) . ($hasEvents ? " - {$eventCount} meeting" : "") . "'>
+        echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' data-date-nice='$dateNice' data-events='$jsonEvAttr' data-holiday='$holidayName' $clickAttr>
                 <div style='display:flex; justify-content:space-between; align-items:center; width:100%;'>
                     <div class='cal-day-num'>$d</div>
                     $holidayDot
