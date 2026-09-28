@@ -1060,9 +1060,9 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                             </button>
                         </div>
                     </div>
-                    <!-- 16:9 Landscape Aspect Ratio Box -->
-                    <div style="position: relative; width: 100%; padding-top: 56.25%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
-                        <div id="meetingMap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0c0c0c; z-index: 1;"></div>
+                    <!-- Map Box — tinggi disesuaikan sama card kalender -->
+                    <div style="position: relative; width: 100%; height: 450px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                        <div id="meetingMap" style="width: 100%; height: 100%; background: #0c0c0c; z-index: 1;"></div>
                     </div>
                 </div>
             </div>
@@ -1688,11 +1688,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             // Center default: Surabaya (-7.2575, 112.7521)
             _leafletMap = L.map('meetingMap', { zoomControl: true }).setView([-7.2575, 112.7521], 12);
             
-            // CartoDB Dark Matter Tile Layer (Dark Mode)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
+            // Stadia Maps Alidade Smooth Dark — Free, no API key, truly dark
+            L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 20
             }).addTo(_leafletMap);
 
             _mapMarkersLayer = L.layerGroup().addTo(_leafletMap);
