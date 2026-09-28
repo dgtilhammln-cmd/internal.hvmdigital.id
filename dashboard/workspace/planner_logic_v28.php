@@ -99,7 +99,7 @@ if($mode == 'month') {
     echo '<div class="cal-grid-month">';
     
     // Header Hari (INDONESIA)
-    $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $days = ['MNG', 'SEN', 'SLS', 'RBU', 'KMS', 'JMT', 'SBT'];
     foreach($days as $day) echo "<div class='cal-day-header'>$day</div>";
 
     $firstDayIndex = date('w', strtotime("$year-$month-01"));

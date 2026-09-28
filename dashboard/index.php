@@ -45,9 +45,10 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         echo json_encode($rows); exit;
     }
 
-    // Get meetings for interactive map
+    // Get meetings for interactive map & gallery
     if($act === 'get_map_meetings') {
         $period = $_POST['period'] ?? 'month';
+        $is_gallery = ($_POST['is_gallery'] ?? '0') === '1';
         $where = "1=1";
         if($period === '7d') {
             $startDate = date('Y-m-d', strtotime('-7 days'));
@@ -71,8 +72,10 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         $chk_ph = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'photos'");
         if(mysqli_num_rows($chk_ph) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `photos` TEXT DEFAULT NULL");
 
+        $loc_condition = $is_gallery ? "" : "AND (location IS NOT NULL AND TRIM(location) != '')";
+
         $rows = [];
-        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, coords_raw, event_date, time_start, meeting_type, meeting_mode, log_hasil, photos FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
+        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, coords_raw, event_date, time_start, meeting_type, meeting_mode, log_hasil, photos FROM events WHERE $where $loc_condition ORDER BY event_date DESC, time_start DESC");
         if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
         echo json_encode($rows); exit;
     }
@@ -142,7 +145,29 @@ if(isset($_POST['save_event'])){
     if($meet_type && $target_name) $title = "Meeting $meet_type $target_name";
     $desc = "[$meet_mode] $title";
     if($location) $desc .= " | Lokasi: $location";
-    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, lat, lng, coords_raw, teams_involved) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', $lat, $lng, '$coords_esc', '$teams_str')");
+
+    // Handle photo uploads for both Online and Offline meetings
+    $photos_sql = "NULL";
+    if(!empty($_FILES['event_photos']['name'][0])) {
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/visits/';
+        if(!is_dir($upload_dir)) @mkdir($upload_dir, 0755, true);
+        $new_photos = [];
+        foreach($_FILES['event_photos']['tmp_name'] as $idx => $tmpName) {
+            if(!empty($tmpName) && is_uploaded_file($tmpName)) {
+                $ext = strtolower(pathinfo($_FILES['event_photos']['name'][$idx], PATHINFO_EXTENSION));
+                $fname = 'visit_' . time() . '_' . $idx . ($ext === 'webp' ? '.webp' : '.jpg');
+                $targetFile = $upload_dir . $fname;
+                if(move_uploaded_file($tmpName, $targetFile)) {
+                    $new_photos[] = '/uploads/visits/' . $fname;
+                }
+            }
+        }
+        if(!empty($new_photos)) {
+            $photos_sql = "'" . mysqli_real_escape_string($conn, json_encode(array_values($new_photos))) . "'";
+        }
+    }
+
+    mysqli_query($conn, "INSERT INTO events (title, detail, event_date, time_start, color, meeting_type, meeting_mode, target_type, target_name, target_id, location, lat, lng, coords_raw, teams_involved, photos) VALUES ('$title', '$desc', '$date', '$start', '$color', '$meet_type', '$meet_mode', '$target_type', '$target_name', '$target_id', '$location', $lat, $lng, '$coords_esc', '$teams_str', $photos_sql)");
     header("Location: /dashboard/"); exit;
 }
 
@@ -692,13 +717,14 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         .mode-switch-v30 { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 15px; display: flex; }
         .mode-switch-v30 button { background: none; border: none; color: #888; padding: 8px 15px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
         .mode-switch-v30 button.active { background: #fff; color: #000; }
-        .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 0px; border: 1px solid var(--card-border); position: relative; max-height: none; }
+        .planner-viewport { flex: 1; overflow: hidden; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 8px; border: 1px solid var(--card-border); position: relative; display: flex; flex-direction: column; }
+        .planner-viewport > * { flex: 1; min-height: 0; }
         .add-event-fab { position: absolute; bottom: 15px; right: 15px; width: 45px; height: 45px; border-radius: 50%; background: #ffffff; color: #000; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(255,255,255,0.25); transition: 0.3s; z-index: 10; border: none; }
         .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 25px rgba(255,255,255,0.4); }
         /* --- CALENDAR GRIDS --- */
-        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; }
-        .cal-day-header { text-align: center; font-weight: 700; color: #888; margin-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .cal-day-cell { min-height: 72px; box-sizing: border-box; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); padding: 8px 10px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; box-sizing: border-box; }
+        .cal-day-header { text-align: center; font-weight: 800; color: #666; margin-bottom: 4px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 0; white-space: nowrap; overflow: hidden; }
+        .cal-day-cell { min-height: 60px; box-sizing: border-box; background: rgba(255,255,255,0.03); border-radius: 7px; border: 1px solid rgba(255,255,255,0.07); padding: 5px 6px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
         .cal-day-cell:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); }
         .cal-day-num { font-weight: 800; font-size: 0.85rem; color: #888; margin-bottom: 0; }
         .cal-day-cell.is-sunday .cal-day-num { color: #888; }
@@ -1353,7 +1379,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             .target-type-btn.active { background:rgba(161,255,90,0.1);border-color:rgba(161,255,90,0.3);color:#a1ff5a; }
             </style>
 
-            <form method="POST" id="eventForm">
+            <form method="POST" id="eventForm" enctype="multipart/form-data">
                 <input type="hidden" name="save_event" value="1">
 
                 <div class="form-group" style="margin-bottom:14px;">
@@ -1450,6 +1476,11 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         </label>
                         <?php endwhile; ?>
                     </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;"><i class="fas fa-camera" style="margin-right:4px; color:#a1ff5a;"></i>Foto Dokumentasi Meeting (Online & Offline)</label>
+                    <input type="file" name="event_photos[]" accept="image/*" multiple class="form-input" style="background:#111; padding:6px; font-size:0.8rem; color:#ccc;">
                 </div>
 
                 <div id="d-title-preview" style="display:none;background:rgba(161,255,90,0.06);border:1px solid rgba(161,255,90,0.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.85rem;color:#a1ff5a;"></div>

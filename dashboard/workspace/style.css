@@ -105,8 +105,8 @@ body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; widt
 .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 50px var(--neon); }
 
 /* --- CALENDAR GRIDS --- */
-.cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; min-width: 800px; }
-.cal-day-header { text-align: center; font-weight: 700; color: #666; margin-bottom: 10px; font-size: 0.8rem; }
+.cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; box-sizing: border-box; }
+.cal-day-header { text-align: center; font-weight: 700; color: #666; margin-bottom: 8px; font-size: 0.68rem; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
 .cal-day-cell { min-height: 120px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border); padding: 10px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 5px; }
 .cal-day-cell:hover { background: rgba(255,255,255,0.05); border-color: var(--neon); }
 .cal-day-num { font-weight: 800; font-size: 1rem; color: #aaa; margin-bottom: 5px; }
@@ -408,9 +408,9 @@ body { background: var(--bg); color: #fff; overflow: hidden; height: 100vh; widt
     .collaborator-stack { display: none; } 
 
     .zenith-main-deck { padding: 15px; margin-left: 0; width: 100%; padding-bottom: 120px; height: auto; overflow: visible; display: block; }
-    .cal-grid-month { grid-template-columns: repeat(7, 1fr); font-size: 0.6rem; min-width: 600px; }
-    .cal-day-cell { min-height: 60px; padding: 5px; }
-    .planner-viewport { overflow-x: auto; min-height: 400px; }
+    .cal-grid-month { grid-template-columns: repeat(7, 1fr); font-size: 0.6rem; width: 100%; box-sizing: border-box; }
+    .cal-day-cell { min-height: 50px; padding: 4px; }
+    .planner-viewport { overflow: hidden; min-height: 320px; }
     .keep-input-card { width: 100%; }
     .panel-header-v30 { flex-direction: column; align-items: flex-start; gap: 15px; }
     .mode-switch-v30 { width: 100%; justify-content: space-between; }
