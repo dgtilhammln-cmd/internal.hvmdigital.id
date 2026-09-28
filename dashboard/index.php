@@ -682,59 +682,55 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         .ph-nav-group { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
         .btn-today-v30 { background: #fff; color: #000; padding: 8px 20px; border-radius: 50px; font-weight: 800; font-size: 0.7rem; cursor: pointer; border: none; }
         .nav-arrow-v30 { width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--card-border); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .nav-arrow-v30:hover { background: var(--neon-main); color: #000; }
+        .nav-arrow-v30:hover { background: #ffffff; color: #000; }
         .arrow-nav-v30 { display: flex; gap: 10px; }
         .mode-switch-v30 { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 15px; display: flex; }
         .mode-switch-v30 button { background: none; border: none; color: #888; padding: 8px 15px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
         .mode-switch-v30 button.active { background: #fff; color: #000; }
         .planner-viewport { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 0px; border: 1px solid var(--card-border); position: relative; max-height: none; }
-        .add-event-fab { position: absolute; bottom: 15px; right: 15px; width: 45px; height: 45px; border-radius: 50%; background: var(--neon-main); color: #000; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 20px var(--neon-main); transition: 0.3s; z-index: 10; border: none; }
-        .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 40px var(--neon-main); }
+        .add-event-fab { position: absolute; bottom: 15px; right: 15px; width: 45px; height: 45px; border-radius: 50%; background: #ffffff; color: #000; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(255,255,255,0.25); transition: 0.3s; z-index: 10; border: none; }
+        .add-event-fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 25px rgba(255,255,255,0.4); }
         /* --- CALENDAR GRIDS --- */
-        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; min-width: 600px; }
-        .cal-day-header { text-align: center; font-weight: 700; color: #666; margin-bottom: 5px; font-size: 0.75rem; }
-        .cal-day-cell { min-height: 75px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--card-border); padding: 6px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 3px; }
-        .cal-day-cell:hover { background: rgba(255,255,255,0.05); border-color: var(--neon-main); }
-        .cal-day-num { font-weight: 800; font-size: 1rem; color: #aaa; margin-bottom: 5px; }
-        .cal-day-cell.is-sunday .cal-day-num { color: var(--neon-red); }
-        .cal-day-cell.is-today { background: rgba(161, 255, 90, 0.05); border-color: var(--neon-main); }
-        .cal-day-cell.is-today .cal-day-num { color: var(--neon-main); }
-        .cal-event { font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--neon-sec); color: #000; font-weight: 700; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.3); transition: 0.2s; }
-        .cal-event:hover { transform: scale(1.05); z-index: 5; }
-        .cal-event.blue { background: #4efdc4; }
-        .cal-event.purple { background: #a55eea; color: #fff; }
-        .cal-event.green { background: #a1ff5a; color: #000; }
-        .cal-event.red { background: #ff5a5a; color: #fff; }
+        .cal-grid-month, .cal-grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 100%; }
+        .cal-day-header { text-align: center; font-weight: 700; color: #888; margin-bottom: 5px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cal-day-cell { height: 56px; max-height: 56px; box-sizing: border-box; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); padding: 6px 8px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .cal-day-cell:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); }
+        .cal-day-num { font-weight: 800; font-size: 0.85rem; color: #888; margin-bottom: 0; }
+        .cal-day-cell.is-sunday .cal-day-num { color: #888; }
+        .cal-day-cell.is-today { background: rgba(255, 255, 255, 0.12); border-color: #ffffff; }
+        .cal-day-cell.is-today .cal-day-num { color: #ffffff; font-weight: 900; }
+        .cal-event { font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(255,255,255,0.1); color: #fff; font-weight: 700; cursor: pointer; border-left: 3px solid #ffffff; transition: 0.2s; }
+        .cal-event:hover { transform: scale(1.03); z-index: 5; background: rgba(255,255,255,0.2); }
         /* Week columns: same proportional height as month */
         .cal-week-col { background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--card-border); min-height: 350px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; }
-        .cal-week-col:hover { background: rgba(255,255,255,0.05); border-color: var(--neon-main); }
-        .cal-week-col .cal-week-header.today { background: rgba(161,255,90,0.1) !important; }
+        .cal-week-col:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.3); }
+        .cal-week-col .cal-week-header.today { background: rgba(255,255,255,0.12) !important; }
         /* Day view: same card height */
         .cal-grid-day { display: flex; flex-direction: column; gap: 10px; min-height: 350px; padding: 20px; }
         .cal-hour-row { display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--card-border); align-items: center; }
-        .cal-time { width: 60px; font-weight: 700; color: var(--neon-main); }
+        .cal-time { width: 60px; font-weight: 700; color: #ffffff; }
         .cal-task-area { flex: 1; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; }
         /* MODALS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
-        .modal-content { background: #0c0c0e; border: 1px solid rgba(255,255,255,0.07); width: 500px; max-width: 95%; padding: 30px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-content { background: #0c0c0e; border: 1px solid rgba(255,255,255,0.1); width: 500px; max-width: 95%; padding: 30px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); max-height: 90vh; overflow-y: auto; position: relative; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 0.8rem; }
         .form-input { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: #fff; border-radius: 8px; outline: none; font-size: 0.9rem; }
         .modal-top-actions { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; }
         .btn-close-x { background: none; border: none; color: #555; font-size: 1.5rem; cursor: pointer; transition: 0.3s; }
         .btn-close-x:hover { color: #fff; }
-        .btn-save-center { width: 60px; height: 60px; border-radius: 50%; background: var(--grad-main); color: #000; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; margin: 20px auto 0 auto; box-shadow: 0 0 20px var(--neon-main); transition: 0.3s; }
-        .btn-save-center:hover { transform: scale(1.1); box-shadow: 0 0 40px var(--neon-main); }
+        .btn-save-center { width: 60px; height: 60px; border-radius: 50%; background: #ffffff; color: #000; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; margin: 20px auto 0 auto; box-shadow: 0 0 20px rgba(255,255,255,0.3); transition: 0.3s; }
+        .btn-save-center:hover { transform: scale(1.1); box-shadow: 0 0 35px rgba(255,255,255,0.5); }
         .detail-row { margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
         .detail-label { font-size: 0.65rem; color: #777; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 6px; font-weight: 700; }
         .detail-val { font-size: 1rem; color: #eaeaea; font-weight: 600; line-height: 1.4; }
         .detail-desc { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
         /* --- LEAFLET DARK MAP STYLES --- */
         .leaflet-container { background: #0b0b0d !important; font-family: 'Montserrat', sans-serif !important; }
-        .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
-        .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(161,255,90,0.3) !important; }
-        .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #a1ff5a; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #fff; box-shadow: 0 0 15px rgba(161,255,90,0.6); }
+        .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
+        .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+        .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #ffffff; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #333; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
 
         /* ══ SPLIT LAYOUT SYSTEM ══ */
         .split-layout-bar {
@@ -754,8 +750,8 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
         }
         .split-layout-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.06); }
         .split-layout-btn.active {
-            background: var(--neon-main); color: #000;
-            box-shadow: 0 0 12px rgba(161,255,90,0.4);
+            background: #ffffff; color: #000;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
         }
         /* SVG grid icons for split buttons */
         .split-icon { display: flex; gap: 1.5px; align-items: center; }
@@ -1636,6 +1632,64 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             }
         }
 
+        function handleDayClick(dateStr, events) {
+            if(!events || !Array.isArray(events) || events.length === 0) {
+                openEventModal(dateStr);
+                return;
+            }
+            if(events.length === 1) {
+                const ev = events[0];
+                showEventDetail(ev.title || 'Meeting', dateStr, ev.time_start || '', ev.detail || '', 'white', ev.id || 0);
+                return;
+            }
+            showDayEventsList(dateStr, events);
+        }
+
+        function showDayEventsList(dateStr, events) {
+            const container = document.getElementById('detailContent');
+            const footer    = document.getElementById('detailFooter');
+            const dateObj   = new Date(dateStr + 'T00:00:00');
+            const dateNice  = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+            let itemsHtml = '';
+            events.forEach(ev => {
+                const title = escHtml(ev.title || 'Meeting');
+                const time = ev.time_start ? ev.time_start : 'Seharian';
+                const evId = ev.id || 0;
+                const safeTitle = (ev.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeDesc = (ev.detail || '').replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+                itemsHtml += `
+                    <div onclick="showEventDetail('${safeTitle}', '${dateStr}', '${ev.time_start||''}', '${safeDesc}', 'white', ${evId})" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; margin-bottom:8px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.9rem; font-weight:800; color:#fff;">${title}</span>
+                            <span style="font-size:0.72rem; color:#aaa; font-weight:600;"><i class="far fa-clock" style="margin-right:4px;"></i>${time}</span>
+                        </div>
+                        ${ev.detail ? `<div style="font-size:0.78rem; color:#888; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(ev.detail)}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = `
+                <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.65rem; color:#888; text-transform:uppercase; letter-spacing:1.5px; font-weight:700;">MEETING TANGGAL</div>
+                        <div style="font-size:1.1rem; color:#fff; font-weight:800;">${dateNice}</div>
+                    </div>
+                    <button onclick="openEventModal('${dateStr}')" style="background:#ffffff; color:#000; border:none; padding:6px 14px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer;"><i class="fas fa-plus"></i> Tambah</button>
+                </div>
+                <div style="max-height:350px; overflow-y:auto;">
+                    ${itemsHtml}
+                </div>
+            `;
+
+            footer.innerHTML = `
+                <button onclick="openEventModal('${dateStr}')" style="background:#ffffff; border:none; color:#000; border-radius:10px; padding:8px 20px; font-family:inherit; font-size:0.82rem; font-weight:800; cursor:pointer;"><i class="fas fa-plus"></i> + Tambah Meeting Baru</button>
+            `;
+
+            document.getElementById('detailModal').classList.add('active');
+        }
+
         function showEventDetail(title, date, time, desc, color, eventId = 0) {
             const container = document.getElementById('detailContent');
             const footer    = document.getElementById('detailFooter');
@@ -1654,13 +1708,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 </div>
                 <div style="margin-bottom:16px;">
                     <div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:5px;">DETAIL LOG</div>
-                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${desc.replace(/(^|\n)\*\s+([^\n]+)/g, '$1<div style="display:flex; margin-bottom:4px;"><span style="color:var(--neon-main);margin-right:8px;">&bull;</span><span style="color:#e0e0e0;">$2</span></div>')}</div>
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:10px;color:#aaa;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${desc.replace(/(^|\n)\*\s+([^\n]+)/g, '$1<div style="display:flex; margin-bottom:4px;"><span style="color:#ffffff;margin-right:8px;">&bull;</span><span style="color:#e0e0e0;">$2</span></div>')}</div>
                 </div>
                 <div id="extraEventDetail" style="color:#888;font-size:0.8rem;">Memuat detail...</div>
             `;
             footer.innerHTML = `
-                <button onclick="deleteEvent(${eventId})" style="background:rgba(255,90,90,0.1);border:1px solid rgba(255,90,90,0.3);color:#ff5a5a;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;"><i class="fas fa-trash"></i> Hapus</button>
-                <button onclick="openEditEvent(${eventId})" style="background:linear-gradient(135deg,#a1ff5a,#4efdc4);border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-edit"></i> Edit Meeting</button>
+                <button onclick="deleteEvent(${eventId})" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#888;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:0.82rem;cursor:pointer;"><i class="fas fa-trash"></i> Hapus</button>
+                <button onclick="openEditEvent(${eventId})" style="background:#ffffff;border:none;color:#000;border-radius:10px;padding:8px 20px;font-family:inherit;font-size:0.82rem;font-weight:800;cursor:pointer;"><i class="fas fa-edit"></i> Edit Meeting</button>
             `;
             document.getElementById('detailModal').classList.add('active');
 
@@ -1672,10 +1726,10 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         const ev = res.event;
                         if(!ev) return;
                         let extra = '';
-                        if(ev.meeting_type) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">JENIS & MODE</span><div style="margin-top:4px;">${ev.meeting_type} &bull; <span style="color:#4efdc4;">${ev.meeting_mode}</span></div></div>`;
+                        if(ev.meeting_type) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">JENIS & MODE</span><div style="margin-top:4px;">${ev.meeting_type} &bull; <span style="color:#ffffff;">${ev.meeting_mode}</span></div></div>`;
                         if(ev.target_name) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">PERUSAHAAN</span><div style="margin-top:4px;color:#fff;font-weight:600;">${ev.target_type}: ${ev.target_name}</div></div>`;
-                        if(ev.location) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">LOKASI</span><div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location)}" target="_blank" style="color:#ff9f43;text-decoration:none;">${ev.location} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></a></div></div>`;
-                        if(ev.teams_involved) { const tms=ev.teams_involved.split(',').filter(t=>t.trim()); if(tms.length>0) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">TIM HADIR</span><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${tms.map(t=>`<span style="font-size:0.72rem;background:rgba(161,255,90,0.08);border:1px solid rgba(161,255,90,0.2);color:#a1ff5a;padding:2px 8px;border-radius:20px;">${t.trim()}</span>`).join('')}</div></div>`; }
+                        if(ev.location) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">LOKASI</span><div style="margin-top:4px;"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.location)}" target="_blank" style="color:#ffffff;text-decoration:underline;">${ev.location} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></a></div></div>`;
+                        if(ev.teams_involved) { const tms=ev.teams_involved.split(',').filter(t=>t.trim()); if(tms.length>0) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">TIM HADIR</span><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${tms.map(t=>`<span style="font-size:0.72rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#ffffff;padding:2px 8px;border-radius:20px;">${t.trim()}</span>`).join('')}</div></div>`; }
                         if(ev.log_hasil) extra += `<div style="margin-bottom:10px;"><span style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">LOG HASIL</span><div style="margin-top:4px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);padding:10px;border-radius:8px;color:#ccc;font-size:0.83rem;white-space:pre-wrap;">${ev.log_hasil}</div></div>`;
                         document.getElementById('extraEventDetail').innerHTML = extra || '';
                     }).catch(()=>{ document.getElementById('extraEventDetail').innerHTML = ''; });
@@ -2033,22 +2087,22 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             if (tab === 'map') {
                 panelMap.style.display  = 'block';
                 ctrlMap.style.display   = 'flex';
-                btnMap.style.background = neon;
-                btnMap.style.color      = '#111';
+                btnMap.style.background = '#ffffff';
+                btnMap.style.color      = '#000';
                 setTimeout(() => {
                     if (!_leafletMap) initMeetingMap();
                     else _leafletMap.invalidateSize();
                 }, 80);
             } else if (tab === 'gallery') {
                 panelGal.style.display  = 'block';
-                btnGal.style.background = neon;
-                btnGal.style.color      = '#111';
+                btnGal.style.background = '#ffffff';
+                btnGal.style.color      = '#000';
                 loadGalleryVisits();
             } else {
                 panelCal.style.display  = 'block';
                 ctrlCal.style.display   = 'flex';
-                btnCal.style.background = neon;
-                btnCal.style.color      = '#111';
+                btnCal.style.background = '#ffffff';
+                btnCal.style.color      = '#000';
             }
         }
 
@@ -2086,13 +2140,13 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         photoBanner = `
                             <div style="position:relative; width:100%; height:160px; overflow:hidden; border-radius:12px 12px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                <div style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); padding:3px 8px; border-radius:6px; font-size:0.68rem; color:#fff; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="color:var(--neon-main);"></i> ${photosArr.length} Foto</div>
+                                <div style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); padding:3px 8px; border-radius:6px; font-size:0.68rem; color:#fff; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
                             </div>
                         `;
                     } else {
                         photoBanner = `
-                            <div style="width:100%; height:90px; background:linear-gradient(135deg, rgba(161,255,90,0.05), rgba(78,253,196,0.05)); border-radius:12px 12px 0 0; display:flex; align-items:center; justify-content:center; color:#666; font-size:0.8rem; font-style:italic;">
-                                <i class="fas fa-map-marker-alt" style="margin-right:6px; color:var(--neon-main);"></i> ${escHtml(m.location || 'Dokumentasi Visit')}
+                            <div style="width:100%; height:90px; background:rgba(255,255,255,0.03); border-radius:12px 12px 0 0; display:flex; align-items:center; justify-content:center; color:#888; font-size:0.8rem; font-style:italic;">
+                                <i class="fas fa-map-marker-alt" style="margin-right:6px; color:#cccccc;"></i> ${escHtml(m.location || 'Dokumentasi Visit')}
                             </div>
                         `;
                     }
@@ -2101,21 +2155,21 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     let gmapsUrl = gmapsQuery ? `https://www.google.com/maps/search/?api=1&query=${gmapsQuery}` : '';
 
                     html += `
-                        <div style="background:rgba(18,18,18,0.8); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.borderColor='rgba(161,255,90,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                        <div style="background:rgba(18,18,18,0.8); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
                             ${photoBanner}
                             <div style="padding:14px; flex:1; display:flex; flex-direction:column;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                    <span style="font-size:0.68rem; color:var(--neon-main); font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${escHtml(m.meeting_type || 'VISIT')}</span>
+                                    <span style="font-size:0.68rem; color:#ffffff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">${escHtml(m.meeting_type || 'VISIT')}</span>
                                     <span style="font-size:0.7rem; color:#888;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i>${dateNice}</span>
                                 </div>
                                 <div style="font-size:0.95rem; font-weight:800; color:#fff; margin-bottom:4px; line-height:1.3;">${escHtml(m.title || m.target_name || 'Meeting')}</div>
-                                ${m.target_name ? `<div style="font-size:0.75rem; color:var(--neon-sec); font-weight:600; margin-bottom:6px;"><i class="fas fa-building" style="margin-right:4px;"></i>${escHtml(m.target_name)}</div>` : ''}
-                                ${m.location ? `<div style="font-size:0.73rem; color:#aaa; margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:#ff9f43; margin-right:4px;"></i>${escHtml(m.location)}</div>` : ''}
+                                ${m.target_name ? `<div style="font-size:0.75rem; color:#cccccc; font-weight:600; margin-bottom:6px;"><i class="fas fa-building" style="margin-right:4px;"></i>${escHtml(m.target_name)}</div>` : ''}
+                                ${m.location ? `<div style="font-size:0.73rem; color:#aaa; margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i>${escHtml(m.location)}</div>` : ''}
                                 ${m.log_hasil ? `<div style="font-size:0.73rem; color:#888; background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.04); margin-bottom:10px; line-height:1.3;">${escHtml(m.log_hasil)}</div>` : ''}
                                 
                                 <div style="margin-top:auto; display:flex; gap:6px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
-                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:rgba(161,255,90,0.12); border:1px solid rgba(161,255,90,0.3); color:#a1ff5a; padding:6px 8px; border-radius:8px; font-size:0.72rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(78,253,196,0.12); border:1px solid rgba(78,253,196,0.3); color:#4efdc4; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
+                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:6px 8px; border-radius:8px; font-size:0.72rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#ffffff; padding:6px 10px; border-radius:8px; font-size:0.72rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
                                     <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:6px 10px; border-radius:8px; font-size:0.72rem; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i></button>
                                 </div>
                             </div>
@@ -2125,7 +2179,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                 grid.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                grid.innerHTML = '<div style="color:#ff5a5a; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat galeri visit.</div>';
+                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat galeri visit.</div>';
             }
         }
 
@@ -2244,19 +2298,19 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                                 ${photoHtml}
                                 <div style="flex:1; min-width:0;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-size: 0.62rem; color: #a1ff5a; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</span>
-                                        ${photosArr.length > 1 ? `<span style="font-size:0.6rem; background:rgba(78,253,196,0.15); color:#4efdc4; padding:1px 5px; border-radius:4px;"><i class="fas fa-camera"></i> ${photosArr.length}</span>` : ''}
+                                        <span style="font-size: 0.62rem; color: #ffffff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">KUNJUNGAN #${displayedCount}</span>
+                                        ${photosArr.length > 1 ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.15); color:#ffffff; padding:1px 5px; border-radius:4px;"><i class="fas fa-camera"></i> ${photosArr.length}</span>` : ''}
                                     </div>
                                     <div style="font-size: 0.88rem; font-weight: 800; color: #fff; margin-top: 2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(m.title || m.target_name || 'Meeting')}">${escHtml(m.title || m.target_name || 'Meeting')}</div>
-                                    <div style="font-size: 0.72rem; color: #aaa; margin-top: 3px;"><i class="far fa-calendar-alt" style="margin-right:4px; color:#a1ff5a;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
-                                    <div style="font-size: 0.72rem; color: #ccc; margin-top: 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#ff9f43;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
+                                    <div style="font-size: 0.72rem; color: #aaa; margin-top: 3px;"><i class="far fa-calendar-alt" style="margin-right:4px; color:#ccc;"></i>${dateNice} ${m.time_start ? '&bull; ' + m.time_start : ''}</div>
+                                    <div style="font-size: 0.72rem; color: #ccc; margin-top: 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#aaa;margin-right:4px;"></i>${escHtml(m.location || 'Lokasi')}</div>
                                 </div>
                             </div>
                             ${m.log_hasil ? `<div style="font-size: 0.7rem; color: #888; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); line-height: 1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
                             
                             <div style="display:flex; gap:6px; margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.08);">
-                                ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(78,253,196,0.12); border:1px solid rgba(78,253,196,0.3); color:#4efdc4; padding:5px 8px; border-radius:7px; font-size:0.7rem; font-weight:700; text-decoration:none;"><i class="fas fa-directions"></i> Google Maps</a>` : ''}
-                                <button onclick="openEditEvent(${m.id})" style="display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(161,255,90,0.12); border:1px solid rgba(161,255,90,0.3); color:#a1ff5a; padding:5px 10px; border-radius:7px; font-size:0.7rem; font-weight:700; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i> Edit</button>
+                                ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#ffffff; padding:5px 8px; border-radius:7px; font-size:0.7rem; font-weight:700; text-decoration:none;"><i class="fas fa-directions"></i> Google Maps</a>` : ''}
+                                <button onclick="openEditEvent(${m.id})" style="display:inline-flex; align-items:center; justify-content:center; gap:5px; background:#ffffff; border:none; color:#000000; padding:5px 10px; border-radius:7px; font-size:0.7rem; font-weight:800; cursor:pointer; font-family:inherit;"><i class="fas fa-edit"></i> Edit</button>
                             </div>
                         </div>
                     `;

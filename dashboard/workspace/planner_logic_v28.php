@@ -103,7 +103,7 @@ if($mode == 'month') {
     foreach($days as $day) echo "<div class='cal-day-header'>$day</div>";
 
     $firstDayIndex = date('w', strtotime("$year-$month-01"));
-    for($i=0; $i<$firstDayIndex; $i++) echo "<div></div>";
+    for($i=0; $i<$firstDayIndex; $i++) echo "<div class='cal-day-empty'></div>";
 
     $daysInMonth = date('t', $timestamp);
     for($d=1; $d<=$daysInMonth; $d++) {
@@ -112,31 +112,43 @@ if($mode == 'month') {
         $dayOfWeek = date('w', strtotime($currentDate));
         $isSunday = ($dayOfWeek == 0) ? 'is-sunday' : '';
 
-        // Render Events
-        $eventHtml = '';
-        if(isset($events[$currentDate])) {
-            foreach($events[$currentDate] as $ev) {
-                $color = $ev['color'] ?? 'blue';
-                // Ubah limit agar tidak gampang terpotong "PT.."
-                $title = (strlen($ev['title']) > 28) ? substr($ev['title'],0,25).'..' : $ev['title'];
-                
-                // Encode data for JS
-                $safeTitle = htmlspecialchars($ev['title'], ENT_QUOTES);
-                $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
-                $safeTime = $ev['time_start'];
-                $evId = isset($ev['id']) ? intval($ev['id']) : 0;
-                // CLICK EVENT CHIP
-                $eventHtml .= "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail('$safeTitle', '$currentDate', '$safeTime', '$safeDesc', '$color', $evId)\">$title</div>";
+        $hasEvents = isset($events[$currentDate]) && count($events[$currentDate]) > 0;
+        $eventCount = $hasEvents ? count($events[$currentDate]) : 0;
+
+        // Render Meeting Indicators (Dots / Badge Pill) - NEVER expands cell height!
+        $dotsHtml = '';
+        if($hasEvents) {
+            $dotsHtml .= "<div class='cal-dots-wrap' style='display:flex; gap:3px; align-items:center; margin-top:auto; height:12px;'>";
+            if($eventCount <= 3) {
+                for($e=0; $e<$eventCount; $e++) {
+                    $dotsHtml .= "<span class='cal-dot' style='width:6px; height:6px; border-radius:50%; background:#ffffff; box-shadow:0 0 4px rgba(255,255,255,0.7); display:inline-block;'></span>";
+                }
+            } else {
+                $dotsHtml .= "<span class='cal-dot-pill' style='font-size:0.6rem; background:rgba(255,255,255,0.22); color:#ffffff; padding:1px 5px; border-radius:6px; font-weight:800; display:inline-flex; align-items:center; gap:2px;'><i class='fas fa-circle' style='font-size:0.4rem;'></i> $eventCount</span>";
             }
+            $dotsHtml .= "</div>";
+        } else {
+            $dotsHtml .= "<div style='height:12px;'></div>";
         }
 
-        // CLICK CELL (ADD)
+        // Holiday Star
         $isHoliday = isset($holidays[$currentDate]) ? 'is-holiday' : '';
-        $holidayLabel = isset($holidays[$currentDate]) ? "<div class='holiday-label-container' style='font-size:0.6rem; color:#ff6b6b; font-weight:700; margin-bottom:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{$holidays[$currentDate]}'><i class='fas fa-star' style='font-size:0.5rem;'></i> {$holidays[$currentDate]}</div>" : "<div class='holiday-label-container' style='min-height:12px;'></div>";
-        echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' onclick=\"openEventModal('$currentDate')\">
-                <div class='cal-day-num'>$d</div>
-                $holidayLabel
-                $eventHtml
+        $holidayDot = isset($holidays[$currentDate]) ? "<span style='font-size:0.55rem; color:#aaaaaa;' title='".htmlspecialchars($holidays[$currentDate], ENT_QUOTES)."'><i class='fas fa-star'></i></span>" : "";
+
+        // Cell Click Handler
+        if($hasEvents) {
+            $jsonEv = htmlspecialchars(json_encode(array_values($events[$currentDate])), ENT_QUOTES, 'UTF-8');
+            $clickAttr = "onclick=\"handleDayClick('$currentDate', $jsonEv)\"";
+        } else {
+            $clickAttr = "onclick=\"openEventModal('$currentDate')\"";
+        }
+
+        echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' $clickAttr title='{$d} " . date('F Y', $timestamp) . ($hasEvents ? " - {$eventCount} meeting" : "") . "'>
+                <div style='display:flex; justify-content:space-between; align-items:center; width:100%;'>
+                    <div class='cal-day-num'>$d</div>
+                    $holidayDot
+                </div>
+                $dotsHtml
               </div>";
     }
     echo '</div>';
@@ -156,21 +168,20 @@ elseif($mode == 'week') {
         $isToday = ($dateStr == $today) ? 'today' : '';
 
         echo "<div class='cal-week-col' onclick=\"openEventModal('$dateStr')\">";
-        echo "<div class='cal-week-header $isToday' style='padding:10px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03);'>";
-        echo "<div style='font-size:0.7rem; color:#666;'>$dayName</div>";
-        echo "<div style='font-size:1.2rem; font-weight:800; color:".(date('w',$currTs)==0?'var(--neon-red)':'#fff').";'>$dayNum</div>";
+        echo "<div class='cal-week-header $isToday' style='padding:10px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03);'>";
+        echo "<div style='font-size:0.7rem; color:#888;'>$dayName</div>";
+        echo "<div style='font-size:1.1rem; font-weight:800; color:#fff;'>$dayNum</div>";
         echo "</div>";
         
-        echo "<div class='cal-week-body' style='padding:10px; min-height:100px;'>";
+        echo "<div class='cal-week-body' style='padding:8px; min-height:100px;'>";
         if(isset($events[$dateStr])) {
             foreach($events[$dateStr] as $ev) {
-                $color = $ev['color'] ?? 'blue';
                 $safeTitle = htmlspecialchars($ev['title'], ENT_QUOTES);
                 $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
                 $evId2 = isset($ev['id']) ? intval($ev['id']) : 0;
-                echo "<div class='cal-event $color' onclick=\"event.stopPropagation(); showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color', $evId2)\" style='margin-bottom:5px; padding:8px;'>
-                        <div style='font-size:0.6rem; opacity:0.8;'>{$ev['time_start']}</div>
-                        <div>{$ev['title']}</div>
+                echo "<div class='cal-event' onclick=\"event.stopPropagation(); showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', 'white', $evId2)\" style='margin-bottom:6px; padding:6px 8px; background:rgba(255,255,255,0.08); border-left:3px solid #ffffff; border-radius:6px; color:#ffffff; font-size:0.75rem;'>
+                        <div style='font-size:0.6rem; opacity:0.7;'>{$ev['time_start']}</div>
+                        <div style='font-weight:700; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;'>{$ev['title']}</div>
                       </div>";
             }
         }
@@ -190,24 +201,23 @@ elseif($mode == 'day') {
     
     if(isset($events[$dateStr])) {
         foreach($events[$dateStr] as $ev) {
-            $color = $ev['color'] ?? 'blue';
             $safeTitle = htmlspecialchars($ev['title'], ENT_QUOTES);
             $safeDesc = htmlspecialchars($ev['detail'] ?? 'Belum ada detail.', ENT_QUOTES);
-            $borderCol = ($color == 'blue') ? '#4efdc4' : (($color == 'purple') ? '#a55eea' : '#a1ff5a');
             $evId3 = isset($ev['id']) ? intval($ev['id']) : 0;
-            echo "<div class='cal-hour-row' onclick=\"showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', '$color', $evId3)\" style='display:flex; gap:15px; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); align-items:center; cursor:pointer;'>
-                    <div class='cal-time' style='width:60px; font-weight:700; color:$borderCol;'>{$ev['time_start']}</div>
-                    <div class='cal-task-area' style='flex:1; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border-left:3px solid $borderCol;'>
+            echo "<div class='cal-hour-row' onclick=\"showEventDetail('$safeTitle', '$dateStr', '{$ev['time_start']}', '$safeDesc', 'white', $evId3)\" style='display:flex; gap:15px; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); align-items:center; cursor:pointer;'>
+                    <div class='cal-time' style='width:60px; font-weight:700; color:#ffffff;'>{$ev['time_start']}</div>
+                    <div class='cal-task-area' style='flex:1; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border-left:3px solid #ffffff;'>
                         <div style='font-weight:700; color:#fff; font-size:1rem;'>{$ev['title']}</div>
                     </div>
                   </div>";
         }
     } else {
-        echo "<div style='text-align:center; padding:40px; color:#555;'>
-                No events.<br>
-                <button onclick=\"openEventModal('$dateStr')\" style='background:none; border:1px solid #a1ff5a; color:#a1ff5a; padding:8px 20px; border-radius:20px; cursor:pointer; margin-top:10px; font-weight:bold;'>+ Add Event</button>
+        echo "<div style='text-align:center; padding:40px; color:#666;'>
+                Belum ada meeting.<br>
+                <button onclick=\"openEventModal('$dateStr')\" style='background:#ffffff; border:none; color:#000; padding:8px 20px; border-radius:20px; cursor:pointer; margin-top:12px; font-weight:bold;'>+ Tambah Meeting</button>
               </div>";
     }
     echo '</div>';
 }
+?>
 ?>
