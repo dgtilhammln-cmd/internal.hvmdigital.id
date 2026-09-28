@@ -1822,7 +1822,6 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                     if(coords) {
                         lat = coords.lat;
                         lng = coords.lng;
-                        saveCoordsToDB(m.id, lat, lng);
                     }
                     await new Promise(r => setTimeout(r, 200));
                 }
