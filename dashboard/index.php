@@ -995,77 +995,70 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         <span class="tp-stat-label">Gap ke Target</span>
                         <span class="tp-stat-val">
                             <?php echo (12 - $meetings_done) > 0 ? (12 - $meetings_done).' meet' : 'DONE!'; ?>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-            <!-- ══ PLANNER / CALENDAR ══ -->
+                        </span>            <!-- ══ PLANNER / CALENDAR + PETA (TABBED) ══ -->
             <div class="zenith-grid-layout">
-                <!-- PANEL 1: PLANNER -->
                 <div class="zenith-panel glass-card planner-deck animate-slide-up" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; position: relative;">
-                    <div class="panel-header-v30">
-                        <div class="ph-left">
-                            <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
-                                <h2 id="plannerTitle" style="margin:0;">...</h2>
-                                <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
-                            </label>
-                            <div class="ph-nav-group">
-                                <button class="btn-today-v30" onclick="goToday()">TODAY</button>
-                                <div class="arrow-nav-v30">
-                                    <button onclick="navigatePlanner(-1)" class="nav-arrow-v30"><i class="fas fa-chevron-left"></i></button>
-                                    <button onclick="navigatePlanner(1)" class="nav-arrow-v30"><i class="fas fa-chevron-right"></i></button>
+
+                    <!-- ── TAB BAR ── -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding: 4px 4px 0;">
+                        <!-- Tab Switcher (kiri) -->
+                        <div id="plannerTabBar" style="display:flex; gap:4px; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px;">
+                            <button id="tabBtnCalendar" onclick="switchPlannerTab('calendar')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:var(--neon-main); color:#111;"><i class="fas fa-calendar-alt"></i> Kalender</button>
+                            <button id="tabBtnMap" onclick="switchPlannerTab('map')" style="display:flex;align-items:center;gap:7px; padding:7px 18px; border-radius:9px; border:none; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .22s; background:transparent; color:#888;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                        </div>
+                        <!-- Controls area (kanan) — berubah sesuai tab aktif -->
+                        <div id="plannerCalControls" style="display:flex; align-items:center; gap:8px;">
+                            <div class="panel-header-v30" style="padding:0; border:none; background:none;">
+                                <div class="ph-left">
+                                    <label style="position:relative; display:inline-block; margin:0; cursor:pointer;" title="Ubah Bulan/Tahun">
+                                        <h2 id="plannerTitle" style="margin:0; font-size:1.1rem;">...</h2>
+                                        <input type="month" id="monthPicker" onchange="jumpToMonth(this.value)" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0; padding:0; border:none; z-index:10;">
+                                    </label>
+                                    <div class="ph-nav-group">
+                                        <button class="btn-today-v30" onclick="goToday()">TODAY</button>
+                                        <div class="arrow-nav-v30">
+                                            <button onclick="navigatePlanner(-1)" class="nav-arrow-v30"><i class="fas fa-chevron-left"></i></button>
+                                            <button onclick="navigatePlanner(1)" class="nav-arrow-v30"><i class="fas fa-chevron-right"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ph-right">
+                                    <div class="mode-switch-v30">
+                                        <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
+                                        <button id="btn-week" onclick="setMode('week', this)">Week</button>
+                                        <button id="btn-day" onclick="setMode('day', this)">Day</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="ph-right">
-                            <div class="mode-switch-v30">
-                                <button id="btn-month" class="active" onclick="setMode('month', this)">Month</button>
-                                <button id="btn-week" onclick="setMode('week', this)">Week</button>
-                                <button id="btn-day" onclick="setMode('day', this)">Day</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="calendarViewport" class="planner-viewport" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"></div>
-                    
-                    <!-- Floating Add Button -->
-                    <button class="add-event-fab" onclick="openEventModal()"><i class="fas fa-plus"></i></button>
-                </div>
-            </div>
-
-            <!-- ══ LOKASI / PETA KUNJUNGAN MEETING (16:9 Landscape Aspect Ratio) ══ -->
-            <div class="map-card-container" style="margin-top:24px; margin-bottom:24px;">
-                <div class="glass-card" style="background: rgba(14, 14, 14, 0.92); border: 1px solid var(--card-border); border-radius: 20px; padding: 20px; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(161,255,90,0.12); color: var(--neon-main); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                                <i class="fas fa-map-marked-alt"></i>
-                            </div>
-                            <div>
-                                <h3 style="font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0;">Peta Kunjungan Meeting</h3>
-                                <p style="font-size: 0.76rem; color: #888; margin-top: 3px;">Titik lokasi & rute perjalanan meeting yang sudah dikunjungi</p>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <select id="mapFilterPeriod" class="form-input" style="width: 170px; padding: 7px 12px; font-size: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color:#fff;" onchange="loadMapMeetings(this.value)">
+                        <div id="plannerMapControls" style="display:none; align-items:center; gap:8px;">
+                            <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:7px 12px; font-size:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; outline:none;">
                                 <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
                                 <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
                                 <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
                                 <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
                             </select>
-                            <button type="button" onclick="loadMapMeetings()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #ccc; padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;" title="Refresh Peta">
-                                <i class="fas fa-sync-alt"></i> Refresh
-                            </button>
+                            <button type="button" onclick="loadMapMeetings()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:8px 14px;border-radius:10px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
                         </div>
                     </div>
-                    <!-- Map Box — tinggi disesuaikan sama card kalender -->
-                    <div style="position: relative; width: 100%; height: 450px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
-                        <div id="meetingMap" style="width: 100%; height: 100%; background: #0c0c0c; z-index: 1;"></div>
+
+                    <!-- ── PANEL: KALENDER ── -->
+                    <div id="panelCalendar" style="display:block;">
+                        <div id="calendarViewport" class="planner-viewport" style="width:100%; display:flex; flex-direction:column; gap:10px;"></div>
                     </div>
+
+                    <!-- ── PANEL: PETA ── (DOM selalu ada, hanya visibility yang toggle) -->
+                    <div id="panelMap" style="display:none; padding: 6px 0 4px;">
+                        <div style="position:relative; width:100%; height:520px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); box-shadow:inset 0 0 20px rgba(0,0,0,0.8);">
+                            <div id="meetingMap" style="width:100%; height:100%; background:#0c0c0c; z-index:1;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Add Button -->
+                    <button class="add-event-fab" onclick="openEventModal()"><i class="fas fa-plus"></i></button>
                 </div>
             </div>
+
 
             <!-- ══ STATS ROW ══ -->
             <div class="stats-row">
@@ -1688,16 +1681,55 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             // Center default: Surabaya (-7.2575, 112.7521)
             _leafletMap = L.map('meetingMap', { zoomControl: true }).setView([-7.2575, 112.7521], 12);
             
-            // Stadia Maps Alidade Smooth Dark — Free, no API key, truly dark
-            L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                maxZoom: 20
+            // OpenStreetMap — 100% gratis, no API key
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19
             }).addTo(_leafletMap);
 
             _mapMarkersLayer = L.layerGroup().addTo(_leafletMap);
             _mapPolylineLayer = L.layerGroup().addTo(_leafletMap);
 
             loadMapMeetings('month');
+        }
+
+        // ── Tab switcher: Kalender ↔ Peta ──
+        function switchPlannerTab(tab) {
+            const panelCal   = document.getElementById('panelCalendar');
+            const panelMap   = document.getElementById('panelMap');
+            const ctrlCal    = document.getElementById('plannerCalControls');
+            const ctrlMap    = document.getElementById('plannerMapControls');
+            const btnCal     = document.getElementById('tabBtnCalendar');
+            const btnMap     = document.getElementById('tabBtnMap');
+            const neon       = getComputedStyle(document.documentElement).getPropertyValue('--neon-main').trim() || '#a1ff5a';
+
+            if (tab === 'map') {
+                panelCal.style.display  = 'none';
+                panelMap.style.display  = 'block';
+                ctrlCal.style.display   = 'none';
+                ctrlMap.style.display   = 'flex';
+                btnCal.style.background = 'transparent';
+                btnCal.style.color      = '#888';
+                btnMap.style.background = neon;
+                btnMap.style.color      = '#111';
+                // Leaflet HARUS invalidateSize setelah container visible
+                setTimeout(() => {
+                    if (!_leafletMap) {
+                        initMeetingMap();
+                    } else {
+                        _leafletMap.invalidateSize();
+                    }
+                }, 80);
+            } else {
+                panelCal.style.display  = 'block';
+                panelMap.style.display  = 'none';
+                ctrlCal.style.display   = 'flex';
+                ctrlMap.style.display   = 'none';
+                btnCal.style.background = neon;
+                btnCal.style.color      = '#111';
+                btnMap.style.background = 'transparent';
+                btnMap.style.color      = '#888';
+            }
         }
 
         async function loadMapMeetings(period) {
