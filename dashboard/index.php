@@ -1655,6 +1655,8 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             // Activate radio chips logic inline
             document.querySelectorAll('#detailContent input[name=em_meet_type]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#editMeetTypes .meet-type-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
             document.querySelectorAll('#detailContent input[name=em_mode]').forEach(r=>r.addEventListener('change', function(){ document.querySelectorAll('#detailContent .meet-mode-chip').forEach(s=>{s.style.background='';s.style.borderColor='rgba(255,255,255,0.1)';s.style.color='#ccc';}); this.nextElementSibling.style.background='rgba(161,255,90,0.2)'; this.nextElementSibling.style.borderColor='rgba(161,255,90,0.6)'; this.nextElementSibling.style.color='#a1ff5a'; }));
+
+            openModal('detailModal');
         }
 
         function saveEditEvent(id) {
@@ -1685,7 +1687,7 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
 
             fetch('/dashboard/workspace/index.php', {method:'POST', body:fd})
                 .then(r=>r.json())
-                .then(res=>{ if(res.ok){ closeModal('detailModal'); refreshPlanner(); } })
+                .then(res=>{ if(res.ok){ closeModal('detailModal'); refreshPlanner(); loadMapMeetings(); } })
                 .catch(()=>alert('Gagal simpan.'));
         }
 

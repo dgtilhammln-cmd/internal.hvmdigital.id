@@ -50,6 +50,10 @@ $chk_npwp = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'npwp'");
 if($chk_npwp && mysqli_num_rows($chk_npwp) == 0) {
     mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `npwp` VARCHAR(100) DEFAULT NULL AFTER `client_name`");
 }
+$chk_hnpwp = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'hvm_npwp'");
+if($chk_hnpwp && mysqli_num_rows($chk_hnpwp) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `hvm_npwp` VARCHAR(100) DEFAULT NULL AFTER `npwp`");
+}
 $chk_ppnb = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'ppn_bearer'");
 if($chk_ppnb && mysqli_num_rows($chk_ppnb) == 0) {
     mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `ppn_bearer` VARCHAR(20) DEFAULT 'client' AFTER `ppn`");
@@ -65,8 +69,13 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `bank_accounts` (
     `bank_name`       VARCHAR(100) NOT NULL,
     `account_number`  VARCHAR(100) NOT NULL,
     `account_name`    VARCHAR(255) NOT NULL,
+    `npwp`            VARCHAR(100) DEFAULT NULL,
     `created_at`      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
+$chk_bnpwp = mysqli_query($conn, "SHOW COLUMNS FROM `bank_accounts` LIKE 'npwp'");
+if($chk_bnpwp && mysqli_num_rows($chk_bnpwp) == 0) {
+    mysqli_query($conn, "ALTER TABLE `bank_accounts` ADD COLUMN `npwp` VARCHAR(100) DEFAULT NULL AFTER `account_name`");
+}
 
 // AJAX handlers
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
@@ -117,10 +126,11 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $bank = mysqli_real_escape_string($conn, trim($_POST['bank_name'] ?? ''));
         $acc = mysqli_real_escape_string($conn, trim($_POST['account_number'] ?? ''));
         $name = mysqli_real_escape_string($conn, trim($_POST['account_name'] ?? ''));
+        $bnpwp = mysqli_real_escape_string($conn, trim($_POST['npwp'] ?? ''));
         if($id > 0) {
-            mysqli_query($conn, "UPDATE bank_accounts SET bank_name='$bank', account_number='$acc', account_name='$name' WHERE id=$id");
+            mysqli_query($conn, "UPDATE bank_accounts SET bank_name='$bank', account_number='$acc', account_name='$name', npwp='$bnpwp' WHERE id=$id");
         } else {
-            mysqli_query($conn, "INSERT INTO bank_accounts (bank_name, account_number, account_name) VALUES ('$bank','$acc','$name')");
+            mysqli_query($conn, "INSERT INTO bank_accounts (bank_name, account_number, account_name, npwp) VALUES ('$bank','$acc','$name','$bnpwp')");
         }
         echo json_encode(['ok'=>true]); exit;
     }
@@ -149,6 +159,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $inv_no     = mysqli_real_escape_string($conn, $d['no'] ?? '');
         $client     = mysqli_real_escape_string($conn, $d['client'] ?? '');
         $npwp       = mysqli_real_escape_string($conn, $d['npwp'] ?? '');
+        $hvm_npwp   = mysqli_real_escape_string($conn, $d['hvm_npwp'] ?? '');
         $ref_type   = mysqli_real_escape_string($conn, $d['client_ref_type'] ?? '');
         $ref_id     = mysqli_real_escape_string($conn, $d['client_ref_id'] ?? '');
         $service    = mysqli_real_escape_string($conn, $d['service'] ?? '');
@@ -175,9 +186,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
 
         $chk = mysqli_query($conn, "SELECT id FROM invoices WHERE id='$id'");
         if(mysqli_num_rows($chk) > 0) {
-            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', npwp='$npwp', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', due_date='$due_date', subtotal=$subtotal, ppn=$ppn, ppn_bearer='$ppn_bearer', pph=$pph, pph_bearer='$pph_bearer', total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
+            $ok = mysqli_query($conn, "UPDATE invoices SET inv_no='$inv_no', client_name='$client', npwp='$npwp', hvm_npwp='$hvm_npwp', client_ref_type='$ref_type', client_ref_id='$ref_id', service_label='$service', inv_date='$inv_date', due_date='$due_date', subtotal=$subtotal, ppn=$ppn, ppn_bearer='$ppn_bearer', pph=$pph, pph_bearer='$pph_bearer', total=$total, status='$status', bank='$bank', rekening='$rek', atas_nama='$an', pay_type='$pt', dp1_pct=$dp1, sig_name='$sn', sig_role='$sr', contact='$ct', email='$em', note='$note', items_json='$items' WHERE id='$id'");
         } else {
-            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,npwp,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,ppn_bearer,pph,pph_bearer,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$npwp','$ref_type','$ref_id','$service','$inv_date','$due_date',$subtotal,$ppn,'$ppn_bearer',$pph,'$pph_bearer',$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
+            $ok = mysqli_query($conn, "INSERT INTO invoices (id,inv_no,client_name,npwp,hvm_npwp,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,ppn_bearer,pph,pph_bearer,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) VALUES ('$id','$inv_no','$client','$npwp','$hvm_npwp','$ref_type','$ref_id','$service','$inv_date','$due_date',$subtotal,$ppn,'$ppn_bearer',$pph,'$pph_bearer',$total,'$status','$bank','$rek','$an','$pt',$dp1,'$sn','$sr','$ct','$em','$note','$items')");
         }
         echo json_encode(['ok'=>(bool)$ok]); exit;
     }
@@ -883,6 +894,10 @@ select.form-input optgroup {
                                 <label>Atas Nama</label>
                                 <input type="text" class="form-input" id="f_atasNama" readonly style="color:#888; background:rgba(255,255,255,0.02);">
                             </div>
+                            <div class="form-group" style="margin-top:6px;">
+                                <label>No. NPWP HVM Digital / PT (Opsional)</label>
+                                <input type="text" class="form-input" id="f_hvmNpwp" placeholder="contoh: 01.234.567.8-012.000">
+                            </div>
                         </div>
                         <div>
                             <div class="form-group">
@@ -1006,8 +1021,12 @@ select.form-input optgroup {
                     <input type="text" class="form-input" id="f_bankAcc" placeholder="Contoh: 123-456-789">
                 </div>
                 <div class="form-group">
-                    <label>Atas Nama (PT)</label>
-                    <input type="text" class="form-input" id="f_bankPT" placeholder="Contoh: PT. BERSAMA">
+                    <label>Atas Nama (PT / Pribadi)</label>
+                    <input type="text" class="form-input" id="f_bankPT" placeholder="Contoh: PT. BERSAMA atau Nama Pemilik">
+                </div>
+                <div class="form-group">
+                    <label>No. NPWP Rekening / PT (Opsional)</label>
+                    <input type="text" class="form-input" id="f_bankNpwp" placeholder="Contoh: 01.234.567.8-012.000">
                 </div>
                 <button type="button" onclick="saveBank()" style="background:var(--neon-main); color:#000; border:none; padding:8px 15px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.8rem; width:100%;"><i class="fas fa-save"></i> Simpan Rekening</button>
                 <button type="button" id="btnCancelBank" onclick="resetBankForm()" style="background:transparent; color:#888; border:1px solid #444; padding:8px 15px; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.8rem; width:100%; margin-top:8px; display:none;">Batal Edit</button>
@@ -1094,6 +1113,7 @@ function onBankSelect(sel) {
         document.getElementById('f_bank').value = b.bank_name;
         document.getElementById('f_rekening').value = b.account_number;
         document.getElementById('f_atasNama').value = b.account_name;
+        if(b.npwp) document.getElementById('f_hvmNpwp').value = b.npwp;
     } else {
         document.getElementById('f_bank').value = '';
         document.getElementById('f_rekening').value = '';
@@ -1109,6 +1129,7 @@ function resetBankForm() {
     document.getElementById('f_bankName').value = '';
     document.getElementById('f_bankAcc').value = '';
     document.getElementById('f_bankPT').value = '';
+    document.getElementById('f_bankNpwp').value = '';
     document.getElementById('btnCancelBank').style.display = 'none';
 }
 
@@ -1120,11 +1141,13 @@ function renderBankList() {
         return;
     }
     allBanks.forEach(b => {
+        const npwpBadge = b.npwp ? `<div style="font-size:0.7rem; color:#aaa; margin-top:2px;">NPWP: ${b.npwp}</div>` : '';
         list.innerHTML += `
             <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-weight:700; color:#fff; font-size:0.8rem; margin-bottom:2px;">${b.bank_name} - <span style="color:var(--neon-sec);">${b.account_number}</span></div>
                     <div style="font-size:0.75rem; color:#888;">${b.account_name}</div>
+                    ${npwpBadge}
                 </div>
                 <div style="display:flex; gap:6px;">
                     <button type="button" onclick="editBank(${b.id})" style="background:rgba(255,255,255,0.05); color:#a1ff5a; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-edit"></i></button>
@@ -1142,6 +1165,7 @@ function editBank(id) {
     document.getElementById('f_bankName').value = b.bank_name;
     document.getElementById('f_bankAcc').value = b.account_number;
     document.getElementById('f_bankPT').value = b.account_name;
+    document.getElementById('f_bankNpwp').value = b.npwp || '';
     document.getElementById('btnCancelBank').style.display = 'block';
 }
 
@@ -1152,6 +1176,7 @@ function saveBank() {
     fd.append('bank_name', document.getElementById('f_bankName').value);
     fd.append('account_number', document.getElementById('f_bankAcc').value);
     fd.append('account_name', document.getElementById('f_bankPT').value);
+    fd.append('npwp', document.getElementById('f_bankNpwp').value);
     
     fetch('', { method:'POST', body:fd }).then(r=>r.json()).then(res => {
         if(res.ok) {
@@ -1229,7 +1254,7 @@ function loadInvoices() {
     const fd = new FormData(); fd.append('inv_ajax', 'get_all');
     fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
         invoices = data.map(i => ({
-            id: i.id, no: i.inv_no, client: i.client_name, npwp: i.npwp||'', refType: i.client_ref_type, refId: i.client_ref_id,
+            id: i.id, no: i.inv_no, client: i.client_name, npwp: i.npwp||'', hvmNpwp: i.hvm_npwp||'', refType: i.client_ref_type, refId: i.client_ref_id,
             service: i.service_label, date: i.inv_date, dueDate: i.due_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn||0),
             ppnBearer: i.ppn_bearer||'client', pph: parseFloat(i.pph||0), pphBearer: i.pph_bearer||'hvm', total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
             payType: i.pay_type, dp1Pct: parseFloat(i.dp1_pct), sigName: i.sig_name, sigRole: i.sig_role,
@@ -1457,7 +1482,7 @@ function openCreateModal(){
 function closeModal(){ document.getElementById('invModal').classList.remove('active'); }
 
 function resetForm(){
-    ['f_clientName','f_npwp','f_invNo','f_invDate','f_dueDate'].forEach(id=>document.getElementById(id).value='');
+    ['f_clientName','f_npwp','f_hvmNpwp','f_invNo','f_invDate','f_dueDate'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('itemsBody').innerHTML='';
     document.getElementById('ppnInput').value='11';
     document.getElementById('ppnBearer').value='client';
@@ -1490,6 +1515,7 @@ function editInvoice(id){
     document.getElementById('f_dueDate').value = inv.dueDate || '';
     document.getElementById('f_clientName').value = inv.client;
     document.getElementById('f_npwp').value = inv.npwp || '';
+    document.getElementById('f_hvmNpwp').value = inv.hvmNpwp || '';
     document.getElementById('ppnInput').value = inv.ppn;
     document.getElementById('ppnBearer').value = inv.ppnBearer || 'client';
     document.getElementById('pphInput').value = inv.pph || 0;
@@ -1534,6 +1560,7 @@ function saveInvoice(){
     const no = document.getElementById('f_invNo').value.trim();
     const client = document.getElementById('f_clientName').value.trim();
     const npwp = document.getElementById('f_npwp').value.trim();
+    const hvm_npwp = document.getElementById('f_hvmNpwp').value.trim();
     if(!no||!client){ showPopup('error','Isi No. Invoice dan Nama Klien terlebih dahulu.'); return; }
     const items = [];
     let sub = 0;
@@ -1570,6 +1597,7 @@ function saveInvoice(){
     fd.append('no', no);
     fd.append('client', client);
     fd.append('npwp', npwp);
+    fd.append('hvm_npwp', hvm_npwp);
     fd.append('client_ref_type', document.getElementById('f_clientRefType').value);
     fd.append('client_ref_id', document.getElementById('f_clientRefId').value);
     fd.append('service', items[0]?.name || 'Layanan');
@@ -1666,6 +1694,7 @@ function buildInvoiceHTML(inv) {
                 <div>
                     <div class="dark-inv-party-label">From</div>
                     <div class="dark-inv-party-name">HVM Digital</div>
+                    ${inv.hvmNpwp ? `<div class="dark-inv-party-info" style="margin-top:2px;color:#a1ff5a;font-weight:600;">NPWP: ${esc(inv.hvmNpwp)}</div>` : ''}
                     <div class="dark-inv-party-info">${esc(inv.email)}<br>${esc(inv.contact)}</div>
                 </div>
                 <div>
@@ -1743,6 +1772,7 @@ function previewInvoice(doPrint){
     const ppnBearer = document.getElementById('ppnBearer')?.value || 'client';
     const pphBearer = document.getElementById('pphBearer')?.value || 'hvm';
     const npwp = document.getElementById('f_npwp')?.value || '';
+    const hvmNpwp = document.getElementById('f_hvmNpwp')?.value || '';
     const ppnVal = sub*(ppn/100);
     const pphVal = sub*(pph/100);
     let total = sub;
@@ -1750,7 +1780,7 @@ function previewInvoice(doPrint){
     if(pph > 0) { if(pphBearer === 'client') total += pphVal; else total -= pphVal; }
     
     const inv = { 
-        no, client, npwp, status, 
+        no, client, npwp, hvmNpwp, status, 
         date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
         dueDate: document.getElementById('f_dueDate').value||'',
         subtotal: sub, ppn, ppnBearer, pph, pphBearer, total,

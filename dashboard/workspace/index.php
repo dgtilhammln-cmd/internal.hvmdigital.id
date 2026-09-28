@@ -68,13 +68,18 @@ if(isset($_POST['update_event'])) {
     if($target_type === 'Client') { $q2=mysqli_query($conn,"SELECT client_id FROM clients WHERE company_name='$target_name' LIMIT 1"); if($r2=mysqli_fetch_assoc($q2)) $target_id=(int)$r2['client_id']; }
     elseif($target_type === 'Prospect') { $q2=mysqli_query($conn,"SELECT id FROM prospects WHERE company_name='$target_name' LIMIT 1"); if($r2=mysqli_fetch_assoc($q2)) $target_id=(int)$r2['id']; }
 
-    $lat_val = "lat";
-    $lng_val = "lng";
+    $lat_val = "NULL";
+    $lng_val = "NULL";
     if($coords_raw !== '') {
-        if(preg_match('/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/', $coords_raw, $m_c)) {
-            $lat_val = floatval($m_c[1]);
-            $lng_val = floatval($m_c[2]);
+        $parts = explode(',', $coords_raw);
+        if(count($parts) >= 2 && is_numeric(trim($parts[0])) && is_numeric(trim($parts[1]))) {
+            $lat_val = floatval(trim($parts[0]));
+            $lng_val = floatval(trim($parts[1]));
         }
+    } else {
+        // If coords empty but location present, lat/lng = NULL so map re-geocodes automatically
+        $lat_val = "NULL";
+        $lng_val = "NULL";
     }
 
     mysqli_query($conn, "UPDATE events SET title='$title', detail='$detail', event_date='$event_date', time_start='$time_start', meeting_type='$meet_type', meeting_mode='$meet_mode', target_type='$target_type', target_name='$target_name', location='$location', lat=$lat_val, lng=$lng_val, log_hasil='$log_hasil', teams_involved='$teams_str', target_id=$target_id WHERE id=$eid");
