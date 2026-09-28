@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/db_connect.php';
 
@@ -58,6 +58,8 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         } else if($period === 'month') {
             $m = date('m'); $y = date('Y');
             $where = "MONTH(event_date) = '$m' AND YEAR(event_date) = '$y'";
+        } else if($period === 'all') {
+            $where = "1=1";
         }
         
         $chk_lat = mysqli_query($conn, "SHOW COLUMNS FROM `events` LIKE 'lat'");
@@ -66,7 +68,7 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
         if(mysqli_num_rows($chk_lng) == 0) mysqli_query($conn, "ALTER TABLE `events` ADD COLUMN `lng` FLOAT DEFAULT NULL");
 
         $rows = [];
-        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND location != '') ORDER BY event_date ASC, time_start ASC");
+        $q = mysqli_query($conn, "SELECT id, title, target_name, location, lat, lng, event_date, time_start, meeting_type, meeting_mode, log_hasil FROM events WHERE $where AND (location IS NOT NULL AND TRIM(location) != '') ORDER BY event_date ASC, time_start ASC");
         if($q) while($r=mysqli_fetch_assoc($q)) $rows[] = $r;
         echo json_encode($rows); exit;
     }
@@ -1774,6 +1776,8 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
                         lng = coords.lng;
                         saveCoordsToDB(m.id, lat, lng);
                     }
+                    // Pause 300ms to respect Nominatim API rate limit
+                    await new Promise(r => setTimeout(r, 300));
                 }
 
                 if(!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
@@ -1824,14 +1828,48 @@ body { background: var(--bg-dark); color: var(--text-white); min-height: 100vh; 
             if(!query) return null;
             let cleanQuery = query.trim();
             if(cleanQuery.startsWith('http://') || cleanQuery.startsWith('https://')) return null;
-            
-            try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`;
-                const res = await fetch(url).then(r => r.json());
-                if(res && res.length > 0) {
-                    return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon) };
+
+            // 1. Direct lat, lng coordinate string (e.g. "-7.2575, 112.7521")
+            const coordMatch = cleanQuery.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
+            if(coordMatch) {
+                return { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
+            }
+
+            // Helper fetch function to query Nominatim
+            const tryFetch = async (q) => {
+                if(!q || q.length < 3) return null;
+                try {
+                    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
+                    const res = await fetch(url).then(r => r.json());
+                    if(res && res.length > 0) {
+                        return { lat: parseFloat(res[0].lat), lng: parseFloat(res[0].lon) };
+                    }
+                } catch(e) {}
+                return null;
+            };
+
+            // 2. Direct try full query
+            let res = await tryFetch(cleanQuery);
+            if(res) return res;
+
+            // 3. Strip Plus Code prefix (e.g. "PPVV+PP Ketabang, Surabaya" -> "Ketabang, Surabaya")
+            let stripped = cleanQuery.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}\s*,?\s*/i, '').trim();
+            if(stripped && stripped !== cleanQuery) {
+                res = await tryFetch(stripped);
+                if(res) return res;
+            }
+
+            // 4. Fallback: comma separated query (e.g. "Gedung XYZ, Ketabang, Surabaya" -> try "Ketabang, Surabaya")
+            const targetText = stripped || cleanQuery;
+            if(targetText.includes(',')) {
+                const parts = targetText.split(',').map(s=>s.trim()).filter(Boolean);
+                if(parts.length > 1) {
+                    const broader = parts.slice(1).join(', ');
+                    res = await tryFetch(broader);
+                    if(res) return res;
                 }
-            } catch(e) { console.error("Geocoding failed for", query); }
+            }
+
             return null;
         }
 
