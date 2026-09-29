@@ -1100,65 +1100,52 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     </div>
                 </div>
 
-                <!-- CARD 2: CLIENT DEAL BULAN INI (MIDDLE CARD) -->
+                <!-- CARD 2: CLIENT DEAL BULAN INI (MIDDLE CARD - MINIMAL MONOCHROME) -->
                 <div class="target-premium-card"
-                     style="--tier-color:#4efdc4; margin-bottom:0;">
+                     style="--tier-color:#ffffff; margin-bottom:0; background:rgba(18,18,20,0.95); border:1px solid rgba(255,255,255,0.1);">
                     
                     <div class="tp-header">
-                        <div class="tp-label">CLIENT DEAL BULAN INI</div>
-                        <div class="tp-badge" style="background:rgba(78,253,196,0.12); color:#4efdc4; border-color:rgba(78,253,196,0.3);">
-                            <i class="fas fa-handshake"></i>
-                            <span><?php echo $deals_count_this_month; ?> DEAL</span>
+                        <div class="tp-label" style="color:rgba(255,255,255,0.5);">CLIENT DEAL BULAN INI</div>
+                        <div class="tp-badge" style="background:rgba(255,255,255,0.08); color:#ffffff; border-color:rgba(255,255,255,0.15);">
+                            <i class="fas fa-user-check"></i>
+                            <span><?php echo $deals_count_this_month; ?> CLIENT +</span>
                         </div>
                     </div>
 
-                    <div class="tp-amount-row">
-                        <div class="tp-achieved" style="color:#4efdc4;">
-                            Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit" style="color:#4efdc4;">jt</span>
-                        </div>
-                    </div>
-
-                    <!-- Conversion Track -->
-                    <div class="tp-track-wrap">
-                        <div class="tp-track">
-                            <div class="tp-fill" id="tpFillClient" style="width:0%; background:linear-gradient(90deg, #4efdc4, #a1ff5a);"></div>
-                            <div class="tp-thumb" id="tpThumbClient" style="left:0%; border-color:#4efdc4;">
-                                <div class="tp-thumb-inner" style="background:#4efdc4;"></div>
+                    <!-- Main Client Count & Deal Amount Row -->
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin: 16px 0 22px 0;">
+                        <div>
+                            <div style="font-size:2.2rem; font-weight:900; color:#ffffff; line-height:1; letter-spacing:-1px;">
+                                <?php echo $deals_count_this_month; ?> <span style="font-size:1.1rem; font-weight:700; color:rgba(255,255,255,0.6);">Client +</span>
+                            </div>
+                            <div style="font-size:0.68rem; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-top:6px;">
+                                Total Client Deal
                             </div>
                         </div>
-                        <div class="tp-milestones">
-                            <div class="tp-milestone" style="left:0%">
-                                <div class="ms-dot ms-start"></div>
-                                <div class="ms-info"><span class="ms-label">0%</span></div>
+                        <div style="text-align:right;">
+                            <div style="font-size:1.8rem; font-weight:900; color:#e0e0e0; line-height:1; letter-spacing:-0.5px;">
+                                Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit" style="color:rgba(255,255,255,0.6);">jt</span>
                             </div>
-                            <div class="tp-milestone" style="left:50%">
-                                <div class="ms-dot <?php echo ($conversion_rate>=50)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
-                                <div class="ms-info">
-                                    <span class="ms-label">50%</span>
-                                    <span class="ms-tag">Target</span>
-                                </div>
-                            </div>
-                            <div class="tp-milestone" style="left:100%">
-                                <div class="ms-dot ms-end <?php echo ($conversion_rate>=100)?'ms-done ms-gacor':''; ?>"></div>
-                                <div class="ms-info">
-                                    <span class="ms-label">100%</span>
-                                    <span class="ms-tag">Optimal</span>
-                                </div>
+                            <div style="font-size:0.68rem; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-top:6px;">
+                                Nominal Deal
                             </div>
                         </div>
                     </div>
 
-                    <div class="tp-footer">
+                    <!-- Conversion Metric Box -->
+                    <div class="tp-footer" style="padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); margin-top:10px;">
                         <div class="tp-stat">
-                            <span class="tp-stat-label">Konversi</span>
-                            <span class="tp-stat-val" style="color:#4efdc4;"><?php echo number_format($conversion_rate, 1); ?>%</span>
+                            <span class="tp-stat-label" style="color:rgba(255,255,255,0.4);">RATE KONVERSI</span>
+                            <span class="tp-stat-val" style="color:#ffffff; font-size:1.1rem; font-weight:900;"><?php echo number_format($conversion_rate, 1); ?>%</span>
                         </div>
                         <div class="tp-stat-center">
-                            <span class="tp-msg"><?php echo $deals_count_this_month; ?> Deal / <?php echo $meetings_done; ?> Meet</span>
+                            <span class="tp-msg" style="color:rgba(255,255,255,0.5); font-style:normal; font-size:0.75rem; font-weight:600; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.08);">
+                                <i class="fas fa-handshake" style="margin-right:4px; opacity:0.6;"></i> <?php echo $deals_count_this_month; ?> Deal / <?php echo $meetings_done; ?> Meet
+                            </span>
                         </div>
                         <div class="tp-stat" style="text-align:right;">
-                            <span class="tp-stat-label">Total Deal</span>
-                            <span class="tp-stat-val"><?php echo $deals_count_this_month; ?> Client</span>
+                            <span class="tp-stat-label" style="color:rgba(255,255,255,0.4);">PERIODE</span>
+                            <span class="tp-stat-val" style="color:rgba(255,255,255,0.8); font-size:0.85rem; font-weight:700;"><?php echo strtoupper($nama_bulan_selected); ?></span>
                         </div>
                     </div>
                 </div>
