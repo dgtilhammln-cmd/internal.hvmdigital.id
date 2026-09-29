@@ -1535,7 +1535,7 @@ function editInvoice(id){
     document.getElementById('f_email').value = inv.email;
     document.getElementById('f_note').value = inv.note;
     document.getElementById('f_status').value = inv.status;
-    payType = inv.payType;
+    payType = inv.payType || 'Lunas';
     document.getElementById('f_clientRefType').value = inv.refType || '';
     document.getElementById('f_clientRefId').value = inv.refId || '';
     if(inv.refType) {
@@ -1547,9 +1547,9 @@ function editInvoice(id){
         invSwitchClientType('manual');
         document.getElementById('f_clientName').value = inv.client;
     }
-    document.querySelectorAll('.payment-toggle').forEach(b=>{b.classList.remove('active');if(b.dataset.val===inv.payType)b.classList.add('active');});
-    document.getElementById('dpSection').style.display = inv.payType==='DP' ? 'block' : 'none';
-    document.getElementById('f_dp1Pct').value = inv.dp1Pct;
+    document.querySelectorAll('.payment-toggle').forEach(b=>{b.classList.remove('active');if(b.dataset.val===payType)b.classList.add('active');});
+    document.getElementById('dpSection').style.display = payType==='DP' ? 'block' : 'none';
+    document.getElementById('f_dp1Pct').value = (inv.dp1Pct > 0 && inv.dp1Pct < 100) ? inv.dp1Pct : 50;
     document.getElementById('itemsBody').innerHTML='';
     inv.items.forEach(item=>addItem(item.name,item.subs,item.qty,item.price));
     recalcTotals();
@@ -1655,6 +1655,12 @@ function buildInvoiceHTML(inv) {
     const ppnVal = subtotal * (ppnPct / 100);
     const pphVal = subtotal * (pphPct / 100);
     
+    const payType = inv.payType || 'Lunas';
+    const dp1Pct = (parseFloat(inv.dp1Pct) > 0 && parseFloat(inv.dp1Pct) <= 100) ? parseFloat(inv.dp1Pct) : 50;
+    const dp1Val = inv.total * (dp1Pct / 100);
+    const dp2Pct = 100 - dp1Pct;
+    const dp2Val = inv.total - dp1Val;
+    
     let watermarkHtml = '';
     if (centerLogoDataUrl) {
         watermarkHtml = `<img src="${centerLogoDataUrl}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;opacity:${centerLogoOpacity/100};pointer-events:none;z-index:0;" alt="Watermark">`;
@@ -1677,6 +1683,7 @@ function buildInvoiceHTML(inv) {
     };
     const statusCls = statusColors[inv.status] || 'pending';
     const displayInvNo = inv.no && inv.no.startsWith('HVM') ? inv.no : ('HVM-' + esc(inv.no));
+    const payTypeLabel = payType === 'DP' ? `2x (DP ${dp1Pct}%)` : (payType === 'Lunas' ? 'Lunas (Full Payment)' : esc(payType));
 
     return `<div class="invoice-paper-dark" style="position:relative;">
         ${watermarkHtml}
@@ -1725,16 +1732,29 @@ function buildInvoiceHTML(inv) {
                     ${pphPct > 0 ? `<div class="dark-inv-totals-line" style="color:${pphBearer==='client'?'#a1ff5a':'#ff8888'};"><span>PPh (${pphPct}%)</span><span>${pphBearer==='client'?'+':'-'} ${fmtRp(pphVal)}</span></div>` : ''}
                     <hr class="dark-inv-totals-div">
                     <div class="dark-inv-totals-grand"><span>Total</span><span>${fmtRp(inv.total)}</span></div>
+                    ${payType === 'DP' ? `
+                        <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.15);">
+                            <div class="dark-inv-totals-line" style="color:#4efdc4; font-weight:600;"><span>DP 1 (${dp1Pct}%)</span><span>${fmtRp(dp1Val)}</span></div>
+                            <div class="dark-inv-totals-line" style="color:#ffb84d; font-weight:600;"><span>Pelunasan (${dp2Pct}%)</span><span>${fmtRp(dp2Val)}</span></div>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
             <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;gap:20px;">
                 <!-- LEFT COLUMN: Payment, Notes -->
                 <div style="flex:1;">
                     <div class="dark-inv-payment-label">PAYMENT DETAILS</div>
+                    <div class="dark-inv-payment-line">Jenis Pembayaran: <strong style="color:${payType==='DP'?'#4efdc4':'#fff'};">${payTypeLabel}</strong></div>
                     <div class="dark-inv-payment-line">Payment Method: Bank Transfer</div>
                     <div class="dark-inv-payment-line">Bank: ${esc(inv.bank)}</div>
                     <div class="dark-inv-payment-line">Account: ${esc(inv.rekening)}</div>
                     <div class="dark-inv-payment-line">A/N: ${esc(inv.atasNama)}</div>
+                    ${payType === 'DP' ? `
+                        <div style="margin-top:8px; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(78,253,196,0.2); border-radius:6px; font-size:0.75rem; width:fit-content; min-width:240px;">
+                            <div style="color:#4efdc4; font-weight:600; display:flex; justify-content:space-between; gap:16px;"><span>• DP 1 (${dp1Pct}%)</span><span>${fmtRp(dp1Val)}</span></div>
+                            <div style="color:#ffb84d; font-weight:600; display:flex; justify-content:space-between; gap:16px; margin-top:3px;"><span>• Pelunasan (${dp2Pct}%)</span><span>${fmtRp(dp2Val)}</span></div>
+                        </div>
+                    ` : ''}
                     ${inv.note?`<div style="margin-top:14px;"><div class="dark-inv-note-label">NOTES</div><div class="dark-inv-note-text">${esc(inv.note)}</div></div>`:''}
                 </div>
                 <!-- RIGHT COLUMN: QR Code & Signature -->
@@ -1779,6 +1799,7 @@ function previewInvoice(doPrint){
     if(ppn > 0) { if(ppnBearer === 'client') total += ppnVal; else total -= ppnVal; }
     if(pph > 0) { if(pphBearer === 'client') total += pphVal; else total -= pphVal; }
     
+    const dp1PctInput = parseFloat(document.getElementById('f_dp1Pct').value) || 50;
     const inv = { 
         no, client, npwp, hvmNpwp, status, 
         date: document.getElementById('f_invDate').value||new Date().toISOString().split('T')[0],
@@ -1787,7 +1808,7 @@ function previewInvoice(doPrint){
         bank: document.getElementById('f_bank').value, 
         rekening: document.getElementById('f_rekening').value,
         atasNama: document.getElementById('f_atasNama').value, 
-        payType, dp1Pct: parseFloat(document.getElementById('f_dp1Pct').value)||50,
+        payType, dp1Pct: dp1PctInput,
         sigName: document.getElementById('f_sigName').value, 
         sigRole: document.getElementById('f_sigRole').value,
         contact: document.getElementById('f_contact').value, 
