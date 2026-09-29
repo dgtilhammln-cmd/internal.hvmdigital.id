@@ -2447,7 +2447,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         async function loadGalleryVisits() {
             const grid = document.getElementById('galleryGrid');
             if(!grid) return;
-            grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Dokumentasi Meeting...</div>';
+            grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Data Meeting...</div>';
             
             const fd = new FormData();
             fd.append('ajax_action', 'get_map_meetings');
@@ -2458,30 +2458,28 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                 const res = await fetch('', { method: 'POST', body: fd });
                 const meetings = await res.json();
                 if(!meetings || !Array.isArray(meetings) || meetings.length === 0) {
-                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data dokumentasi meeting.</div>';
+                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data meeting.</div>';
                     return;
                 }
+
+                window._galleryMeetingMap = {};
                 
                 let html = '';
-                meetings.slice().reverse().forEach((m) => {
-                    const dateNice = m.event_date ? new Date(m.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+                meetings.forEach((m) => {
+                    window._galleryMeetingMap[m.id] = m;
+                    const dateNice = m.event_date ? new Date(m.event_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
                     const timeNice = m.time_start ? m.time_start.substring(0, 5) : '';
+                    const badgeTag = (m.target_type || m.meeting_type || 'MEETING').toUpperCase();
+                    
                     let photosArr = [];
                     try { photosArr = m.photos ? (typeof m.photos === 'string' ? JSON.parse(m.photos) : m.photos) : []; } catch(e){}
                     
                     let photoBanner = '';
                     if(photosArr && photosArr.length > 0) {
                         photoBanner = `
-                            <div style="position:relative; width:100%; height:140px; overflow:hidden; border-radius:10px 10px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                            <div style="position:relative; width:100%; height:130px; overflow:hidden; border-radius:10px 10px 0 0; background:#000;" onclick="event.stopPropagation(); openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 <div style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); padding:2px 7px; border-radius:6px; font-size:0.65rem; color:#fff; display:flex; align-items:center; gap:4px; font-weight:700;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
-                            </div>
-                        `;
-                    } else {
-                        photoBanner = `
-                            <div style="position:relative; width:100%; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center; padding:8px 12px;">
-                                <span style="font-size:0.68rem; color:#888; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="font-size:0.8rem; color:rgba(255,255,255,0.3);"></i> Belum ada foto</span>
-                                <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:3px 8px; border-radius:6px; font-size:0.65rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-upload"></i> + Upload</button>
                             </div>
                         `;
                     }
@@ -2490,22 +2488,21 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     let gmapsUrl = gmapsQuery ? `https://www.google.com/maps/search/?api=1&query=${gmapsQuery}` : '';
 
                     html += `
-                        <div style="background:rgba(18,18,18,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; transition:all 0.2s ease;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                        <div onclick="openMeetingPopup(window._galleryMeetingMap[${m.id}])" style="background:rgba(18,18,22,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'">
                             ${photoBanner}
-                            <div style="padding:10px; flex:1; display:flex; flex-direction:column; gap:4px;">
+                            <div style="padding:12px; flex:1; display:flex; flex-direction:column; gap:6px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                                    <span style="font-size:0.6rem; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${escHtml(m.meeting_type || 'MEETING')}</span>
-                                    <span style="font-size:0.65rem; color:#888; white-space:nowrap;"><i class="far fa-calendar-alt" style="margin-right:3px;"></i>${dateNice} ${timeNice ? '• '+timeNice : ''}</span>
+                                    <span style="font-size:0.6rem; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:rgba(255,255,255,0.12); padding:2px 7px; border-radius:4px;">${escHtml(badgeTag)}</span>
+                                    <span style="font-size:0.65rem; color:#aaa; font-weight:600;"><i class="far fa-calendar-alt" style="margin-right:3px;"></i>${dateNice} ${timeNice ? '• '+timeNice : ''}</span>
                                 </div>
-                                <div style="font-size:0.85rem; font-weight:800; color:#fff; line-height:1.2; margin-top:2px;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
-                                ${m.target_name ? `<div style="font-size:0.72rem; color:#ccc; font-weight:600;"><i class="fas fa-building" style="margin-right:4px; color:#aaa;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
-                                ${m.location ? `<div style="font-size:0.7rem; color:#aaa; line-height:1.2;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
-                                ${m.log_hasil ? `<div style="font-size:0.7rem; color:#bbb; background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:5px; border:1px solid rgba(255,255,255,0.05); margin-top:4px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
+                                <div style="font-size:0.88rem; font-weight:800; color:#fff; line-height:1.2; margin-top:2px;"><span class="sensor-blur">${escHtml(m.target_name || m.title || 'Meeting')}</span></div>
+                                ${m.location ? `<div style="font-size:0.72rem; color:#aaa; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
+                                ${m.log_hasil ? `<div style="font-size:0.72rem; color:#bbb; background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); margin-top:2px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
                                 
-                                <div style="margin-top:auto; display:flex; gap:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
-                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:6px 6px; border-radius:6px; font-size:0.68rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:6px 8px; border-radius:6px; font-size:0.68rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
-                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:6px 8px; border-radius:6px; font-size:0.68rem; cursor:pointer; font-family:inherit;" title="Edit Meeting / Upload Foto"><i class="fas fa-edit"></i></button>
+                                <div style="margin-top:auto; display:flex; gap:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); align-items:center;">
+                                    <button type="button" onclick="event.stopPropagation(); focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:5px 6px; border-radius:6px; font-size:0.68rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:5px 8px; border-radius:6px; font-size:0.68rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> Maps</a>` : ''}
+                                    <button type="button" onclick="event.stopPropagation(); openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:5px 8px; border-radius:6px; font-size:0.68rem; cursor:pointer; font-family:inherit;" title="Edit Meeting / Upload Foto"><i class="fas fa-edit"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -2514,7 +2511,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                 grid.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat dokumentasi meeting: '+e.message+'</div>';
+                grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;">Gagal memuat data meeting: '+e.message+'</div>';
             }
         }
 
