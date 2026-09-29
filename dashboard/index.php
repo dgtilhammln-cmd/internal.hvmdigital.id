@@ -297,27 +297,15 @@ $soc  = getSvc($conn, 'Social'); $soc_clients  = getClientList($conn, 'Social');
 $seo  = getSvc($conn, 'SEO');   $seo_clients  = getClientList($conn, 'SEO');
 $cont = getSvc($conn, 'Content'); $cont_clients = getClientList($conn, 'Content');
 
-// --- 4. UPCOMING DEADLINE (from services_data JSON) ---
-$q_clients_all = mysqli_query($conn, "SELECT client_id, company_name, services_data FROM clients WHERE status='Active' AND services_data IS NOT NULL AND services_data != '' AND services_data != '[]'");
-$upcoming_deadlines = [];
-while($cl = mysqli_fetch_assoc($q_clients_all)){
-    $svcs = json_decode($cl['services_data'], true);
-    if(!is_array($svcs)) continue;
-    foreach($svcs as $svc){
-        if(empty($svc['end']) || ($svc['status'] ?? 'Active') !== 'Active') continue;
-        $sisa = (int)floor((strtotime($svc['end']) - time()) / 86400);
-        if($sisa >= 0 && $sisa <= 30){
-            $upcoming_deadlines[] = [
-                'company' => $cl['company_name'],
-                'type'    => $svc['type'] ?? 'Service',
-                'sisa'    => $sisa,
-                'end'     => $svc['end'],
-            ];
-        }
-    }
+// --- 4. MEETING TERDEKAT (H-1 to +14 days from events table) ---
+$upcoming_meetings = [];
+$chk_ev2 = mysqli_query($conn, "SHOW TABLES LIKE 'events'");
+if(mysqli_num_rows($chk_ev2) > 0) {
+    $date_from = date('Y-m-d', strtotime('-1 day'));
+    $date_to   = date('Y-m-d', strtotime('+14 days'));
+    $q_um = mysqli_query($conn, "SELECT id, title, target_name, target_type, event_date, time_start, meeting_type, meeting_mode, location, log_hasil FROM events WHERE event_date >= '$date_from' AND event_date <= '$date_to' ORDER BY event_date ASC, time_start ASC LIMIT 3");
+    if($q_um) while($m = mysqli_fetch_assoc($q_um)) $upcoming_meetings[] = $m;
 }
-usort($upcoming_deadlines, fn($a,$b) => $a['sisa'] <=> $b['sisa']);
-$upcoming_deadlines = array_slice($upcoming_deadlines, 0, 6);
 
 ?>
 <!DOCTYPE html>
@@ -485,11 +473,24 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 .date-day { font-size:1.4rem; font-weight:700; color:#fff; margin-bottom:2px; }
 .date-full { font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
 
-.upcoming-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:20px 22px; backdrop-filter:blur(20px); overflow-y:auto; max-height:160px; }
-.uc-header { font-size:0.68rem; font-weight:800; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:2px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
-.uc-item { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:10px; border-left:2px solid rgba(255,255,255,0.08); }
-.uc-name { font-size:0.82rem; color:#e0e0e0; font-weight:600; }
-.uc-days { font-size:0.7rem; color:#aaa; font-weight:700; background:rgba(255,255,255,0.06); padding:3px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); white-space:nowrap; }
+.upcoming-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:16px 18px; backdrop-filter:blur(20px); }
+.uc-header { font-size:0.68rem; font-weight:800; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:2px; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+/* Meeting Terdekat Grid */
+.mt-grid { display:grid; gap:8px; }
+.mt-grid-1 { grid-template-columns:1fr; }
+.mt-grid-2 { grid-template-columns:1fr 1fr; }
+.mt-grid-3 { grid-template-columns:1fr 1fr 1fr; }
+.mt-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px 12px; cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; gap:5px; min-width:0; overflow:hidden; }
+.mt-item:hover { background:rgba(255,255,255,0.09); border-color:rgba(255,255,255,0.25); transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.4); }
+.mt-item:active { transform:translateY(0); }
+.mt-date-badge { font-size:0.6rem; font-weight:800; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; }
+.mt-name { font-size:0.8rem; font-weight:700; color:#e8e8e8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mt-meta { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+.mt-meta span { font-size:0.6rem; color:rgba(255,255,255,0.35); font-weight:600; display:flex; align-items:center; gap:3px; white-space:nowrap; }
+.mt-meta .mt-mode-tag { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:2px 7px; }
+/* Meeting Popup */
+#mtPopupOverlay .modal-content { max-height:80vh; }
+.mt-popup-tag { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:4px 12px; font-size:0.72rem; font-weight:700; color:rgba(255,255,255,0.6); margin-right:6px; }
 
 /* ══ MONTHLY TARGET PREMIUM ══ */
 .target-premium-card {
@@ -977,23 +978,35 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         <div id="fullDate" class="date-full">01 Januari 2025</div>
                     </div>
                 </div>
-                <div class="upcoming-card">
-                    <div class="uc-header"><i class="fas fa-clock"></i> UPCOMING DEADLINE</div>
-                    <?php if(count($upcoming_deadlines) > 0): ?>
-                        <?php foreach($upcoming_deadlines as $ud): ?>
-                        <?php
-                            $urgency_color = $ud['sisa'] <= 7 ? '#ff5a5a' : ($ud['sisa'] <= 14 ? '#ff9f43' : '#f5c518');
+                <div class="upcoming-card" id="meetingTerdekatCard">
+                    <div class="uc-header"><i class="fas fa-calendar-alt"></i> MEETING TERDEKAT</div>
+                    <?php
+                    $mt_count = count($upcoming_meetings);
+                    $today_str = date('Y-m-d');
+                    $yest_str  = date('Y-m-d', strtotime('-1 day'));
+                    $tomor_str = date('Y-m-d', strtotime('+1 day'));
+                    if($mt_count > 0): ?>
+                        <div class="mt-grid mt-grid-<?php echo $mt_count; ?>">
+                        <?php foreach($upcoming_meetings as $mt):
+                            $mt_day = $mt['event_date'];
+                            if($mt_day === $today_str)      $mt_day_label = 'Hari ini';
+                            elseif($mt_day === $yest_str)   $mt_day_label = 'Kemarin';
+                            elseif($mt_day === $tomor_str)  $mt_day_label = 'Besok';
+                            else                            $mt_day_label = date('d M', strtotime($mt_day));
+                            $mt_json = htmlspecialchars(json_encode($mt, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
                         ?>
-                        <div class="uc-item">
-                            <div style="flex:1;min-width:0;">
-                                <div class="uc-name"><?php echo htmlspecialchars($ud['company']); ?></div>
-                                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:2px;"><?php echo htmlspecialchars($ud['type']); ?> · Berakhir <?php echo date('d M Y', strtotime($ud['end'])); ?></div>
+                        <div class="mt-item" onclick='openMeetingPopup(<?php echo $mt_json; ?>)'>
+                            <div class="mt-date-badge"><?php echo $mt_day_label; ?></div>
+                            <div class="mt-name"><?php echo htmlspecialchars($mt['target_name'] ?: $mt['title']); ?></div>
+                            <div class="mt-meta">
+                                <?php if(!empty($mt['time_start'])): ?><span><i class="fas fa-clock"></i> <?php echo htmlspecialchars(substr($mt['time_start'],0,5)); ?></span><?php endif; ?>
+                                <?php if(!empty($mt['meeting_mode'])): ?><span class="mt-mode-tag"><?php echo htmlspecialchars($mt['meeting_mode']); ?></span><?php endif; ?>
                             </div>
-                            <span class="uc-days">H-<?php echo $ud['sisa']; ?></span>
                         </div>
                         <?php endforeach; ?>
+                        </div>
                     <?php else: ?>
-                        <div style="color:#333;font-size:0.82rem;text-align:center;padding:20px 0;"><i class="fas fa-check-circle" style="color:#2a2a2a;font-size:1.5rem;display:block;margin-bottom:8px;"></i>Semua aman. Tidak ada layanan yang hampir habis.</div>
+                        <div style="color:#555;font-size:0.78rem;text-align:center;padding:14px 0;"><i class="fas fa-calendar-check" style="font-size:1.3rem;display:block;margin-bottom:8px;color:#333;"></i>Tidak ada meeting dalam 14 hari ke depan.</div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -2789,7 +2802,80 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             const modal = document.getElementById('imageLightboxModal');
             if(modal) modal.style.display = 'none';
         }
+
+        // ── MEETING TERDEKAT POPUP ──
+        function openMeetingPopup(mt) {
+            const ov = document.getElementById('mtPopupOverlay');
+            if(!ov) return;
+            // Title
+            document.getElementById('mtPopupTitle').textContent = mt.target_name || mt.title || '–';
+            // Date & Time
+            const dateObj = mt.event_date ? new Date(mt.event_date + 'T00:00:00') : null;
+            const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+            let dateStr = dateObj ? (dayNames[dateObj.getDay()] + ', ' + dateObj.getDate() + ' ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getFullYear()) : '–';
+            if(mt.time_start) dateStr += ' · ' + mt.time_start.substring(0,5);
+            document.getElementById('mtPopupDate').textContent = dateStr;
+            // Type & Mode
+            const typeArr = [mt.meeting_type, mt.meeting_mode].filter(Boolean);
+            document.getElementById('mtPopupType').textContent = typeArr.length ? typeArr.join(' · ') : '–';
+            // Location
+            const locRow = document.getElementById('mtPopupLocRow');
+            const locEl  = document.getElementById('mtPopupLoc');
+            if(mt.location && mt.location.trim()) {
+                locEl.textContent = mt.location;
+                locRow.style.display = 'block';
+            } else {
+                locRow.style.display = 'none';
+            }
+            // Log
+            const logRow = document.getElementById('mtPopupLogRow');
+            const logEl  = document.getElementById('mtPopupLog');
+            if(mt.log_hasil && mt.log_hasil.trim()) {
+                logEl.textContent = mt.log_hasil;
+                logRow.style.display = 'block';
+            } else {
+                logRow.style.display = 'none';
+            }
+            ov.classList.add('active');
+        }
+        function closeMeetingPopup(e) {
+            if(e && e.target !== document.getElementById('mtPopupOverlay')) return;
+            const ov = document.getElementById('mtPopupOverlay');
+            if(ov) ov.classList.remove('active');
+        }
+        document.addEventListener('keydown', function(e) {
+            if(e.key === 'Escape') {
+                const ov = document.getElementById('mtPopupOverlay');
+                if(ov && ov.classList.contains('active')) ov.classList.remove('active');
+            }
+        });
     </script>
+
+    <!-- Meeting Terdekat Popup Modal -->
+    <div class="modal-overlay" id="mtPopupOverlay" onclick="closeMeetingPopup(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="width:480px; position:relative;">
+            <button class="btn-close-x" onclick="document.getElementById('mtPopupOverlay').classList.remove('active')" style="position:absolute;top:16px;right:16px;">&times;</button>
+            <div style="font-size:0.6rem;font-weight:800;letter-spacing:2.5px;color:#555;text-transform:uppercase;margin-bottom:14px;"><i class="fas fa-calendar-alt" style="margin-right:6px;"></i>Detail Meeting</div>
+            <div id="mtPopupTitle" style="font-size:1.2rem;font-weight:900;color:#fff;margin-bottom:20px;line-height:1.35;padding-right:30px;"></div>
+            <div class="detail-row">
+                <span class="detail-label">Tanggal &amp; Waktu</span>
+                <div id="mtPopupDate" class="detail-val"></div>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Tipe &amp; Mode</span>
+                <div id="mtPopupType" class="detail-val"></div>
+            </div>
+            <div class="detail-row" id="mtPopupLocRow">
+                <span class="detail-label">Lokasi</span>
+                <div id="mtPopupLoc" class="detail-val"></div>
+            </div>
+            <div class="detail-row" id="mtPopupLogRow" style="border-bottom:none;">
+                <span class="detail-label">Catatan / Log</span>
+                <div id="mtPopupLog" class="detail-val detail-desc" style="font-size:0.85rem;margin-top:6px;"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Photo Lightbox Modal -->
     <div id="imageLightboxModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.92); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;" onclick="closePhotoLightbox()">
