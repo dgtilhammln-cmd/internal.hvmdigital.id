@@ -2428,6 +2428,15 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             if(modal) modal.classList.remove('active');
         }
 
+        if (typeof escHtml !== 'function') {
+            window.escHtml = function(s) {
+                if (!s) return '';
+                const d = document.createElement('div');
+                d.appendChild(document.createTextNode(String(s)));
+                return d.innerHTML;
+            };
+        }
+
         async function loadGalleryVisits() {
             const grid = document.getElementById('galleryGrid');
             if(!grid) return;
@@ -2456,17 +2465,16 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     let photoBanner = '';
                     if(photosArr && photosArr.length > 0) {
                         photoBanner = `
-                            <div style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:10px 10px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
+                            <div style="position:relative; width:100%; height:140px; overflow:hidden; border-radius:10px 10px 0 0; background:#000; cursor:pointer;" onclick="openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 <div style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); padding:2px 7px; border-radius:6px; font-size:0.65rem; color:#fff; display:flex; align-items:center; gap:4px; font-weight:700;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
                             </div>
                         `;
                     } else {
                         photoBanner = `
-                            <div style="position:relative; width:100%; aspect-ratio:1/1; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); border-radius:10px 10px 0 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:12px; text-align:center;">
-                                <i class="fas fa-camera" style="font-size:1.8rem; color:rgba(255,255,255,0.15);"></i>
-                                <span style="font-size:0.68rem; color:#666;">Belum ada foto</span>
-                                <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 10px; border-radius:6px; font-size:0.68rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-upload"></i> + Upload Foto</button>
+                            <div style="position:relative; width:100%; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center; padding:8px 12px;">
+                                <span style="font-size:0.68rem; color:#888; display:flex; align-items:center; gap:4px;"><i class="fas fa-camera" style="font-size:0.8rem; color:rgba(255,255,255,0.3);"></i> Belum ada foto</span>
+                                <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:3px 8px; border-radius:6px; font-size:0.65rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-upload"></i> + Upload</button>
                             </div>
                         `;
                     }
@@ -2482,15 +2490,15 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                     <span style="font-size:0.6rem; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${escHtml(m.meeting_type || 'MEETING')}</span>
                                     <span style="font-size:0.65rem; color:#888; white-space:nowrap;"><i class="far fa-calendar-alt" style="margin-right:3px;"></i>${dateNice} ${timeNice ? '• '+timeNice : ''}</span>
                                 </div>
-                                <div style="font-size:0.82rem; font-weight:800; color:#fff; line-height:1.2; margin-top:2px;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
-                                ${m.target_name ? `<div style="font-size:0.7rem; color:#bbb; font-weight:600;"><i class="fas fa-building" style="margin-right:4px; color:#888;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
-                                ${m.location ? `<div style="font-size:0.68rem; color:#888; line-height:1.2;"><i class="fas fa-map-marker-alt" style="color:#888; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
-                                ${m.log_hasil ? `<div style="font-size:0.68rem; color:#aaa; background:rgba(255,255,255,0.02); padding:5px 7px; border-radius:5px; border:1px solid rgba(255,255,255,0.04); margin-top:2px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
+                                <div style="font-size:0.85rem; font-weight:800; color:#fff; line-height:1.2; margin-top:2px;"><span class="sensor-blur">${escHtml(m.title || m.target_name || 'Meeting')}</span></div>
+                                ${m.target_name ? `<div style="font-size:0.72rem; color:#ccc; font-weight:600;"><i class="fas fa-building" style="margin-right:4px; color:#aaa;"></i><span class="sensor-blur">${escHtml(m.target_name)}</span></div>` : ''}
+                                ${m.location ? `<div style="font-size:0.7rem; color:#aaa; line-height:1.2;"><i class="fas fa-map-marker-alt" style="color:#aaa; margin-right:4px;"></i><span class="sensor-blur">${escHtml(m.location)}</span></div>` : ''}
+                                ${m.log_hasil ? `<div style="font-size:0.7rem; color:#bbb; background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:5px; border:1px solid rgba(255,255,255,0.05); margin-top:4px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escHtml(m.log_hasil)}</div>` : ''}
                                 
                                 <div style="margin-top:auto; display:flex; gap:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
-                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:5px 4px; border-radius:6px; font-size:0.65rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
-                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:5px 6px; border-radius:6px; font-size:0.65rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
-                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:5px 6px; border-radius:6px; font-size:0.65rem; cursor:pointer; font-family:inherit;" title="Edit Meeting / Upload Foto"><i class="fas fa-edit"></i></button>
+                                    <button type="button" onclick="focusMeetingOnMap(${m.lat}, ${m.lng}, ${m.id})" style="flex:1; background:#ffffff; border:none; color:#000000; padding:6px 6px; border-radius:6px; font-size:0.68rem; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-map-marked-alt"></i> Peta</button>
+                                    ${gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#ffffff; padding:6px 8px; border-radius:6px; font-size:0.68rem; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:3px;"><i class="fas fa-directions"></i> GMaps</a>` : ''}
+                                    <button type="button" onclick="openEditEvent(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:6px 8px; border-radius:6px; font-size:0.68rem; cursor:pointer; font-family:inherit;" title="Edit Meeting / Upload Foto"><i class="fas fa-edit"></i></button>
                                 </div>
                             </div>
                         </div>
