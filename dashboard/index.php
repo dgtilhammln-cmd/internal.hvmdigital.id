@@ -1701,6 +1701,9 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             const urlParams = new URLSearchParams(window.location.search);
             urlParams.set('m', mStr);
             urlParams.set('y', year.toString());
+            if (typeof currentSplitMode !== 'undefined') {
+                urlParams.set('split', currentSplitMode.toString());
+            }
             window.location.search = urlParams.toString();
         }
 
@@ -2244,12 +2247,15 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         });
 
         // ── Tab switcher & Split Layout System ──
-        let currentSplitMode = 1;
+        const _urlSplit = new URLSearchParams(window.location.search).get('split');
+        let currentSplitMode = _urlSplit ? parseInt(_urlSplit, 10) : parseInt(localStorage.getItem('hvm_split_mode') || '1', 10);
+        if (isNaN(currentSplitMode) || currentSplitMode < 1 || currentSplitMode > 3) currentSplitMode = 1;
         let currentActiveTab = 'calendar';
 
         // ── Split Layout Manager ──
         function setSplitLayout(mode) {
             currentSplitMode = mode;
+            try { localStorage.setItem('hvm_split_mode', mode.toString()); } catch(e){}
             const container = document.getElementById('panelsContainer');
             const panelCal  = document.getElementById('panelCalendar');
             const panelMap  = document.getElementById('panelMap');
@@ -2514,9 +2520,9 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     let photoBanner = '';
                     if(photosArr && photosArr.length > 0) {
                         photoBanner = `
-                            <div style="position:relative; width:100%; height:130px; overflow:hidden; border-radius:10px 10px 0 0; background:#000;" onclick="event.stopPropagation(); openPhotoLightbox('${photosArr[0]}')">
+                            <div style="position:relative; width:100%; height:90px; overflow:hidden; border-radius:10px 10px 0 0; background:#000;" onclick="event.stopPropagation(); openPhotoLightbox('${photosArr[0]}')">
                                 <img src="${photosArr[0]}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                <div style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); padding:2px 7px; border-radius:6px; font-size:0.65rem; color:#fff; display:flex; align-items:center; gap:4px; font-weight:700;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
+                                <div style="position:absolute; bottom:5px; right:5px; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); padding:2px 6px; border-radius:5px; font-size:0.62rem; color:#fff; display:flex; align-items:center; gap:4px; font-weight:700;"><i class="fas fa-camera" style="color:#ffffff;"></i> ${photosArr.length} Foto</div>
                             </div>
                         `;
                     }
