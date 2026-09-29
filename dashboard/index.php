@@ -978,31 +978,21 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
             <!-- ══ TOP DECK ══ -->
             <div class="top-deck">
-                <div class="apple-widget" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-                    <div style="display:flex; align-items:center; gap:20px;">
-                        <div class="widget-time">
-                            <span id="clock" class="time-text">00:00</span>
-                            <span id="seconds" class="time-sec">00</span>
-                        </div>
-                        <div class="widget-date" style="border-left:1px solid rgba(255,255,255,0.12); padding-left:18px;">
-                            <div id="dayName" class="date-day">Minggu</div>
-                            <div id="fullDate" class="date-full">01 Januari 2025</div>
-                        </div>
+                <div class="apple-widget">
+                    <div class="widget-time">
+                        <span id="clock" class="time-text">00:00</span>
+                        <span id="seconds" class="time-sec">00</span>
                     </div>
-                    
-                    <!-- Realtime BMKG Weather Widget -->
-                    <div id="bmkgWeatherWidget" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:10px 18px; border-radius:16px; display:flex; align-items:center; gap:14px; backdrop-filter:blur(10px);">
-                        <div id="wxIconWrap" style="font-size:2.2rem; line-height:1; display:flex; align-items:center; justify-content:center;">🌤️</div>
-                        <div style="display:flex; flex-direction:column;">
-                            <div style="display:flex; align-items:baseline; gap:8px;">
-                                <span id="wxTemp" style="font-size:1.5rem; font-weight:900; color:#ffffff; line-height:1;">--°C</span>
-                                <span id="wxDesc" style="font-size:0.78rem; font-weight:700; color:#4efdc4;">Memuat Cuaca...</span>
-                            </div>
-                            <div style="font-size:0.65rem; color:#aaa; margin-top:4px; display:flex; align-items:center; gap:10px;">
-                                <span><i class="fas fa-map-marker-alt" style="color:#a1ff5a; margin-right:3px;"></i><strong id="wxLoc" style="color:#fff;">Surabaya</strong></span>
-                                <span><i class="fas fa-tint" style="color:#4efdc4; margin-right:3px;"></i><span id="wxHum">--%</span></span>
-                                <span style="background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:0.58rem; color:#aaa; font-weight:800;">BMKG Realtime</span>
-                            </div>
+                    <div class="widget-date">
+                        <div id="dayName" class="date-day">Minggu</div>
+                        <div id="fullDate" class="date-full">01 Januari 2025</div>
+                        <!-- BMKG Weather inline compact -->
+                        <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                            <span id="wxIconWrap" style="font-size:1rem;">🌤️</span>
+                            <span id="wxTemp" style="font-size:0.8rem;font-weight:800;color:#fff;">--°C</span>
+                            <span id="wxDesc" style="font-size:0.75rem;color:#4efdc4;font-weight:600;">Memuat...</span>
+                            <span style="font-size:0.7rem;color:#aaa;">·</span>
+                            <span style="font-size:0.7rem;color:#aaa;"><i class="fas fa-tint" style="color:#4efdc4;"></i> <span id="wxHum">--%</span></span>
                         </div>
                     </div>
                 </div>
@@ -2951,67 +2941,52 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             }
         }, 300000);
 
-        // ── BMKG REALTIME WEATHER WIDGET ──
-        const BMKG_ADM4 = '35.78.01.1001'; // Surabaya – Ketabang (bisa ganti sesuai kelurahan)
-        const BMKG_LOC_NAME = 'Surabaya';
-
-        const _bmkgWeatherCodes = {
-            0:'☀️',  1:'☀️',  2:'⛅',  3:'⛅',  4:'🌤️', 5:'🌫️',
-            10:'🌫️', 45:'🌫️', 60:'🌧️', 61:'🌧️', 63:'🌧️',
-            80:'🌦️', 95:'⛈️', 97:'⛈️'
-        };
-        const _bmkgDescMap = {
-            0:'Cerah', 1:'Cerah', 2:'Berawan', 3:'Berawan Tebal',
-            4:'Hujan Ringan', 5:'Kabut', 10:'Asap', 45:'Kabut Tebal',
-            60:'Hujan Sedang', 61:'Hujan Sedang', 63:'Hujan Lebat',
-            80:'Hujan Lokal', 95:'Hujan Petir', 97:'Hujan Petir Lebat'
-        };
-
-        async function fetchBMKGWeather() {
+        // ── BMKG REALTIME WEATHER ──
+        (async function fetchBMKGWeather() {
             try {
-                const url = `https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${BMKG_ADM4}`;
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('BMKG fetch failed');
+                const resp = await fetch('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.78.01.1001');
+                if (!resp.ok) throw new Error();
                 const json = await resp.json();
-
-                // Ambil data prakiraan terdekat dengan waktu sekarang
-                const data = json?.data?.[0]?.cuaca;
-                if (!data) throw new Error('No data');
-
-                const allForecasts = data.flat();
+                const allFc = (json?.data?.[0]?.cuaca || []).flat();
                 const now = Date.now();
-                // Cari forecast paling dekat sekarang (waktu UTC)
-                let closest = allForecasts[0];
-                let minDiff = Infinity;
-                allForecasts.forEach(fc => {
-                    const fcTime = new Date(fc.local_datetime || fc.datetime).getTime();
-                    const diff = Math.abs(fcTime - now);
+                let closest = allFc[0], minDiff = Infinity;
+                allFc.forEach(fc => {
+                    const diff = Math.abs(new Date(fc.local_datetime || fc.datetime).getTime() - now);
                     if (diff < minDiff) { minDiff = diff; closest = fc; }
                 });
-
-                const weatherCode = closest?.weather ?? closest?.weather_code ?? 0;
-                const temp = Math.round(closest?.t ?? closest?.temp ?? 0);
-                const hum = closest?.hu ?? closest?.humidity ?? '--';
-                const desc = _bmkgDescMap[weatherCode] ?? closest?.weather_desc ?? 'Cerah';
-                const icon = _bmkgWeatherCodes[weatherCode] ?? '🌤️';
-
-                document.getElementById('wxIconWrap').textContent = icon;
-                document.getElementById('wxTemp').textContent = `${temp}°C`;
-                document.getElementById('wxDesc').textContent = desc;
-                document.getElementById('wxHum').textContent = `${hum}%`;
-                document.getElementById('wxLoc').textContent = BMKG_LOC_NAME;
-
-            } catch(err) {
-                // Fallback: tampilkan error ringan
-                document.getElementById('wxDesc').textContent = 'Data Cuaca Tidak Tersedia';
-                document.getElementById('wxDesc').style.color = '#888';
-                console.warn('[BMKG Weather]', err);
+                const wCode = closest?.weather ?? 0;
+                const icons = {0:'☀️',1:'☀️',2:'⛅',3:'⛅',4:'🌤️',5:'🌫️',10:'🌫️',45:'🌫️',60:'🌧️',61:'🌧️',63:'🌧️',80:'🌦️',95:'⛈️',97:'⛈️'};
+                const descs = {0:'Cerah',1:'Cerah',2:'Berawan',3:'Berawan Tebal',4:'Hujan Ringan',5:'Kabut',10:'Asap',45:'Kabut Tebal',60:'Hujan Sedang',61:'Hujan Sedang',63:'Hujan Lebat',80:'Hujan Lokal',95:'Hujan Petir',97:'Hujan Petir Lebat'};
+                document.getElementById('wxIconWrap').textContent = icons[wCode] ?? '🌤️';
+                document.getElementById('wxTemp').textContent = Math.round(closest?.t ?? 0) + '°C';
+                document.getElementById('wxDesc').textContent = descs[wCode] ?? closest?.weather_desc ?? 'Cerah';
+                document.getElementById('wxHum').textContent = (closest?.hu ?? '--') + '%';
+            } catch(e) {
+                const d = document.getElementById('wxDesc');
+                if(d) { d.textContent = 'Cuaca N/A'; d.style.color='#666'; }
             }
-        }
-
-        // Jalankan saat load, lalu refresh tiap 10 menit
-        fetchBMKGWeather();
-        setInterval(fetchBMKGWeather, 600000);
+        })();
+        setInterval(async function() {
+            try {
+                const resp = await fetch('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.78.01.1001');
+                if (!resp.ok) return;
+                const json = await resp.json();
+                const allFc = (json?.data?.[0]?.cuaca || []).flat();
+                const now = Date.now();
+                let closest = allFc[0], minDiff = Infinity;
+                allFc.forEach(fc => {
+                    const diff = Math.abs(new Date(fc.local_datetime || fc.datetime).getTime() - now);
+                    if (diff < minDiff) { minDiff = diff; closest = fc; }
+                });
+                const wCode = closest?.weather ?? 0;
+                const icons = {0:'☀️',1:'☀️',2:'⛅',3:'⛅',4:'🌤️',5:'🌫️',10:'🌫️',45:'🌫️',60:'🌧️',61:'🌧️',63:'🌧️',80:'🌦️',95:'⛈️',97:'⛈️'};
+                const descs = {0:'Cerah',1:'Cerah',2:'Berawan',3:'Berawan Tebal',4:'Hujan Ringan',5:'Kabut',10:'Asap',45:'Kabut Tebal',60:'Hujan Sedang',61:'Hujan Sedang',63:'Hujan Lebat',80:'Hujan Lokal',95:'Hujan Petir',97:'Hujan Petir Lebat'};
+                document.getElementById('wxIconWrap').textContent = icons[wCode] ?? '🌤️';
+                document.getElementById('wxTemp').textContent = Math.round(closest?.t ?? 0) + '°C';
+                document.getElementById('wxDesc').textContent = descs[wCode] ?? closest?.weather_desc ?? 'Cerah';
+                document.getElementById('wxHum').textContent = (closest?.hu ?? '--') + '%';
+            } catch(e) {}
+        }, 600000);
     </script>
 
     <!-- Meeting Terdekat Popup Modal -->
