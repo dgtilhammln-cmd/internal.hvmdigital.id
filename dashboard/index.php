@@ -1337,12 +1337,9 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                     <i class="fas fa-map-marked-alt" style="color:#aaa;"></i> Peta Kunjungan
                                 </div>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <select id="mapFilterPeriod" onchange="loadMapMeetings(this.value)" style="padding:6px 12px; font-size:0.78rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; outline:none;">
-                                        <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
-                                        <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
-                                        <option value="month" selected style="background:#111;color:#fff;">Bulan Ini</option>
-                                        <option value="all" style="background:#111;color:#fff;">Semua Kunjungan</option>
-                                    </select>
+                                    <span style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:5px 12px; border-radius:8px;">
+                                        <i class="far fa-calendar-alt" style="margin-right:4px;"></i><?php echo $nama_bulan_selected.' '.$tahun_ini; ?>
+                                    </span>
                                     <button type="button" onclick="loadMapMeetings()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Peta"><i class="fas fa-sync-alt"></i> Refresh</button>
                                 </div>
                             </div>
@@ -1362,12 +1359,9 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                     <i class="fas fa-images" style="color:#aaa;"></i> Dokumentasi Meeting
                                 </div>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <select id="galleryFilterPeriod" onchange="loadGalleryVisits(this.value)" style="padding:6px 12px; font-size:0.78rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; outline:none;">
-                                        <option value="month" selected style="background:#111;color:#fff;">Bulan Ini (<?php echo $nama_bulan_selected; ?>)</option>
-                                        <option value="all" style="background:#111;color:#fff;">Semua Meeting</option>
-                                        <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
-                                        <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
-                                    </select>
+                                    <span style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:5px 12px; border-radius:8px;">
+                                        <i class="far fa-calendar-alt" style="margin-right:4px;"></i><?php echo $nama_bulan_selected.' '.$tahun_ini; ?>
+                                    </span>
                                     <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
                                 </div>
                             </div>
@@ -1698,9 +1692,17 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             }
         }
 
-        // --- PLANNER LOGIC ---
-        let currentDate = new Date();
+        // --- PLANNER LOGIC & GLOBAL MONTH/YEAR SYNC ---
+        let currentDate = new Date(<?php echo (int)$tahun_ini; ?>, <?php echo (int)$bulan_ini - 1; ?>, 1);
         let curMode = 'month';
+
+        function syncGlobalMonthYear(year, month) {
+            const mStr = String(month).padStart(2, '0');
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('m', mStr);
+            urlParams.set('y', year.toString());
+            window.location.search = urlParams.toString();
+        }
 
         async function refreshPlanner() {
             const vp = document.getElementById('calendarViewport');
@@ -1760,18 +1762,23 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
         function setMode(m, btn) { curMode = m; document.querySelectorAll('.mode-switch-v30 button').forEach(el => el.classList.remove('active')); btn.classList.add('active'); refreshPlanner(); }
         function navigatePlanner(dir) {
-            if(curMode === 'month') currentDate.setMonth(currentDate.getMonth() + dir);
-            else if(curMode === 'week') currentDate.setDate(currentDate.getDate() + (dir*7));
-            else if(curMode === 'day') currentDate.setDate(currentDate.getDate() + dir);
-            refreshPlanner();
+            if(curMode === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + dir);
+                syncGlobalMonthYear(currentDate.getFullYear(), currentDate.getMonth() + 1);
+            } else if(curMode === 'week') {
+                currentDate.setDate(currentDate.getDate() + (dir*7));
+                refreshPlanner();
+            } else if(curMode === 'day') {
+                currentDate.setDate(currentDate.getDate() + dir);
+                refreshPlanner();
+            }
         }
 
         function jumpToMonth(val) {
             if(!val) return;
             const parts = val.split('-');
             if(parts.length === 2) {
-                currentDate = new Date(parts[0], parseInt(parts[1])-1, 1);
-                refreshPlanner();
+                syncGlobalMonthYear(parseInt(parts[0]), parseInt(parts[1]));
             }
         }
 
@@ -1785,7 +1792,10 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             }
         }
 
-        function goToday() { currentDate = new Date(); refreshPlanner(); }
+        function goToday() {
+            const now = new Date();
+            syncGlobalMonthYear(now.getFullYear(), now.getMonth() + 1);
+        }
         
         function openEventModal(dateStr = '') {
             const mod = document.getElementById('eventModal');
