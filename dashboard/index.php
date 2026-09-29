@@ -434,7 +434,18 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 .notif-icon { font-size:1.4rem; color:#fff; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); transition:0.3s; }
 .notif-icon:hover { background:rgba(255,255,255,0.18); color:#ffffff; box-shadow:none; }
 .notif-wrapper:hover .notif-dropdown { display:block !important; animation:scaleIn 0.2s ease; }
-.notif-badge { position:absolute; top:-2px; right:-2px; background:#444444; color:#ffffff; font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); }
+.notif-badge {
+    position:absolute; top:-4px; right:-4px;
+    background: linear-gradient(135deg, #4efdc4, #a1ff5a);
+    color: #000000;
+    font-size: 0.65rem; font-weight: 900;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid #000000;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(78, 253, 196, 0.7);
+    animation: pulse 2s infinite;
+}
 .notif-dropdown { position:absolute; top:calc(100% + 5px); right:0; width:360px; background:#121216; border:1px solid rgba(255,255,255,0.12); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.95); z-index:999; display:none; overflow:hidden; }
 .notif-dropdown.active { display:block; animation:scaleIn 0.2s ease; }
 .notif-header { padding:15px 20px; border-bottom:1px solid var(--card-border); font-weight:700; color:#fff; background:rgba(255,255,255,0.03); display:flex; justify-content:space-between; }
@@ -538,19 +549,20 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
 .tp-fill {
     position: absolute; top: 0; left: 0; height: 100%;
-    background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.8) 100%);
+    background: linear-gradient(90deg, #4efdc4 0%, #a1ff5a 100%);
     border-radius: 2px;
     width: 0%;
     z-index: 1;
+    box-shadow: 0 0 10px rgba(78, 253, 196, 0.6);
     transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
 }
 .tp-thumb {
     position: absolute; top: 50%; transform: translate(-50%, -50%);
     width: 14px; height: 14px; border-radius: 50%;
-    background: #fff;
-    border: 2px solid rgba(255,255,255,0.3);
+    background: #ffffff;
+    border: 2px solid #4efdc4;
     z-index: 2;
-    box-shadow: 0 0 12px rgba(255,255,255,0.3);
+    box-shadow: 0 0 12px rgba(78, 253, 196, 0.8);
     display: flex; align-items: center; justify-content: center;
 }
 .tp-thumb-inner { width:5px; height:5px; border-radius:50%; background:rgba(0,0,0,0.5); }
@@ -2877,10 +2889,12 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         }
         localStorage.setItem('hvm_unread_count', unreadNotifCount.toString());
 
-        // Auto Fresh 15 Detik Sekali
-        setTimeout(function() {
-            window.location.reload();
-        }, 15000);
+        // Auto Fresh 5 Menit Sekali Khusus Layar Standby Dashboard (Hemat Request Server)
+        setInterval(function() {
+            if (!document.hidden && document.visibilityState === 'visible') {
+                window.location.reload();
+            }
+        }, 300000);
     </script>
 
     <!-- Meeting Terdekat Popup Modal -->
