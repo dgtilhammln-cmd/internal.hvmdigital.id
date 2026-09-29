@@ -222,7 +222,15 @@ $unread_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as c FRO
 
 // --- 3. DASHBOARD STATS ---
 $target_bulanan = 40000000;
-$bulan_ini = date('m'); $tahun_ini = date('Y');
+$bulan_ini = isset($_GET['m']) && is_numeric($_GET['m']) ? sprintf('%02d', (int)$_GET['m']) : date('m');
+$tahun_ini = isset($_GET['y']) && is_numeric($_GET['y']) ? (int)$_GET['y'] : date('Y');
+
+$nama_bulan_arr = [
+    '01'=>'Januari', '02'=>'Februari', '03'=>'Maret', '04'=>'April',
+    '05'=>'Mei', '06'=>'Juni', '07'=>'Juli', '08'=>'Agustus',
+    '09'=>'September', '10'=>'Oktober', '11'=>'November', '12'=>'Desember'
+];
+$nama_bulan_selected = $nama_bulan_arr[$bulan_ini] ?? date('F');
 
 $q_achieve = mysqli_query($conn, "SELECT SUM(amount) as total FROM payments WHERE MONTH(payment_date) = '$bulan_ini' AND YEAR(payment_date) = '$tahun_ini'");
 $achieved = mysqli_fetch_assoc($q_achieve)['total'] ?? 0;
@@ -253,9 +261,13 @@ if ($achieved < 10000000) {
     $tier        = 'gacor';
 }
 
-// Clients
+// Clients & Deals
 $q_new = mysqli_query($conn, "SELECT COUNT(*) as c FROM clients WHERE MONTH(created_at) = '$bulan_ini' AND YEAR(created_at) = '$tahun_ini'");
-$new_clients = mysqli_fetch_assoc($q_new)['c'];
+$new_clients = mysqli_fetch_assoc($q_new)['c'] ?? 0;
+
+$q_prospect_deal = mysqli_query($conn, "SELECT COUNT(*) as c FROM prospects WHERE (status='Deal' OR deal_status='Deal') AND MONTH(updated_at) = '$bulan_ini' AND YEAR(updated_at) = '$tahun_ini'");
+$prospect_deals_done = ($q_prospect_deal && mysqli_num_rows($q_prospect_deal)>0) ? (mysqli_fetch_assoc($q_prospect_deal)['c'] ?? 0) : 0;
+$deals_count_this_month = max((int)$new_clients, (int)$prospect_deals_done);
 
 // Meetings
 $chk_ev = mysqli_query($conn, "SHOW TABLES LIKE 'events'");
@@ -267,6 +279,7 @@ if (mysqli_num_rows($chk_ev) > 0) {
 }
 $meeting_target = 12;
 $meeting_persen = min(100, ($meetings_done / $meeting_target) * 100);
+$conversion_rate = ($meetings_done > 0) ? min(100, round(($deals_count_this_month / $meetings_done) * 100, 1)) : 0;
 
 // Services count + client lists
 function getSvc($conn, $k) {
@@ -454,6 +467,10 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
 /* ══ TOP DECK ══ */
 .top-deck { display:grid; grid-template-columns:1.2fr 1fr; gap:25px; margin-bottom:25px; animation:fadeIn 0.8s ease; }
+.targets-deck { grid-template-columns: repeat(3, 1fr) !important; gap: 16px !important; }
+@media (max-width: 1200px) {
+    .targets-deck { grid-template-columns: 1fr !important; }
+}
 
 .apple-widget {
     background:linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,0,0,0.8));
@@ -982,166 +999,249 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             </div>
 
             <!-- ══ TARGETS DECK ══ -->
-            <div class="top-deck">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:0 4px;">
+                <div style="font-size:0.75rem; font-weight:800; color:rgba(255,255,255,0.4); letter-spacing:2px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-chart-line" style="color:var(--neon-main);"></i> PERIODE: <?php echo strtoupper($nama_bulan_selected).' '.$tahun_ini; ?>
+                </div>
+                <form method="GET" action="" style="display:flex; align-items:center; gap:8px;" id="deckPeriodForm">
+                    <select name="m" onchange="this.form.submit()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; outline:none; transition:0.2s;">
+                        <?php foreach($nama_bulan_arr as $m_num => $m_name): ?>
+                            <option value="<?php echo $m_num; ?>" <?php echo ($m_num === $bulan_ini)?'selected':''; ?> style="background:#111; color:#fff;"><?php echo $m_name; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="y" onchange="this.form.submit()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; outline:none; transition:0.2s;">
+                        <?php 
+                        $curr_y = (int)date('Y');
+                        for($y = $curr_y - 2; $y <= $curr_y + 1; $y++): ?>
+                            <option value="<?php echo $y; ?>" <?php echo ($y == $tahun_ini)?'selected':''; ?> style="background:#111; color:#fff;"><?php echo $y; ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </form>
+            </div>
+
+            <div class="top-deck targets-deck">
                 
-                <!-- REVENUE TARGET CARD -->
+                <!-- CARD 1: REVENUE TARGET -->
                 <div class="target-premium-card tier-<?php echo $tier; ?>"
                      style="--tier-color:<?php echo $level_color;?>; margin-bottom:0;">
 
-                <div class="tp-header">
-                    <div class="tp-label">MONTHLY TARGET</div>
-                    <div class="tp-badge">
-                        <i class="fas <?php echo $level_icon; ?>"></i>
-                        <span><?php echo $level_label; ?></span>
+                    <div class="tp-header">
+                        <div class="tp-label">MONTHLY TARGET</div>
+                        <div class="tp-badge">
+                            <i class="fas <?php echo $level_icon; ?>"></i>
+                            <span><?php echo $level_label; ?></span>
+                        </div>
+                    </div>
+
+                    <div class="tp-amount-row">
+                        <div class="tp-achieved">
+                            Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit">jt</span>
+                        </div>
+                        <div class="tp-separator">/</div>
+                        <div class="tp-goal">
+                            Rp <?php echo number_format($target_bulanan/1000000, 0); ?><span class="tp-unit">jt</span>
+                        </div>
+                    </div>
+
+                    <!-- 3-Level Track -->
+                    <div class="tp-track-wrap">
+                        <div class="tp-track">
+                            <div class="tp-zone zone-red"    style="width:25%;left:0"></div>
+                            <div class="tp-zone zone-yellow" style="width:25%;left:25%"></div>
+                            <div class="tp-zone zone-green"  style="width:50%;left:50%"></div>
+                            <div class="tp-fill" id="tpFill" style="width:0%"></div>
+                            <div class="tp-thumb" id="tpThumb" style="left:0%">
+                                <div class="tp-thumb-inner"></div>
+                            </div>
+                        </div>
+                        <div class="tp-milestones">
+                            <div class="tp-milestone" style="left:0%">
+                                <div class="ms-dot ms-start"></div>
+                                <div class="ms-info"><span class="ms-label">0</span></div>
+                            </div>
+                            <div class="tp-milestone" style="left:25%">
+                                <div class="ms-dot <?php echo ($achieved>=10000000)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">10jt</span>
+                                    <span class="ms-tag">Target 1</span>
+                                </div>
+                            </div>
+                            <div class="tp-milestone" style="left:50%">
+                                <div class="ms-dot <?php echo ($achieved>=20000000)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">20jt</span>
+                                    <span class="ms-tag">Target 2</span>
+                                </div>
+                            </div>
+                            <div class="tp-milestone" style="left:100%">
+                                <div class="ms-dot ms-end <?php echo ($achieved>=40000000)?'ms-done ms-gacor':''; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">40jt</span>
+                                    <span class="ms-tag">Reached</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tp-footer">
+                        <div class="tp-stat">
+                            <span class="tp-stat-label">Progress</span>
+                            <span class="tp-stat-val"><?php echo number_format(min(100,$persen_target),1); ?>%</span>
+                        </div>
+                        <div class="tp-stat-center">
+                            <span class="tp-msg"><?php echo ($achieved >= 40000000) ? 'Target Reached!' : (($achieved >= 10000000) ? 'On Track' : 'Butuh Usaha Lebih'); ?></span>
+                        </div>
+                        <div class="tp-stat" style="text-align:right;">
+                            <span class="tp-stat-label">Gap Target</span>
+                            <span class="tp-stat-val">
+                                <?php echo $sisa_target > 0 ? 'Rp '.number_format($sisa_target/1000000,1).'jt' : 'DONE!'; ?>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="tp-amount-row">
-                    <div class="tp-achieved">
-                        Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit">jt</span>
+                <!-- CARD 2: CLIENT DEAL BULAN INI (MIDDLE CARD) -->
+                <div class="target-premium-card"
+                     style="--tier-color:#4efdc4; margin-bottom:0;">
+                    
+                    <div class="tp-header">
+                        <div class="tp-label">CLIENT DEAL BULAN INI</div>
+                        <div class="tp-badge" style="background:rgba(78,253,196,0.12); color:#4efdc4; border-color:rgba(78,253,196,0.3);">
+                            <i class="fas fa-handshake"></i>
+                            <span><?php echo $deals_count_this_month; ?> DEAL</span>
+                        </div>
                     </div>
-                    <div class="tp-separator">/</div>
-                    <div class="tp-goal">
-                        Rp <?php echo number_format($target_bulanan/1000000, 0); ?><span class="tp-unit">jt</span>
+
+                    <div class="tp-amount-row">
+                        <div class="tp-achieved" style="color:#4efdc4;">
+                            Rp <?php echo number_format($achieved/1000000, 1); ?><span class="tp-unit" style="color:#4efdc4;">jt</span>
+                        </div>
+                    </div>
+
+                    <!-- Conversion Track -->
+                    <div class="tp-track-wrap">
+                        <div class="tp-track">
+                            <div class="tp-fill" id="tpFillClient" style="width:0%; background:linear-gradient(90deg, #4efdc4, #a1ff5a);"></div>
+                            <div class="tp-thumb" id="tpThumbClient" style="left:0%; border-color:#4efdc4;">
+                                <div class="tp-thumb-inner" style="background:#4efdc4;"></div>
+                            </div>
+                        </div>
+                        <div class="tp-milestones">
+                            <div class="tp-milestone" style="left:0%">
+                                <div class="ms-dot ms-start"></div>
+                                <div class="ms-info"><span class="ms-label">0%</span></div>
+                            </div>
+                            <div class="tp-milestone" style="left:50%">
+                                <div class="ms-dot <?php echo ($conversion_rate>=50)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">50%</span>
+                                    <span class="ms-tag">Target</span>
+                                </div>
+                            </div>
+                            <div class="tp-milestone" style="left:100%">
+                                <div class="ms-dot ms-end <?php echo ($conversion_rate>=100)?'ms-done ms-gacor':''; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">100%</span>
+                                    <span class="ms-tag">Optimal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tp-footer">
+                        <div class="tp-stat">
+                            <span class="tp-stat-label">Konversi</span>
+                            <span class="tp-stat-val" style="color:#4efdc4;"><?php echo number_format($conversion_rate, 1); ?>%</span>
+                        </div>
+                        <div class="tp-stat-center">
+                            <span class="tp-msg"><?php echo $deals_count_this_month; ?> Deal / <?php echo $meetings_done; ?> Meet</span>
+                        </div>
+                        <div class="tp-stat" style="text-align:right;">
+                            <span class="tp-stat-label">Total Deal</span>
+                            <span class="tp-stat-val"><?php echo $deals_count_this_month; ?> Client</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 3-Level Track -->
-                <div class="tp-track-wrap">
-                    <div class="tp-track">
-                        <div class="tp-zone zone-red"    style="width:25%;left:0"></div>
-                        <div class="tp-zone zone-yellow" style="width:25%;left:25%"></div>
-                        <div class="tp-zone zone-green"  style="width:50%;left:50%"></div>
-                        <div class="tp-fill" id="tpFill" style="width:0%"></div>
-                        <div class="tp-thumb" id="tpThumb" style="left:0%">
-                            <div class="tp-thumb-inner"></div>
+                <!-- CARD 3: MEETING TARGET -->
+                <div class="target-premium-card tier-<?php echo $tier; ?>"
+                     style="--tier-color:<?php echo $level_color;?>; margin-bottom:0;">
+                    
+                    <div class="tp-header">
+                        <div class="tp-label">MEETING TARGET</div>
+                        <div class="tp-badge">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>SINKRON</span>
                         </div>
                     </div>
-                    <div class="tp-milestones">
-                        <div class="tp-milestone" style="left:0%">
-                            <div class="ms-dot ms-start"></div>
-                            <div class="ms-info"><span class="ms-label">0</span></div>
+
+                    <div class="tp-amount-row">
+                        <div class="tp-achieved">
+                            <?php echo $meetings_done; ?><span class="tp-unit">meet</span>
                         </div>
-                        <div class="tp-milestone" style="left:25%">
-                            <div class="ms-dot <?php echo ($achieved>=10000000)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
-                            <div class="ms-info">
-                                <span class="ms-label">10jt</span>
-                                <span class="ms-tag">Target 1</span>
+                        <div class="tp-separator">/</div>
+                        <div class="tp-goal">
+                            12<span class="tp-unit">meet</span>
+                        </div>
+                    </div>
+
+                    <!-- 3-Level Track -->
+                    <div class="tp-track-wrap">
+                        <div class="tp-track">
+                            <div class="tp-zone zone-red"    style="width:33.3%;left:0"></div>
+                            <div class="tp-zone zone-yellow" style="width:33.3%;left:33.3%"></div>
+                            <div class="tp-zone zone-green"  style="width:33.4%;left:66.6%"></div>
+                            <div class="tp-fill" id="tpFillMeeting" style="width:<?php echo $meeting_persen; ?>%; background:linear-gradient(90deg, #4efdc4, #a1ff5a);"></div>
+                            <div class="tp-thumb" id="tpThumbMeeting" style="left:<?php echo $meeting_persen; ?>%">
+                                <div class="tp-thumb-inner"></div>
                             </div>
                         </div>
-                        <div class="tp-milestone" style="left:50%">
-                            <div class="ms-dot <?php echo ($achieved>=20000000)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
-                            <div class="ms-info">
-                                <span class="ms-label">20jt</span>
-                                <span class="ms-tag">Target 2</span>
+                        <div class="tp-milestones">
+                            <div class="tp-milestone" style="left:0%">
+                                <div class="ms-dot ms-start"></div>
+                                <div class="ms-info"><span class="ms-label">0</span></div>
+                            </div>
+                            <div class="tp-milestone" style="left:33.3%">
+                                <div class="ms-dot <?php echo ($meetings_done>=4)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">4</span>
+                                    <span class="ms-tag">Target 1</span>
+                                </div>
+                            </div>
+                            <div class="tp-milestone" style="left:66.6%">
+                                <div class="ms-dot <?php echo ($meetings_done>=8)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">8</span>
+                                    <span class="ms-tag">Target 2</span>
+                                </div>
+                            </div>
+                            <div class="tp-milestone" style="left:100%">
+                                <div class="ms-dot ms-end <?php echo ($meetings_done>=12)?'ms-done ms-gacor':''; ?>"></div>
+                                <div class="ms-info">
+                                    <span class="ms-label">12</span>
+                                    <span class="ms-tag">Reached</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="tp-milestone" style="left:100%">
-                            <div class="ms-dot ms-end <?php echo ($achieved>=40000000)?'ms-done ms-gacor':''; ?>">
-                            </div>
-                            <div class="ms-info">
-                                <span class="ms-label">40jt</span>
-                                <span class="ms-tag">Reached</span>
-                            </div>
+                    </div>
+                    <div class="tp-footer">
+                        <div class="tp-stat">
+                            <span class="tp-stat-label">Progress</span>
+                            <span class="tp-stat-val"><?php echo number_format(min(100,$meeting_persen),1); ?>%</span>
+                        </div>
+                        <div class="tp-stat-center">
+                            <span class="tp-msg"><?php echo ($meetings_done>=12) ? 'Excellent Sync!' : 'Perlu lebih banyak meeting!'; ?></span>
+                        </div>
+                        <div class="tp-stat" style="text-align:right;">
+                            <span class="tp-stat-label">Gap Target</span>
+                            <span class="tp-stat-val">
+                                <?php echo (12 - $meetings_done) > 0 ? (12 - $meetings_done).' meet' : 'DONE!'; ?>
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <div class="tp-footer">
-                    <div class="tp-stat">
-                        <span class="tp-stat-label">Progress</span>
-                        <span class="tp-stat-val"><?php echo number_format(min(100,$persen_target),1); ?>%</span>
-                    </div>
-                    <div class="tp-stat-center">
-                        <span class="tp-msg"><?php echo $level_msg; ?></span>
-                    </div>
-                    <div class="tp-stat" style="text-align:right;">
-                        <span class="tp-stat-label">Gap ke Target</span>
-                        <span class="tp-stat-val">
-                            <?php echo $sisa_target > 0 ? 'Rp '.number_format($sisa_target/1000000,1).'jt' : 'DONE!'; ?>
-                        </span>
-                    </div>
-                </div>
             </div>
-
-            <!-- MEETING TARGET CARD -->
-            <div class="target-premium-card tier-<?php echo $tier; ?>"
-                 style="--tier-color:<?php echo $level_color;?>; margin-bottom:0;">
-                
-                <div class="tp-header">
-                    <div class="tp-label">MEETING TARGET</div>
-                    <div class="tp-badge">
-                        <i class="fas fa-handshake"></i>
-                        <span>SINKRON</span>
-                    </div>
-                </div>
-
-                <div class="tp-amount-row">
-                    <div class="tp-achieved">
-                        <?php echo $meetings_done; ?><span class="tp-unit">meet</span>
-                    </div>
-                    <div class="tp-separator">/</div>
-                    <div class="tp-goal">
-                        12<span class="tp-unit">meet</span>
-                    </div>
-                </div>
-
-                <!-- 3-Level Track -->
-                <div class="tp-track-wrap">
-                    <div class="tp-track">
-                        <div class="tp-zone zone-red"    style="width:33.3%;left:0"></div>
-                        <div class="tp-zone zone-yellow" style="width:33.3%;left:33.3%"></div>
-                        <div class="tp-zone zone-green"  style="width:33.4%;left:66.6%"></div>
-                        <div class="tp-fill" id="tpFillMeeting" style="width:<?php echo $meeting_persen; ?>%; background:linear-gradient(90deg, #4efdc4, #a1ff5a);"></div>
-                        <div class="tp-thumb" id="tpThumbMeeting" style="left:<?php echo $meeting_persen; ?>%">
-                            <div class="tp-thumb-inner"></div>
-                        </div>
-                    </div>
-                    <div class="tp-milestones">
-                        <div class="tp-milestone" style="left:0%">
-                            <div class="ms-dot ms-start"></div>
-                            <div class="ms-info"><span class="ms-label">0</span></div>
-                        </div>
-                        <div class="tp-milestone" style="left:33.3%">
-                            <div class="ms-dot <?php echo ($meetings_done>=4)?'ms-done ms-red':'ms-red-empty'; ?>"></div>
-                            <div class="ms-info">
-                                <span class="ms-label">4</span>
-                                <span class="ms-tag">Target 1</span>
-                            </div>
-                        </div>
-                        <div class="tp-milestone" style="left:66.6%">
-                            <div class="ms-dot <?php echo ($meetings_done>=8)?'ms-done ms-yellow':'ms-yellow-empty'; ?>"></div>
-                            <div class="ms-info">
-                                <span class="ms-label">8</span>
-                                <span class="ms-tag">Target 2</span>
-                            </div>
-                        </div>
-                        <div class="tp-milestone" style="left:100%">
-                            <div class="ms-dot ms-end <?php echo ($meetings_done>=12)?'ms-done ms-gacor':''; ?>"></div>
-                            <div class="ms-info">
-                                <span class="ms-label">12</span>
-                                <span class="ms-tag">Reached</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tp-footer" style="margin-top:10px;">
-                    <div class="tp-stat">
-                        <span class="tp-stat-label">Progress</span>
-                        <span class="tp-stat-val"><?php echo number_format(min(100,$meeting_persen),1); ?>%</span>
-                    </div>
-                    <div class="tp-stat-center">
-                        <span class="tp-msg"><?php echo ($meetings_done>=12) ? 'Excellent Sync!' : 'Perlu lebih banyak meeting!'; ?></span>
-                    </div>
-                    <div class="tp-stat" style="text-align:right;">
-                        <span class="tp-stat-label">Gap ke Target</span>
-                        <span class="tp-stat-val">
-                            <?php echo (12 - $meetings_done) > 0 ? (12 - $meetings_done).' meet' : 'DONE!'; ?>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
             <!-- PLANNER / CALENDAR + PETA (TABBED) -->
             <div class="zenith-grid-layout">
@@ -1547,6 +1647,18 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     thumb.style.transition = 'left 1.5s cubic-bezier(0.4,0,0.2,1)';
                     fill.style.width  = pct + '%';
                     thumb.style.left  = Math.min(pct, 98) + '%';
+                }, 400);
+            }
+
+            var pctClient = <?php echo min(100, round($conversion_rate, 2)); ?>;
+            var fillClient  = document.getElementById('tpFillClient');
+            var thumbClient = document.getElementById('tpThumbClient');
+            if (fillClient && thumbClient) {
+                setTimeout(function() {
+                    fillClient.style.transition  = 'width 1.5s cubic-bezier(0.4,0,0.2,1)';
+                    thumbClient.style.transition = 'left 1.5s cubic-bezier(0.4,0,0.2,1)';
+                    fillClient.style.width  = pctClient + '%';
+                    thumbClient.style.left  = Math.min(pctClient, 98) + '%';
                 }, 400);
             }
         });
