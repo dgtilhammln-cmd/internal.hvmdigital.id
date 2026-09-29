@@ -49,16 +49,20 @@ if(isset($_SESSION['admin']) && isset($_POST['ajax_action'])){
     if($act === 'get_map_meetings') {
         $period = $_POST['period'] ?? 'month';
         $is_gallery = ($_POST['is_gallery'] ?? '0') === '1';
+        $m_req = $_POST['m'] ?? '';
+        $y_req = $_POST['y'] ?? '';
+
         $where = "1=1";
-        if($period === '7d') {
+        if($period === 'month') {
+            $m_val = !empty($m_req) ? sprintf('%02d', intval($m_req)) : $bulan_ini;
+            $y_val = !empty($y_req) ? intval($y_req) : $tahun_ini;
+            $where = "MONTH(event_date) = '$m_val' AND YEAR(event_date) = '$y_val'";
+        } else if($period === '7d') {
             $startDate = date('Y-m-d', strtotime('-7 days'));
             $where = "event_date >= '$startDate'";
         } else if($period === '30d') {
             $startDate = date('Y-m-d', strtotime('-30 days'));
             $where = "event_date >= '$startDate'";
-        } else if($period === 'month') {
-            $m = date('m'); $y = date('Y');
-            $where = "MONTH(event_date) = '$m' AND YEAR(event_date) = '$y'";
         } else if($period === 'all') {
             $where = "1=1";
         }
@@ -1357,7 +1361,15 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                 <div style="font-size:0.85rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px;">
                                     <i class="fas fa-images" style="color:#aaa;"></i> Dokumentasi Meeting
                                 </div>
-                                <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <select id="galleryFilterPeriod" onchange="loadGalleryVisits(this.value)" style="padding:6px 12px; font-size:0.78rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; outline:none;">
+                                        <option value="month" selected style="background:#111;color:#fff;">Bulan Ini (<?php echo $nama_bulan_selected; ?>)</option>
+                                        <option value="all" style="background:#111;color:#fff;">Semua Meeting</option>
+                                        <option value="7d" style="background:#111;color:#fff;">7 Hari Terakhir</option>
+                                        <option value="30d" style="background:#111;color:#fff;">30 Hari Terakhir</option>
+                                    </select>
+                                    <button type="button" onclick="loadGalleryVisits()" style="background:#ffffff; border:none; color:#000; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Refresh Galeri"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                </div>
                             </div>
 
                             <div id="galleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding-right:4px;"></div>
@@ -2456,21 +2468,24 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             };
         }
 
-        async function loadGalleryVisits() {
+        async function loadGalleryVisits(period) {
             const grid = document.getElementById('galleryGrid');
             if(!grid) return;
+            const p = period || document.getElementById('galleryFilterPeriod')?.value || 'month';
             grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:40px; text-align:center; grid-column:1/-1;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Memuat Data Meeting...</div>';
             
             const fd = new FormData();
             fd.append('ajax_action', 'get_map_meetings');
-            fd.append('period', 'all');
+            fd.append('period', p);
+            fd.append('m', '<?php echo $bulan_ini; ?>');
+            fd.append('y', '<?php echo $tahun_ini; ?>');
             fd.append('is_gallery', '1');
             
             try {
                 const res = await fetch('', { method: 'POST', body: fd });
                 const meetings = await res.json();
                 if(!meetings || !Array.isArray(meetings) || meetings.length === 0) {
-                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data meeting.</div>';
+                    grid.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:60px; text-align:center; grid-column:1/-1;"><i class="fas fa-images" style="font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.3;"></i>Belum ada data meeting pada periode ini.</div>';
                     return;
                 }
 
@@ -2543,6 +2558,8 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             const fd = new FormData();
             fd.append('ajax_action', 'get_map_meetings');
             fd.append('period', p);
+            fd.append('m', '<?php echo $bulan_ini; ?>');
+            fd.append('y', '<?php echo $tahun_ini; ?>');
             
             try {
                 const res = await fetch('', { method: 'POST', body: fd }).then(r => r.json());
