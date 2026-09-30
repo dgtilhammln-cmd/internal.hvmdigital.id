@@ -978,22 +978,32 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
             <!-- ══ TOP DECK ══ -->
             <div class="top-deck">
-                <div class="apple-widget">
-                    <div class="widget-time">
-                        <span id="clock" class="time-text">00:00</span>
-                        <span id="seconds" class="time-sec">00</span>
-                    </div>
-                    <div class="widget-date">
-                        <div id="dayName" class="date-day">Minggu</div>
-                        <div id="fullDate" class="date-full">01 Januari 2025</div>
-                        <!-- BMKG Weather inline compact -->
-                        <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                            <span id="wxIconWrap" style="font-size:1rem;">🌤️</span>
-                            <span id="wxTemp" style="font-size:0.8rem;font-weight:800;color:#fff;">--°C</span>
-                            <span id="wxDesc" style="font-size:0.75rem;color:#4efdc4;font-weight:600;">Memuat...</span>
-                            <span style="font-size:0.7rem;color:#aaa;">·</span>
-                            <span style="font-size:0.7rem;color:#aaa;"><i class="fas fa-tint" style="color:#4efdc4;"></i> <span id="wxHum">--%</span></span>
+                <div class="apple-widget" style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                    <!-- Kiri: Jam + Tanggal -->
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div class="widget-time">
+                            <span id="clock" class="time-text">00:00</span>
+                            <span id="seconds" class="time-sec">00</span>
                         </div>
+                        <div style="border-left:1px solid rgba(255,255,255,0.1);padding-left:14px;">
+                            <div id="dayName" class="date-day">Minggu</div>
+                            <div id="fullDate" class="date-full">01 Januari 2025</div>
+                            <!-- BMKG Weather compact -->
+                            <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                                <span id="wxIconWrap" style="font-size:0.9rem;">🌤️</span>
+                                <span id="wxTemp" style="font-size:0.75rem;font-weight:800;color:#fff;">--°C</span>
+                                <span id="wxDesc" style="font-size:0.7rem;color:#4efdc4;font-weight:600;">Memuat...</span>
+                                <span style="font-size:0.65rem;color:#777;">·</span>
+                                <span style="font-size:0.65rem;color:#aaa;"><i class="fas fa-tint" style="color:#4efdc4;font-size:0.6rem;"></i> <span id="wxHum">--%</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kanan: Jadwal Sholat -->
+                    <div id="sholatWidget" style="text-align:right;">
+                        <div id="sholatCountdown" style="font-size:0.72rem;color:#a1ff5a;font-weight:700;letter-spacing:0.5px;">Memuat jadwal...</div>
+                        <div id="sholatName" style="font-size:1rem;font-weight:900;color:#fff;line-height:1.2;">--</div>
+                        <div id="sholatTime" style="font-size:0.7rem;color:#aaa;margin-top:2px;">--:--</div>
+                        <div id="sholatDots" style="display:flex;gap:4px;justify-content:flex-end;margin-top:5px;"></div>
                     </div>
                 </div>
                 <div class="upcoming-card" id="meetingTerdekatCard">
@@ -2987,6 +2997,93 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                 document.getElementById('wxHum').textContent = (closest?.hu ?? '--') + '%';
             } catch(e) {}
         }, 600000);
+
+        // ── JADWAL SHOLAT (AlAdhan API) ──
+        const _sholatNames = ['Subuh','Dzuhur','Ashar','Maghrib','Isya'];
+        const _sholatKeys  = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
+        let _sholatTimings = null;
+        let _sholatTickInterval = null;
+
+        async function loadSholatTimings() {
+            try {
+                const today = new Date();
+                const dd = String(today.getDate()).padStart(2,'0');
+                const mm = String(today.getMonth()+1).padStart(2,'0');
+                const yy = today.getFullYear();
+                const url = `https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yy}?city=Surabaya&country=Indonesia&method=11`;
+                const res = await fetch(url);
+                const json = await res.json();
+                if(json.code === 200) {
+                    _sholatTimings = json.data.timings;
+                    startSholatTick();
+                }
+            } catch(e) {
+                document.getElementById('sholatCountdown').textContent = 'Gagal memuat';
+            }
+        }
+
+        function startSholatTick() {
+            if(_sholatTickInterval) clearInterval(_sholatTickInterval);
+            updateSholatWidget();
+            _sholatTickInterval = setInterval(updateSholatWidget, 1000);
+        }
+
+        function updateSholatWidget() {
+            if(!_sholatTimings) return;
+            const now = new Date();
+            const nowMin = now.getHours()*60 + now.getMinutes();
+
+            // Parse semua waktu ke menit
+            const times = _sholatKeys.map(k => {
+                const [h,m] = _sholatTimings[k].split(':').map(Number);
+                return h*60 + m;
+            });
+
+            // Cari sholat berikutnya
+            let nextIdx = times.findIndex(t => t > nowMin);
+            if(nextIdx === -1) nextIdx = 0; // Subuh besok
+
+            const nextMin = times[nextIdx];
+            let diffMin;
+            if(nextMin > nowMin) {
+                diffMin = nextMin - nowMin;
+            } else {
+                // Subuh besok
+                diffMin = (24*60 - nowMin) + nextMin;
+            }
+
+            const hrs  = Math.floor(diffMin / 60);
+            const mins = diffMin % 60;
+            const countdown = hrs > 0 ? `${hrs} jam ${mins} menit lagi` : `${mins} menit lagi`;
+
+            document.getElementById('sholatCountdown').textContent = countdown;
+            document.getElementById('sholatName').textContent = _sholatNames[nextIdx];
+            const [nh,nm] = _sholatTimings[_sholatKeys[nextIdx]].split(':');
+            document.getElementById('sholatTime').textContent = `${nh}:${nm} WIB`;
+
+            // Dots: hijau=sudah lewat, kuning=berikutnya, abu=belum
+            const dotsEl = document.getElementById('sholatDots');
+            dotsEl.innerHTML = '';
+            times.forEach((t, i) => {
+                const dot = document.createElement('div');
+                dot.title = _sholatNames[i] + ' ' + _sholatTimings[_sholatKeys[i]];
+                dot.style.cssText = 'width:7px;height:7px;border-radius:50%;transition:background 0.3s;cursor:default;';
+                if(i === nextIdx)      dot.style.background = '#a1ff5a';  // berikutnya – hijau
+                else if(t < nowMin)   dot.style.background = '#4efdc4';  // sudah lewat – mint
+                else                  dot.style.background = '#333';     // belum – abu
+                dotsEl.appendChild(dot);
+            });
+        }
+
+        // Load saat halaman siap, refresh tiap tengah malam
+        loadSholatTimings();
+        // Refresh jadwal saat tengah malam (ganti hari)
+        const msToMidnight = (() => {
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 1, 0);
+            return midnight - now;
+        })();
+        setTimeout(() => { loadSholatTimings(); setInterval(loadSholatTimings, 24*60*60*1000); }, msToMidnight);
     </script>
 
     <!-- Meeting Terdekat Popup Modal -->
