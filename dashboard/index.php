@@ -790,6 +790,10 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
         .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; }
         .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #ffffff; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #333; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+        /* CSS Filter for 100% Free & Reliable Dark Mode Map (No API Key Required) */
+        .dark-map-tiles .leaflet-tile-pane {
+            filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        }
 
         /* ══ SPLIT LAYOUT SYSTEM ══ */
         .split-layout-bar {
@@ -2219,21 +2223,9 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
         // --- INTERACTIVE OPENSTREETMAP / LEAFLET LOGIC ---
         let _leafletMap = null;
-        let _activeTileLayer = null;
         let _mapTheme = localStorage.getItem('hvm_map_theme') || 'dark'; // Default Dark Map
         let _mapMarkersLayer = null;
         let _mapPolylineLayer = null;
-
-        const _mapTileUrls = {
-            dark: {
-                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            },
-            light: {
-                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }
-        };
 
         function initMeetingMap() {
             const mapEl = document.getElementById('meetingMap');
@@ -2242,10 +2234,16 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             // Center default: Surabaya (-7.2575, 112.7521)
             _leafletMap = L.map('meetingMap', { zoomControl: true }).setView([-7.2575, 112.7521], 12);
             
-            _applyMapTheme(_mapTheme);
+            // Standard OpenStreetMap tiles (100% free, no API key required)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19
+            }).addTo(_leafletMap);
 
             _mapMarkersLayer = L.layerGroup().addTo(_leafletMap);
             _mapPolylineLayer = L.layerGroup().addTo(_leafletMap);
+
+            _applyMapTheme(_mapTheme);
 
             loadMapMeetings('month');
         }
@@ -2254,17 +2252,13 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             _mapTheme = theme;
             localStorage.setItem('hvm_map_theme', theme);
 
-            if (_activeTileLayer && _leafletMap) {
-                _leafletMap.removeLayer(_activeTileLayer);
-            }
-
-            const tileConfig = _mapTileUrls[theme] || _mapTileUrls.dark;
-            if (_leafletMap) {
-                _activeTileLayer = L.tileLayer(tileConfig.url, {
-                    attribution: tileConfig.attr,
-                    maxZoom: 19,
-                    subdomains: 'abcd'
-                }).addTo(_leafletMap);
+            const mapContainer = document.getElementById('meetingMap');
+            if (mapContainer) {
+                if (theme === 'dark') {
+                    mapContainer.classList.add('dark-map-tiles');
+                } else {
+                    mapContainer.classList.remove('dark-map-tiles');
+                }
             }
 
             const icon = document.getElementById('mapThemeIcon');
