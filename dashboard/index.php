@@ -1362,6 +1362,10 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                     <i class="fas fa-map-marked-alt" style="color:#aaa;"></i> Peta Kunjungan
                                 </div>
                                 <div style="display:flex; align-items:center; gap:8px;">
+                                    <button type="button" id="btnMapTheme" onclick="toggleMapTheme()" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; transition:0.2s;" title="Ganti Mode Peta (Dark / Light)">
+                                        <i id="mapThemeIcon" class="fas fa-moon" style="color:#a1ff5a;"></i>
+                                        <span id="mapThemeText">Dark Map</span>
+                                    </button>
                                     <span style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:5px 12px; border-radius:8px;">
                                         <i class="far fa-calendar-alt" style="margin-right:4px;"></i><?php echo $nama_bulan_selected.' '.$tahun_ini; ?>
                                     </span>
@@ -2215,8 +2219,21 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
         // --- INTERACTIVE OPENSTREETMAP / LEAFLET LOGIC ---
         let _leafletMap = null;
+        let _activeTileLayer = null;
+        let _mapTheme = localStorage.getItem('hvm_map_theme') || 'dark'; // Default Dark Map
         let _mapMarkersLayer = null;
         let _mapPolylineLayer = null;
+
+        const _mapTileUrls = {
+            dark: {
+                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            },
+            light: {
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }
+        };
 
         function initMeetingMap() {
             const mapEl = document.getElementById('meetingMap');
@@ -2225,16 +2242,49 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             // Center default: Surabaya (-7.2575, 112.7521)
             _leafletMap = L.map('meetingMap', { zoomControl: true }).setView([-7.2575, 112.7521], 12);
             
-            // OpenStreetMap — 100% gratis, no API key
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                maxZoom: 19
-            }).addTo(_leafletMap);
+            _applyMapTheme(_mapTheme);
 
             _mapMarkersLayer = L.layerGroup().addTo(_leafletMap);
             _mapPolylineLayer = L.layerGroup().addTo(_leafletMap);
 
             loadMapMeetings('month');
+        }
+
+        function _applyMapTheme(theme) {
+            _mapTheme = theme;
+            localStorage.setItem('hvm_map_theme', theme);
+
+            if (_activeTileLayer && _leafletMap) {
+                _leafletMap.removeLayer(_activeTileLayer);
+            }
+
+            const tileConfig = _mapTileUrls[theme] || _mapTileUrls.dark;
+            if (_leafletMap) {
+                _activeTileLayer = L.tileLayer(tileConfig.url, {
+                    attribution: tileConfig.attr,
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }).addTo(_leafletMap);
+            }
+
+            const icon = document.getElementById('mapThemeIcon');
+            const text = document.getElementById('mapThemeText');
+            if (icon && text) {
+                if (theme === 'dark') {
+                    icon.className = 'fas fa-moon';
+                    icon.style.color = '#a1ff5a';
+                    text.textContent = 'Dark Map';
+                } else {
+                    icon.className = 'fas fa-sun';
+                    icon.style.color = '#ffb900';
+                    text.textContent = 'Light Map';
+                }
+            }
+        }
+
+        function toggleMapTheme() {
+            const nextTheme = _mapTheme === 'dark' ? 'light' : 'dark';
+            _applyMapTheme(nextTheme);
         }
 
         // ── Sensor Privacy Toggle Logic ──
