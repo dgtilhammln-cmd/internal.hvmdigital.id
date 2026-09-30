@@ -186,12 +186,12 @@ if($mode == 'month') {
             $dotsHtml .= "<div style='height:12px;'></div>";
         }
 
-        // Holiday Star
         $isHoliday = isset($holidays[$currentDate]) ? 'is-holiday' : '';
         $holidayDot = isset($holidays[$currentDate]) ? "<span style='font-size:0.55rem; color:#aaaaaa;' title='".htmlspecialchars($holidays[$currentDate], ENT_QUOTES)."'><i class='fas fa-star'></i></span>" : "";
 
         $dateNice = date('j M Y', strtotime($currentDate));
-        $jsonEvAttr = $hasEvents ? htmlspecialchars(json_encode(array_values($events[$currentDate])), ENT_QUOTES, 'UTF-8') : '';
+        $hasEvents = count($dayEvents) > 0;
+        $jsonEvAttr = $hasEvents ? htmlspecialchars(json_encode(array_values($dayEvents)), ENT_QUOTES, 'UTF-8') : '';
         $clickAttr = $hasEvents ? "onclick=\"handleDayClick('$currentDate', $jsonEvAttr)\"" : "onclick=\"openEventModal('$currentDate')\"";
 
         echo "<div class='cal-day-cell $isToday $isSunday $isHoliday' data-date='$currentDate' data-date-nice='$dateNice' data-events='$jsonEvAttr' data-holiday='$holidayName' $clickAttr>

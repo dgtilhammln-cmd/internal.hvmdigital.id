@@ -2516,13 +2516,20 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             if (events && events.length > 0) {
                 events.forEach(ev => {
                     const timeStr = ev.time_start ? ev.time_start.substring(0,5) : '00:00';
+                    const title = ev.title || ev.target_name || 'Meeting';
+                    const isExp = (title.includes('Exp:') || title.includes('berakhir') || title.includes('Expired') || (ev.color && (ev.color==='red'||ev.color==='yellow'||ev.color==='orange')));
+                    const borderClr = isExp ? '#ffb900' : '#a1ff5a';
+                    const badgeClr = isExp ? 'rgba(255,185,0,0.15)' : 'rgba(161,255,90,0.15)';
+                    const badgeTxtClr = isExp ? '#ffb900' : '#a1ff5a';
+                    const badgeText = isExp ? 'Masa Berakhir' : escHtml(ev.meeting_type || 'Meeting');
+
                     evHtml += `
-                        <div style="margin-bottom:6px; background:rgba(255,255,255,0.04); border-left:3px solid #ffffff; padding:6px 8px; border-radius:6px;">
+                        <div style="margin-bottom:6px; background:rgba(255,255,255,0.04); border-left:3px solid ${borderClr}; padding:6px 8px; border-radius:6px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; color:#888; margin-bottom:2px;">
                                 <span style="font-weight:700; color:#fff;"><i class="far fa-clock" style="margin-right:3px;"></i>${escHtml(timeStr)}</span>
-                                <span style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px; font-size:0.6rem; color:#ccc; font-weight:700;">${escHtml(ev.meeting_type || 'Meeting')}</span>
+                                <span style="background:${badgeClr}; padding:1px 5px; border-radius:3px; font-size:0.6rem; color:${badgeTxtClr}; font-weight:700;">${badgeText}</span>
                             </div>
-                            <div style="font-size:0.78rem; font-weight:800; color:#fff; line-height:1.25;" class="sensor-blur">${escHtml(ev.title || ev.target_name || 'Meeting')}</div>
+                            <div style="font-size:0.78rem; font-weight:800; color:#fff; line-height:1.25;" class="sensor-blur">${escHtml(title)}</div>
                             ${ev.target_name ? `<div style="font-size:0.7rem; color:#aaa; margin-top:2px;" class="sensor-blur"><i class="fas fa-building" style="font-size:0.65rem; margin-right:3px;"></i>${escHtml(ev.target_name)}</div>` : ''}
                             ${ev.location ? `<div style="font-size:0.68rem; color:#888; margin-top:1px;" class="sensor-blur"><i class="fas fa-map-marker-alt" style="font-size:0.65rem; margin-right:3px;"></i>${escHtml(ev.location)}</div>` : ''}
                         </div>
@@ -2530,16 +2537,16 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                 });
             }
 
-            let holidayHtml = holiday ? `<div style="font-size:0.7rem; color:#ffffff; font-weight:700; margin-bottom:6px; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.2);"><i class="fas fa-star" style="margin-right:4px;"></i>${escHtml(holiday)}</div>` : '';
+            let holidayHtml = holiday ? `<div style="font-size:0.72rem; color:#ff5a5a; font-weight:700; margin-bottom:6px; background:rgba(255,90,90,0.1); padding:5px 8px; border-radius:6px; border:1px solid rgba(255,90,90,0.3);"><i class="fas fa-star" style="margin-right:4px;"></i>${escHtml(holiday)}</div>` : '';
 
             tip.innerHTML = `
                 <div style="font-size:0.75rem; font-weight:800; color:#fff; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
                     <span><i class="far fa-calendar-alt" style="margin-right:5px; color:#ffffff;"></i>${escHtml(dateNice)}</span>
-                    <span style="font-size:0.65rem; color:#888; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${events ? events.length : 0} Meeting</span>
+                    <span style="font-size:0.65rem; color:#888; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${events ? events.length : 0} Agenda</span>
                 </div>
                 ${holidayHtml}
                 ${evHtml}
-                <div style="font-size:0.62rem; color:#666; margin-top:6px; text-align:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:4px;">💡 Klik tanggal untuk melihat / menambah detail</div>
+                <div style="font-size:0.62rem; color:#666; margin-top:6px; text-align:center; border-top:1px solid rgba(255,255,255,0.04); padding-top:4px;">💡 Klik tanggal untuk detail lengkap</div>
             `;
 
             tip.style.display = 'block';
