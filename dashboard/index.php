@@ -790,6 +790,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         .leaflet-popup-content-wrapper { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: #fff !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important; }
         .leaflet-popup-tip { background: rgba(14, 14, 14, 0.95) !important; border: 1px solid rgba(255,255,255,0.2) !important; }
         .map-marker-pin { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #ffffff; color: #000; font-weight: 800; font-size: 0.75rem; border: 2px solid #333; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+        .leaflet-control-attribution { display: none !important; }
         /* CSS Filter for 100% Free & Reliable Dark Mode Map (No API Key Required) */
         .dark-map-tiles .leaflet-tile-pane {
             filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
@@ -2274,6 +2275,10 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                     text.textContent = 'Light Map';
                 }
             }
+
+            if (_leafletMap && window._lastMapMeetingsData) {
+                renderMapMeetings(window._lastMapMeetingsData);
+            }
         }
 
         function toggleMapTheme() {
@@ -2658,6 +2663,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
         async function renderMapMeetings(meetings) {
             if(!_mapMarkersLayer || !_mapPolylineLayer) return;
+            window._lastMapMeetingsData = meetings;
             _mapMarkersLayer.clearLayers();
             _mapPolylineLayer.clearLayers();
 
@@ -2772,12 +2778,18 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
 
 
             if(points.length > 1) {
-                L.polyline(points, {
-                    color: '#000000',
+                const polyStyle = _mapTheme === 'dark' ? {
+                    color: '#a1ff5a', // Bright neon lime green for dark theme
+                    weight: 4,
+                    opacity: 0.95,
+                    dashArray: '6, 6'
+                } : {
+                    color: '#000000', // Original black for light theme
                     weight: 3.5,
                     opacity: 0.9,
                     dashArray: '6, 6'
-                }).addTo(_mapPolylineLayer);
+                };
+                L.polyline(points, polyStyle).addTo(_mapPolylineLayer);
             }
 
             if(points.length > 0) {
