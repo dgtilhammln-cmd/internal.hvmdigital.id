@@ -1354,6 +1354,22 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                                 </div>
                             </div>
 
+                            <!-- Calendar Dot Color Legend Bar -->
+                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-bottom:10px; font-size:0.68rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:6px 14px; border-radius:10px;">
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <span style="width:7px; height:7px; border-radius:50%; background:#a1ff5a; box-shadow:0 0 5px rgba(161,255,90,0.8); display:inline-block;"></span>
+                                    <span style="color:#eaeaea; font-weight:700;">Meeting</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <span style="width:7px; height:7px; border-radius:50%; background:#ff5a5a; box-shadow:0 0 5px rgba(255,90,90,0.8); display:inline-block;"></span>
+                                    <span style="color:#eaeaea; font-weight:700;">Libur Hari Besar</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <span style="width:7px; height:7px; border-radius:50%; background:#ffb900; box-shadow:0 0 5px rgba(255,185,0,0.8); display:inline-block;"></span>
+                                    <span style="color:#eaeaea; font-weight:700;">Masa Berakhir / Expired</span>
+                                </div>
+                            </div>
+
                             <div id="calendarViewport" class="planner-viewport" style="width:100%; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
                         </div>
 
@@ -1795,7 +1811,23 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         if(lbl) lbl.innerText = found.localName || found.name;
                         cell.style.borderColor = 'rgba(255, 90, 90, 0.4)';
                         const num = cell.querySelector('.cal-day-num');
-                        if(num) num.style.color = 'var(--neon-red)';
+                        if(num) num.style.color = '#ff5a5a';
+                        
+                        // Insert Red dot for Holiday if not already present
+                        let wrap = cell.querySelector('.cal-dots-wrap');
+                        if (!wrap) {
+                            wrap = document.createElement('div');
+                            wrap.className = 'cal-dots-wrap';
+                            wrap.style.cssText = 'display:flex; gap:3px; align-items:center; margin-top:auto; height:12px;';
+                            cell.appendChild(wrap);
+                        }
+                        if (!cell.querySelector('.cal-dot-red')) {
+                            const redDot = document.createElement('span');
+                            redDot.className = 'cal-dot cal-dot-red';
+                            redDot.title = 'Libur: ' + (found.localName || found.name);
+                            redDot.style.cssText = 'width:6px; height:6px; border-radius:50%; background:#ff5a5a; box-shadow:0 0 5px rgba(255,90,90,0.8); display:inline-block;';
+                            wrap.insertBefore(redDot, wrap.firstChild);
+                        }
                     }
                 }
             });

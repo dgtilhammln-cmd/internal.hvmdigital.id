@@ -112,19 +112,74 @@ if($mode == 'month') {
         $dayOfWeek = date('w', strtotime($currentDate));
         $isSunday = ($dayOfWeek == 0) ? 'is-sunday' : '';
 
-        $hasEvents = isset($events[$currentDate]) && count($events[$currentDate]) > 0;
-        $eventCount = $hasEvents ? count($events[$currentDate]) : 0;
+        $dayEvents = $events[$currentDate] ?? [];
+        $isHoliday = isset($holidays[$currentDate]);
+        $holidayName = $isHoliday ? htmlspecialchars($holidays[$currentDate], ENT_QUOTES) : '';
+        
+        // Build list of categorized dots for this cell
+        $dots = [];
 
-        // Render Meeting Indicators (Dots / Badge Pill) - NEVER expands cell height!
+        // 1. Libur Hari Besar (Red)
+        if ($isHoliday) {
+            $dots[] = [
+                'type'   => 'holiday',
+                'color'  => '#ff5a5a',
+                'shadow' => 'rgba(255,90,90,0.8)',
+                'title'  => 'Libur: ' . $holidays[$currentDate]
+            ];
+        }
+
+        // 2. Events: Meeting (Green) vs Masa Berakhir (Yellow)
+        foreach ($dayEvents as $ev) {
+            $title = $ev['title'] ?? '';
+            $color = strtolower($ev['color'] ?? '');
+            
+            $isExp = (strpos($title, 'Exp:') !== false || 
+                      strpos($title, 'berakhir') !== false || 
+                      strpos($title, 'Expired') !== false || 
+                      $color === 'red' || 
+                      $color === 'yellow' || 
+                      $color === 'orange');
+
+            if ($isExp) {
+                // Kuning = Masa Berakhir / Expired
+                $dots[] = [
+                    'type'   => 'exp',
+                    'color'  => '#ffb900',
+                    'shadow' => 'rgba(255,185,0,0.8)',
+                    'title'  => $title
+                ];
+            } else {
+                // Hijau = Meeting / Kunjungan
+                $dots[] = [
+                    'type'   => 'meeting',
+                    'color'  => '#a1ff5a',
+                    'shadow' => 'rgba(161,255,90,0.8)',
+                    'title'  => $title
+                ];
+            }
+        }
+
+        $dotCount = count($dots);
         $dotsHtml = '';
-        if($hasEvents) {
+        if ($dotCount > 0) {
             $dotsHtml .= "<div class='cal-dots-wrap' style='display:flex; gap:3px; align-items:center; margin-top:auto; height:12px;'>";
-            if($eventCount <= 3) {
-                for($e=0; $e<$eventCount; $e++) {
-                    $dotsHtml .= "<span class='cal-dot' style='width:6px; height:6px; border-radius:50%; background:#ffffff; box-shadow:0 0 4px rgba(255,255,255,0.7); display:inline-block;'></span>";
+            if ($dotCount <= 4) {
+                foreach ($dots as $dt) {
+                    $c = $dt['color'];
+                    $sh = $dt['shadow'];
+                    $tt = htmlspecialchars($dt['title'], ENT_QUOTES);
+                    $dotsHtml .= "<span class='cal-dot' title='$tt' style='width:6px; height:6px; border-radius:50%; background:$c; box-shadow:0 0 5px $sh; display:inline-block;'></span>";
                 }
             } else {
-                $dotsHtml .= "<span class='cal-dot-pill' style='font-size:0.6rem; background:rgba(255,255,255,0.22); color:#ffffff; padding:1px 5px; border-radius:6px; font-weight:800; display:inline-flex; align-items:center; gap:2px;'><i class='fas fa-circle' style='font-size:0.4rem;'></i> $eventCount</span>";
+                $hasGreen = false; $hasYellow = false; $hasRed = false;
+                foreach ($dots as $dt) {
+                    if ($dt['type'] === 'meeting') $hasGreen = true;
+                    if ($dt['type'] === 'exp') $hasYellow = true;
+                    if ($dt['type'] === 'holiday') $hasRed = true;
+                }
+                $pillColor = $hasRed ? '#ff5a5a' : ($hasYellow ? '#ffb900' : '#a1ff5a');
+                $dotsHtml .= "<span class='cal-dot-pill' style='font-size:0.6rem; background:rgba(255,255,255,0.15); color:#ffffff; padding:1px 5px; border-radius:6px; font-weight:800; display:inline-flex; align-items:center; gap:3px;'><i class='fas fa-circle' style='font-size:0.4rem; color:$pillColor;'></i> $dotCount</span>";
             }
             $dotsHtml .= "</div>";
         } else {
