@@ -999,11 +999,14 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         </div>
                     </div>
                     <!-- Kanan: Jadwal Sholat -->
-                    <div id="sholatWidget" style="text-align:right;">
-                        <div id="sholatCountdown" style="font-size:0.72rem;color:#a1ff5a;font-weight:700;letter-spacing:0.5px;">Memuat jadwal...</div>
-                        <div id="sholatName" style="font-size:1rem;font-weight:900;color:#fff;line-height:1.2;">--</div>
-                        <div id="sholatTime" style="font-size:0.7rem;color:#aaa;margin-top:2px;">--:--</div>
-                        <div id="sholatDots" style="display:flex;gap:4px;justify-content:flex-end;margin-top:5px;"></div>
+                    <div id="sholatWidget" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:16px;min-width:160px;">
+                        <div style="font-size:0.55rem;font-weight:800;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:5px;">Sholat Berikutnya</div>
+                        <div style="display:flex;align-items:baseline;gap:8px;">
+                            <span id="sholatName" style="font-size:1.05rem;font-weight:900;color:#fff;line-height:1;">--</span>
+                            <span id="sholatTime" style="font-size:0.72rem;color:#888;font-weight:600;">--:--</span>
+                        </div>
+                        <div id="sholatCountdown" style="font-size:0.7rem;color:#a1ff5a;font-weight:700;margin-top:4px;letter-spacing:0.3px;">Memuat...</div>
+                        <div id="sholatDots" style="display:flex;gap:5px;margin-top:7px;align-items:center;"></div>
                     </div>
                 </div>
                 <div class="upcoming-card" id="meetingTerdekatCard">
@@ -3061,17 +3064,34 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             const [nh,nm] = _sholatTimings[_sholatKeys[nextIdx]].split(':');
             document.getElementById('sholatTime').textContent = `${nh}:${nm} WIB`;
 
-            // Dots: hijau=sudah lewat, kuning=berikutnya, abu=belum
+            // Chips per sholat: nama singkat + dot indicator
             const dotsEl = document.getElementById('sholatDots');
             dotsEl.innerHTML = '';
+            const abbr = ['Sbh','Dzh','Ash','Mgh','Isy'];
             times.forEach((t, i) => {
+                const chip = document.createElement('div');
+                chip.title = _sholatNames[i] + ' ' + _sholatTimings[_sholatKeys[i]];
+                const isNext = i === nextIdx;
+                const isDone = t < nowMin && !isNext;
+                chip.style.cssText = `
+                    display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;
+                `;
                 const dot = document.createElement('div');
-                dot.title = _sholatNames[i] + ' ' + _sholatTimings[_sholatKeys[i]];
-                dot.style.cssText = 'width:7px;height:7px;border-radius:50%;transition:background 0.3s;cursor:default;';
-                if(i === nextIdx)      dot.style.background = '#a1ff5a';  // berikutnya – hijau
-                else if(t < nowMin)   dot.style.background = '#4efdc4';  // sudah lewat – mint
-                else                  dot.style.background = '#333';     // belum – abu
-                dotsEl.appendChild(dot);
+                dot.style.cssText = `
+                    width:6px;height:6px;border-radius:50%;transition:all 0.3s;
+                    background:${isNext ? '#a1ff5a' : isDone ? '#4efdc4' : '#2a2a2a'};
+                    box-shadow:${isNext ? '0 0 6px #a1ff5a88' : 'none'};
+                `;
+                const label = document.createElement('div');
+                label.textContent = abbr[i];
+                label.style.cssText = `
+                    font-size:0.48rem;font-weight:700;letter-spacing:0.3px;
+                    color:${isNext ? '#a1ff5a' : isDone ? '#4efdc4' : '#3a3a3a'};
+                    transition:color 0.3s;
+                `;
+                chip.appendChild(dot);
+                chip.appendChild(label);
+                dotsEl.appendChild(chip);
             });
         }
 
