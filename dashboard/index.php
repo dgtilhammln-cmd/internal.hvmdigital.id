@@ -988,14 +988,17 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         <div style="border-left:1px solid rgba(255,255,255,0.1);padding-left:14px;">
                             <div id="dayName" class="date-day">Minggu</div>
                             <div id="fullDate" class="date-full">01 Januari 2025</div>
-                            <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:6px;margin-top:5px;">
+                            <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap;">
                                 <span id="wxIconWrap" style="font-size:0.88rem;">🌤️</span>
                                 <span id="wxTemp" style="font-size:0.75rem;font-weight:800;color:#fff;">--°C</span>
                                 <span id="wxDesc" style="font-size:0.68rem;color:#4efdc4;font-weight:600;">Memuat...</span>
                                 <span style="font-size:0.6rem;color:#555;">·</span>
                                 <span style="font-size:0.65rem;color:#888;"><i class="fas fa-tint" style="color:#4efdc4;font-size:0.58rem;"></i> <span id="wxHum">--%</span></span>
                                 <span style="font-size:0.6rem;color:#555;">·</span>
-                                <span style="font-size:0.6rem;color:#666;"><i class="fas fa-map-marker-alt" style="color:#a1ff5a;font-size:0.55rem;"></i> <span id="wxCity">Mendeteksi...</span></span>
+                                <span id="wxCityWrap" onclick="_detectLocation(true)" style="font-size:0.62rem;color:#a1ff5a;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" title="Klik untuk izinkan / perbarui lokasi">
+                                    <i class="fas fa-map-marker-alt" style="color:#a1ff5a;font-size:0.58rem;"></i>
+                                    <span id="wxCity">Mendeteksi...</span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -2956,7 +2959,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
         }, 300000);
 
         // ══ GEOLOCATION + CUACA + SHOLAT (Unified) ══
-        const _FALLBACK = { lat: -7.2575, lng: 112.7521, city: 'Surabaya' };
+        const _FALLBACK = { lat: -7.2575, lng: 112.7521, city: 'Surabaya, Jawa Timur' };
         let _geoLat = null, _geoLng = null, _geoCity = null;
 
         // Open-Meteo WMO weather code → emoji + deskripsi
@@ -2967,8 +2970,16 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             try {
                 const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=id`, {headers:{'User-Agent':'HVMDashboard/1.0'}});
                 const j = await r.json();
-                return j.address?.city || j.address?.town || j.address?.county || j.address?.state || 'Lokasi Anda';
-            } catch { return 'Lokasi Anda'; }
+                const addr = j.address || {};
+                let city = addr.city || addr.town || addr.city_district || addr.suburb || addr.municipality || addr.county || '';
+                let state = addr.state || addr.region || '';
+                city = city.replace(/^Kota\s+/i, '').replace(/^Kabupaten\s+/i, 'Kab. ');
+                state = state.replace(/^Daerah Khusus Ibukota\s+/i, 'DKI ').replace(/^Provinsi\s+/i, '');
+                if(city && state) return `${city}, ${state}`;
+                if(city) return city;
+                if(state) return state;
+                return 'Surabaya, Jawa Timur';
+            } catch { return 'Surabaya, Jawa Timur'; }
         }
 
         async function _fetchWeather(lat, lng) {
@@ -3075,37 +3086,44 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             document.getElementById('wxCity').textContent = city;
             _fetchWeather(lat, lng);
             _fetchSholat(lat, lng);
-            // Refresh weather tiap 10 menit
             setInterval(() => _fetchWeather(lat, lng), 600000);
-            // Refresh sholat tiap tengah malam
             const now2 = new Date();
             const msToMidnight = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate()+1, 0, 1, 0) - now2;
             setTimeout(() => { _fetchSholat(lat, lng); setInterval(() => _fetchSholat(lat, lng), 86400000); }, msToMidnight);
         }
 
-        // Cek cache lokasi (1 hari)
-        const _locCache = JSON.parse(localStorage.getItem('hvm_geo_cache') || 'null');
-        if(_locCache && (Date.now() - _locCache.ts) < 86400000) {
-            _initWithCoords(_locCache.lat, _locCache.lng, _locCache.city);
-        } else if(navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const city = await _reverseGeocode(lat, lng);
-                    localStorage.setItem('hvm_geo_cache', JSON.stringify({ts:Date.now(), lat, lng, city}));
-                    _initWithCoords(lat, lng, city);
-                },
-                () => { // Ditolak – fallback Surabaya
-                    document.getElementById('wxCity').textContent = _FALLBACK.city;
-                    _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
-                },
-                { timeout: 8000, maximumAge: 300000 }
-            );
-        } else {
-            document.getElementById('wxCity').textContent = _FALLBACK.city;
-            _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
+        function _detectLocation(forceRefresh = false) {
+            document.getElementById('wxCity').textContent = 'Mendeteksi...';
+            if (forceRefresh) {
+                localStorage.removeItem('hvm_geo_cache');
+                localStorage.removeItem('hvm_wx_cache');
+            }
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        const city = await _reverseGeocode(lat, lng);
+                        localStorage.setItem('hvm_geo_cache', JSON.stringify({ts:Date.now(), lat, lng, city}));
+                        _initWithCoords(lat, lng, city);
+                    },
+                    (err) => {
+                        console.warn('Geolocation failed/denied:', err);
+                        const cached = JSON.parse(localStorage.getItem('hvm_geo_cache') || 'null');
+                        if (cached && cached.city) {
+                            _initWithCoords(cached.lat, cached.lng, cached.city);
+                        } else {
+                            _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
+            }
         }
+
+        _detectLocation();
     </script>
 
     <!-- Meeting Terdekat Popup Modal -->
