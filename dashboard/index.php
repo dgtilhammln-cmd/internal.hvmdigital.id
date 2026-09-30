@@ -979,7 +979,7 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             <!-- ══ TOP DECK ══ -->
             <div class="top-deck">
                 <div class="apple-widget" style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                    <!-- Kiri: Jam + Tanggal -->
+                    <!-- Kiri: Jam + Tanggal + Cuaca -->
                     <div style="display:flex;align-items:center;gap:14px;">
                         <div class="widget-time">
                             <span id="clock" class="time-text">00:00</span>
@@ -988,25 +988,26 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
                         <div style="border-left:1px solid rgba(255,255,255,0.1);padding-left:14px;">
                             <div id="dayName" class="date-day">Minggu</div>
                             <div id="fullDate" class="date-full">01 Januari 2025</div>
-                            <!-- BMKG Weather compact -->
-                            <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-                                <span id="wxIconWrap" style="font-size:0.9rem;">🌤️</span>
+                            <div id="bmkgWeatherWidget" style="display:flex;align-items:center;gap:6px;margin-top:5px;">
+                                <span id="wxIconWrap" style="font-size:0.88rem;">🌤️</span>
                                 <span id="wxTemp" style="font-size:0.75rem;font-weight:800;color:#fff;">--°C</span>
-                                <span id="wxDesc" style="font-size:0.7rem;color:#4efdc4;font-weight:600;">Memuat...</span>
-                                <span style="font-size:0.65rem;color:#777;">·</span>
-                                <span style="font-size:0.65rem;color:#aaa;"><i class="fas fa-tint" style="color:#4efdc4;font-size:0.6rem;"></i> <span id="wxHum">--%</span></span>
+                                <span id="wxDesc" style="font-size:0.68rem;color:#4efdc4;font-weight:600;">Memuat...</span>
+                                <span style="font-size:0.6rem;color:#555;">·</span>
+                                <span style="font-size:0.65rem;color:#888;"><i class="fas fa-tint" style="color:#4efdc4;font-size:0.58rem;"></i> <span id="wxHum">--%</span></span>
+                                <span style="font-size:0.6rem;color:#555;">·</span>
+                                <span style="font-size:0.6rem;color:#666;"><i class="fas fa-map-marker-alt" style="color:#a1ff5a;font-size:0.55rem;"></i> <span id="wxCity">Mendeteksi...</span></span>
                             </div>
                         </div>
                     </div>
                     <!-- Kanan: Jadwal Sholat -->
-                    <div id="sholatWidget" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:16px;min-width:160px;">
-                        <div style="font-size:0.55rem;font-weight:800;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:5px;">Sholat Berikutnya</div>
-                        <div style="display:flex;align-items:baseline;gap:8px;">
-                            <span id="sholatName" style="font-size:1.05rem;font-weight:900;color:#fff;line-height:1;">--</span>
-                            <span id="sholatTime" style="font-size:0.72rem;color:#888;font-weight:600;">--:--</span>
+                    <div id="sholatWidget" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:16px;min-width:155px;">
+                        <div style="font-size:0.52rem;font-weight:800;letter-spacing:2px;color:#444;text-transform:uppercase;margin-bottom:4px;">Sholat Berikutnya</div>
+                        <div style="display:flex;align-items:baseline;gap:7px;">
+                            <span id="sholatName" style="font-size:1rem;font-weight:900;color:#fff;line-height:1;">--</span>
+                            <span id="sholatTime" style="font-size:0.68rem;color:#777;font-weight:600;">--:--</span>
                         </div>
-                        <div id="sholatCountdown" style="font-size:0.7rem;color:#a1ff5a;font-weight:700;margin-top:4px;letter-spacing:0.3px;">Memuat...</div>
-                        <div id="sholatDots" style="display:flex;gap:5px;margin-top:7px;align-items:center;"></div>
+                        <div id="sholatCountdown" style="font-size:0.67rem;color:#a1ff5a;font-weight:700;margin-top:3px;letter-spacing:0.3px;">Memuat...</div>
+                        <div id="sholatDots" style="display:flex;gap:5px;margin-top:6px;align-items:center;"></div>
                     </div>
                 </div>
                 <div class="upcoming-card" id="meetingTerdekatCard">
@@ -2954,109 +2955,95 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             }
         }, 300000);
 
-        // ── BMKG REALTIME WEATHER ──
-        (async function fetchBMKGWeather() {
+        // ══ GEOLOCATION + CUACA + SHOLAT (Unified) ══
+        const _FALLBACK = { lat: -7.2575, lng: 112.7521, city: 'Surabaya' };
+        let _geoLat = null, _geoLng = null, _geoCity = null;
+
+        // Open-Meteo WMO weather code → emoji + deskripsi
+        const _wmoIcon = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+        const _wmoDesc = {0:'Cerah',1:'Cerah Berawan',2:'Berawan',3:'Mendung',45:'Kabut',48:'Kabut Es',51:'Gerimis',53:'Gerimis',55:'Hujan Ringan',61:'Hujan Ringan',63:'Hujan Sedang',65:'Hujan Lebat',71:'Salju',73:'Salju',75:'Salju Lebat',80:'Hujan Lokal',81:'Hujan Lokal',82:'Hujan Lebat',95:'Hujan Petir',96:'Hujan Petir',99:'Hujan Petir Lebat'};
+
+        async function _reverseGeocode(lat, lng) {
             try {
-                const resp = await fetch('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.78.01.1001');
-                if (!resp.ok) throw new Error();
-                const json = await resp.json();
-                const allFc = (json?.data?.[0]?.cuaca || []).flat();
-                const now = Date.now();
-                let closest = allFc[0], minDiff = Infinity;
-                allFc.forEach(fc => {
-                    const diff = Math.abs(new Date(fc.local_datetime || fc.datetime).getTime() - now);
-                    if (diff < minDiff) { minDiff = diff; closest = fc; }
-                });
-                const wCode = closest?.weather ?? 0;
-                const icons = {0:'☀️',1:'☀️',2:'⛅',3:'⛅',4:'🌤️',5:'🌫️',10:'🌫️',45:'🌫️',60:'🌧️',61:'🌧️',63:'🌧️',80:'🌦️',95:'⛈️',97:'⛈️'};
-                const descs = {0:'Cerah',1:'Cerah',2:'Berawan',3:'Berawan Tebal',4:'Hujan Ringan',5:'Kabut',10:'Asap',45:'Kabut Tebal',60:'Hujan Sedang',61:'Hujan Sedang',63:'Hujan Lebat',80:'Hujan Lokal',95:'Hujan Petir',97:'Hujan Petir Lebat'};
-                document.getElementById('wxIconWrap').textContent = icons[wCode] ?? '🌤️';
-                document.getElementById('wxTemp').textContent = Math.round(closest?.t ?? 0) + '°C';
-                document.getElementById('wxDesc').textContent = descs[wCode] ?? closest?.weather_desc ?? 'Cerah';
-                document.getElementById('wxHum').textContent = (closest?.hu ?? '--') + '%';
+                const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=id`, {headers:{'User-Agent':'HVMDashboard/1.0'}});
+                const j = await r.json();
+                return j.address?.city || j.address?.town || j.address?.county || j.address?.state || 'Lokasi Anda';
+            } catch { return 'Lokasi Anda'; }
+        }
+
+        async function _fetchWeather(lat, lng) {
+            const cacheKey = 'hvm_wx_cache';
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+            if(cached && (Date.now() - cached.ts) < 21600000) { // 6 jam
+                _applyWeather(cached);
+                return;
+            }
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relativehumidity_2m,weathercode&timezone=Asia%2FJakarta`;
+                const res = await fetch(url);
+                const j = await res.json();
+                const cur = j.current;
+                const data = {
+                    ts: Date.now(),
+                    temp: Math.round(cur.temperature_2m),
+                    hum: cur.relativehumidity_2m,
+                    wmo: cur.weathercode
+                };
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                _applyWeather(data);
             } catch(e) {
                 const d = document.getElementById('wxDesc');
-                if(d) { d.textContent = 'Cuaca N/A'; d.style.color='#666'; }
+                if(d) { d.textContent = 'N/A'; d.style.color='#555'; }
             }
-        })();
-        setInterval(async function() {
-            try {
-                const resp = await fetch('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=35.78.01.1001');
-                if (!resp.ok) return;
-                const json = await resp.json();
-                const allFc = (json?.data?.[0]?.cuaca || []).flat();
-                const now = Date.now();
-                let closest = allFc[0], minDiff = Infinity;
-                allFc.forEach(fc => {
-                    const diff = Math.abs(new Date(fc.local_datetime || fc.datetime).getTime() - now);
-                    if (diff < minDiff) { minDiff = diff; closest = fc; }
-                });
-                const wCode = closest?.weather ?? 0;
-                const icons = {0:'☀️',1:'☀️',2:'⛅',3:'⛅',4:'🌤️',5:'🌫️',10:'🌫️',45:'🌫️',60:'🌧️',61:'🌧️',63:'🌧️',80:'🌦️',95:'⛈️',97:'⛈️'};
-                const descs = {0:'Cerah',1:'Cerah',2:'Berawan',3:'Berawan Tebal',4:'Hujan Ringan',5:'Kabut',10:'Asap',45:'Kabut Tebal',60:'Hujan Sedang',61:'Hujan Sedang',63:'Hujan Lebat',80:'Hujan Lokal',95:'Hujan Petir',97:'Hujan Petir Lebat'};
-                document.getElementById('wxIconWrap').textContent = icons[wCode] ?? '🌤️';
-                document.getElementById('wxTemp').textContent = Math.round(closest?.t ?? 0) + '°C';
-                document.getElementById('wxDesc').textContent = descs[wCode] ?? closest?.weather_desc ?? 'Cerah';
-                document.getElementById('wxHum').textContent = (closest?.hu ?? '--') + '%';
-            } catch(e) {}
-        }, 600000);
+        }
 
-        // ── JADWAL SHOLAT (AlAdhan API) ──
+        function _applyWeather(data) {
+            document.getElementById('wxIconWrap').textContent = _wmoIcon[data.wmo] ?? '🌤️';
+            document.getElementById('wxTemp').textContent    = data.temp + '°C';
+            document.getElementById('wxDesc').textContent    = _wmoDesc[data.wmo] ?? 'Cerah';
+            document.getElementById('wxHum').textContent     = data.hum + '%';
+        }
+
+        // ── JADWAL SHOLAT ──
         const _sholatNames = ['Subuh','Dzuhur','Ashar','Maghrib','Isya'];
         const _sholatKeys  = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
         let _sholatTimings = null;
         let _sholatTickInterval = null;
 
-        async function loadSholatTimings() {
+        async function _fetchSholat(lat, lng) {
             try {
                 const today = new Date();
                 const dd = String(today.getDate()).padStart(2,'0');
                 const mm = String(today.getMonth()+1).padStart(2,'0');
                 const yy = today.getFullYear();
-                const url = `https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yy}?city=Surabaya&country=Indonesia&method=11`;
+                const url = `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yy}?latitude=${lat}&longitude=${lng}&method=11`;
                 const res = await fetch(url);
                 const json = await res.json();
                 if(json.code === 200) {
                     _sholatTimings = json.data.timings;
-                    startSholatTick();
+                    if(_sholatTickInterval) clearInterval(_sholatTickInterval);
+                    updateSholatWidget();
+                    _sholatTickInterval = setInterval(updateSholatWidget, 1000);
                 }
             } catch(e) {
-                document.getElementById('sholatCountdown').textContent = 'Gagal memuat';
+                const el = document.getElementById('sholatCountdown');
+                if(el) el.textContent = 'Gagal memuat';
             }
-        }
-
-        function startSholatTick() {
-            if(_sholatTickInterval) clearInterval(_sholatTickInterval);
-            updateSholatWidget();
-            _sholatTickInterval = setInterval(updateSholatWidget, 1000);
         }
 
         function updateSholatWidget() {
             if(!_sholatTimings) return;
             const now = new Date();
             const nowMin = now.getHours()*60 + now.getMinutes();
-
-            // Parse semua waktu ke menit
             const times = _sholatKeys.map(k => {
                 const [h,m] = _sholatTimings[k].split(':').map(Number);
                 return h*60 + m;
             });
-
-            // Cari sholat berikutnya
             let nextIdx = times.findIndex(t => t > nowMin);
-            if(nextIdx === -1) nextIdx = 0; // Subuh besok
-
+            if(nextIdx === -1) nextIdx = 0;
             const nextMin = times[nextIdx];
-            let diffMin;
-            if(nextMin > nowMin) {
-                diffMin = nextMin - nowMin;
-            } else {
-                // Subuh besok
-                diffMin = (24*60 - nowMin) + nextMin;
-            }
-
-            const hrs  = Math.floor(diffMin / 60);
-            const mins = diffMin % 60;
+            let diffMin = nextMin > nowMin ? nextMin - nowMin : (24*60 - nowMin) + nextMin;
+            const hrs = Math.floor(diffMin/60), mins = diffMin % 60;
             const countdown = hrs > 0 ? `${hrs} jam ${mins} menit lagi` : `${mins} menit lagi`;
 
             document.getElementById('sholatCountdown').textContent = countdown;
@@ -3064,46 +3051,61 @@ body.sensor-active .sensor-blur { filter: blur(6px) !important; user-select: non
             const [nh,nm] = _sholatTimings[_sholatKeys[nextIdx]].split(':');
             document.getElementById('sholatTime').textContent = `${nh}:${nm} WIB`;
 
-            // Chips per sholat: nama singkat + dot indicator
             const dotsEl = document.getElementById('sholatDots');
             dotsEl.innerHTML = '';
             const abbr = ['Sbh','Dzh','Ash','Mgh','Isy'];
             times.forEach((t, i) => {
+                const isNext = i === nextIdx, isDone = t < nowMin && !isNext;
                 const chip = document.createElement('div');
                 chip.title = _sholatNames[i] + ' ' + _sholatTimings[_sholatKeys[i]];
-                const isNext = i === nextIdx;
-                const isDone = t < nowMin && !isNext;
-                chip.style.cssText = `
-                    display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;
-                `;
+                chip.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;';
                 const dot = document.createElement('div');
-                dot.style.cssText = `
-                    width:6px;height:6px;border-radius:50%;transition:all 0.3s;
-                    background:${isNext ? '#a1ff5a' : isDone ? '#4efdc4' : '#2a2a2a'};
-                    box-shadow:${isNext ? '0 0 6px #a1ff5a88' : 'none'};
-                `;
-                const label = document.createElement('div');
-                label.textContent = abbr[i];
-                label.style.cssText = `
-                    font-size:0.48rem;font-weight:700;letter-spacing:0.3px;
-                    color:${isNext ? '#a1ff5a' : isDone ? '#4efdc4' : '#3a3a3a'};
-                    transition:color 0.3s;
-                `;
-                chip.appendChild(dot);
-                chip.appendChild(label);
+                dot.style.cssText = `width:6px;height:6px;border-radius:50%;transition:all 0.3s;background:${isNext?'#a1ff5a':isDone?'#4efdc4':'#252525'};box-shadow:${isNext?'0 0 6px #a1ff5a88':'none'};`;
+                const lbl = document.createElement('div');
+                lbl.textContent = abbr[i];
+                lbl.style.cssText = `font-size:0.45rem;font-weight:700;color:${isNext?'#a1ff5a':isDone?'#4efdc4':'#333'};transition:color 0.3s;`;
+                chip.appendChild(dot); chip.appendChild(lbl);
                 dotsEl.appendChild(chip);
             });
         }
 
-        // Load saat halaman siap, refresh tiap tengah malam
-        loadSholatTimings();
-        // Refresh jadwal saat tengah malam (ganti hari)
-        const msToMidnight = (() => {
-            const now = new Date();
-            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 1, 0);
-            return midnight - now;
-        })();
-        setTimeout(() => { loadSholatTimings(); setInterval(loadSholatTimings, 24*60*60*1000); }, msToMidnight);
+        // ── ENTRY POINT: Geolocation ──
+        function _initWithCoords(lat, lng, city) {
+            _geoLat = lat; _geoLng = lng; _geoCity = city;
+            document.getElementById('wxCity').textContent = city;
+            _fetchWeather(lat, lng);
+            _fetchSholat(lat, lng);
+            // Refresh weather tiap 10 menit
+            setInterval(() => _fetchWeather(lat, lng), 600000);
+            // Refresh sholat tiap tengah malam
+            const now2 = new Date();
+            const msToMidnight = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate()+1, 0, 1, 0) - now2;
+            setTimeout(() => { _fetchSholat(lat, lng); setInterval(() => _fetchSholat(lat, lng), 86400000); }, msToMidnight);
+        }
+
+        // Cek cache lokasi (1 hari)
+        const _locCache = JSON.parse(localStorage.getItem('hvm_geo_cache') || 'null');
+        if(_locCache && (Date.now() - _locCache.ts) < 86400000) {
+            _initWithCoords(_locCache.lat, _locCache.lng, _locCache.city);
+        } else if(navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const city = await _reverseGeocode(lat, lng);
+                    localStorage.setItem('hvm_geo_cache', JSON.stringify({ts:Date.now(), lat, lng, city}));
+                    _initWithCoords(lat, lng, city);
+                },
+                () => { // Ditolak – fallback Surabaya
+                    document.getElementById('wxCity').textContent = _FALLBACK.city;
+                    _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
+                },
+                { timeout: 8000, maximumAge: 300000 }
+            );
+        } else {
+            document.getElementById('wxCity').textContent = _FALLBACK.city;
+            _initWithCoords(_FALLBACK.lat, _FALLBACK.lng, _FALLBACK.city);
+        }
     </script>
 
     <!-- Meeting Terdekat Popup Modal -->
