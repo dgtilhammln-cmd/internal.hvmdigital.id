@@ -174,7 +174,7 @@ body { background:#f5f6f8; color:var(--text); padding:30px 20px; }
     <div class="doc-header">
         <div class="company-brand">
             <h2>HVM DIGITAL</h2>
-            <p>PT HVM Digital Nusantara • internal.hvmdigital.id</p>
+            <p>PT HVM Orbit Studios • internal.hvmdigital.id</p>
         </div>
         <div class="doc-meta">
             Dokumen: <strong>FIN-MANUAL-01</strong><br>
