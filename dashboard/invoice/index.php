@@ -62,6 +62,15 @@ $chk_pphb = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'pph_bearer'"
 if($chk_pphb && mysqli_num_rows($chk_pphb) == 0) {
     mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `pph_bearer` VARCHAR(20) DEFAULT 'hvm' AFTER `pph`");
 }
+// Auto-migrate status ENUM to include Pelunasan
+mysqli_query($conn, "ALTER TABLE `invoices` MODIFY COLUMN `status` ENUM('Pending','DP','Pelunasan','Lunas','Overdue') DEFAULT 'Pending'");
+// Auto-migrate pay_type to include Pelunasan
+mysqli_query($conn, "ALTER TABLE `invoices` MODIFY COLUMN `pay_type` VARCHAR(50) DEFAULT 'Lunas'");
+// Add parent_id for pelunasan linking
+$chk_pid = mysqli_query($conn, "SHOW COLUMNS FROM `invoices` LIKE 'parent_id'");
+if($chk_pid && mysqli_num_rows($chk_pid) == 0) {
+    mysqli_query($conn, "ALTER TABLE `invoices` ADD COLUMN `parent_id` VARCHAR(20) DEFAULT NULL AFTER `id`");
+}
 
 // Auto-create bank_accounts table
 mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `bank_accounts` (
@@ -205,6 +214,29 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inv_ajax'])) {
         $ok = mysqli_query($conn, "UPDATE invoices SET status='$status' WHERE id='$id'");
         echo json_encode(['ok'=>(bool)$ok]); exit;
     }
+
+    if($act === 'duplicate') {
+        $src_id = mysqli_real_escape_string($conn, $_POST['src_id']);
+        $src = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM invoices WHERE id='$src_id'"));
+        if(!$src){ echo json_encode(['ok'=>false,'msg'=>'Not found']); exit; }
+        $new_id = 'INV-'.substr(time(),-6).rand(10,99);
+        // Generate next inv_no
+        $ts = strtotime($src['inv_date']); if(!$ts) $ts = time();
+        $year = date('Y', $ts); $month = date('m', $ts);
+        $prefix = "HVM/$year/$month/";
+        $qn = mysqli_query($conn, "SELECT inv_no FROM invoices WHERE inv_no LIKE '" . mysqli_real_escape_string($conn, $prefix) . "%'");
+        $maxSeq = 0;
+        if($qn) { while($rn = mysqli_fetch_assoc($qn)) { $p = explode('/', $rn['inv_no']); $n = intval(end($p)); if($n > $maxSeq) $maxSeq = $n; } }
+        $nextNo = $prefix . str_pad($maxSeq+1, 3, '0', STR_PAD_LEFT);
+        $mode = mysqli_real_escape_string($conn, $_POST['mode'] ?? 'copy'); // 'copy' or 'pelunasan'
+        $new_status = ($mode === 'pelunasan') ? 'Pending' : $src['status'];
+        $new_paytype = ($mode === 'pelunasan') ? 'Pelunasan' : $src['pay_type'];
+        $parent_id   = ($mode === 'pelunasan') ? $src_id : 'NULL';
+        $pid_val     = ($mode === 'pelunasan') ? "'$src_id'" : 'NULL';
+        $ok = mysqli_query($conn, "INSERT INTO invoices (id,parent_id,inv_no,client_name,npwp,hvm_npwp,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,ppn_bearer,pph,pph_bearer,total,status,bank,rekening,atas_nama,pay_type,dp1_pct,sig_name,sig_role,contact,email,note,items_json) SELECT '$new_id',$pid_val,'$nextNo',client_name,npwp,hvm_npwp,client_ref_type,client_ref_id,service_label,inv_date,due_date,subtotal,ppn,ppn_bearer,pph,pph_bearer,total,'$new_status',bank,rekening,atas_nama,'$new_paytype',dp1_pct,sig_name,sig_role,contact,email,note,items_json FROM invoices WHERE id='$src_id'");
+        echo json_encode(['ok'=>(bool)$ok, 'new_id'=>$new_id, 'new_no'=>$nextNo]); exit;
+    }
+
     exit;
 }
 ?>
@@ -343,17 +375,20 @@ select option:hover, select option:focus, select option:active, select option:ch
 .inv-date { color:var(--text-muted); font-size:0.8rem; }
 .inv-amount { font-weight:700; color:#fff; }
 .status-badge { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;letter-spacing:0.3px; }
-.status-paid    { background:rgba(255,255,255,0.05); color:#ccc; border:1px solid #333; }
-.status-pending { background:rgba(255,255,255,0.05); color:#ccc; border:1px solid #333; }
-.status-dp      { background:rgba(255,255,255,0.05); color:#ccc; border:1px solid #333; }
-.status-overdue { background:rgba(255,90,90,0.05); color:#ff8888; border:1px solid rgba(255,90,90,0.2); }
-.action-btns { display:flex;gap:6px; }
-.tbl-btn { width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.8rem;transition:all 0.2s; }
-.tbl-btn.view   { background:rgba(255,255,255,0.05); color:#aaa; }
-.tbl-btn.edit   { background:rgba(255,255,255,0.05); color:#aaa; }
-.tbl-btn.print  { background:rgba(255,255,255,0.05); color:#aaa; }
-.tbl-btn.del    { background:rgba(255,90,90,0.05); color:#ff8888; }
-.tbl-btn:hover  { transform:scale(1.1); filter:brightness(1.3); background:rgba(255,255,255,0.1); }
+.status-paid      { background:rgba(161,255,90,0.08); color:#a1ff5a; border:1px solid rgba(161,255,90,0.2); }
+.status-pending   { background:rgba(255,255,255,0.04); color:#aaa; border:1px solid rgba(255,255,255,0.1); }
+.status-dp        { background:rgba(78,253,196,0.08); color:#4efdc4; border:1px solid rgba(78,253,196,0.2); }
+.status-pelunasan { background:rgba(252,163,17,0.08); color:#fca311; border:1px solid rgba(252,163,17,0.2); }
+.status-overdue   { background:rgba(255,90,90,0.08); color:#ff8888; border:1px solid rgba(255,90,90,0.2); }
+.action-btns { display:flex;gap:5px;align-items:center; }
+.tbl-btn { width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,0.07);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.78rem;transition:all 0.18s; }
+.tbl-btn.view      { background:rgba(255,255,255,0.04); color:#888; }
+.tbl-btn.edit      { background:rgba(255,255,255,0.04); color:#888; }
+.tbl-btn.print     { background:rgba(255,255,255,0.04); color:#888; }
+.tbl-btn.duplicate { background:rgba(78,253,196,0.06); color:#4efdc4; border-color:rgba(78,253,196,0.15); }
+.tbl-btn.pelunasan-btn { background:rgba(252,163,17,0.06); color:#fca311; border-color:rgba(252,163,17,0.15); }
+.tbl-btn.del       { background:rgba(255,90,90,0.06); color:#ff6b6b; border-color:rgba(255,90,90,0.15); }
+.tbl-btn:hover     { transform:scale(1.08); filter:brightness(1.4); }
 .empty-state { text-align:center; padding:60px 20px; font-size:4rem; }
 
 /* ===================== MODAL ===================== */
@@ -705,10 +740,11 @@ select.form-input optgroup {
                     <option value="Lunas">Lunas</option>
                     <option value="Pending">Pending</option>
                     <option value="DP">DP</option>
+                    <option value="Pelunasan">Pelunasan</option>
                     <option value="Overdue">Overdue</option>
                 </select>
             </div>
-            <div style="display:flex;gap:10px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn-outline" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
                 <button class="btn-neon" onclick="openCreateModal()"><i class="fas fa-plus"></i> Buat Invoice</button>
             </div>
@@ -905,6 +941,7 @@ select.form-input optgroup {
                                 <div class="payment-toggle-group" id="payToggleGroup">
                                     <button type="button" class="payment-toggle active" data-val="Lunas" onclick="setPayType(this)">Lunas</button>
                                     <button type="button" class="payment-toggle" data-val="DP" onclick="setPayType(this)">2x (DP)</button>
+                                    <button type="button" class="payment-toggle" data-val="Pelunasan" onclick="setPayType(this)">Pelunasan</button>
                                     <button type="button" class="payment-toggle" data-val="Pending" onclick="setPayType(this)">Pending</button>
                                 </div>
                             </div>
@@ -933,7 +970,8 @@ select.form-input optgroup {
                                 <label>Status Invoice</label>
                                 <select class="form-input form-select" id="f_status">
                                     <option value="Pending">Pending</option>
-                                    <option value="DP">DP (50% Dibayar)</option>
+                                    <option value="DP">DP (Down Payment Dibayar)</option>
+                                    <option value="Pelunasan">Pelunasan (Menunggu Pelunasan)</option>
                                     <option value="Lunas">Lunas</option>
                                     <option value="Overdue">Overdue</option>
                                 </select>
@@ -978,7 +1016,12 @@ select.form-input optgroup {
                 <button class="btn-ghost" onclick="closeModal()"><i class="fas fa-times"></i> Batal</button>
                 <button class="btn-ghost" onclick="resetForm()"><i class="fas fa-undo"></i> Reset</button>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <div id="pelunasanBtnWrap" style="display:none;">
+                    <button type="button" onclick="createPelunasanFromModal()" style="background:rgba(252,163,17,0.12);border:1px solid rgba(252,163,17,0.3);color:#fca311;border-radius:10px;padding:9px 14px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(252,163,17,0.22)'" onmouseout="this.style.background='rgba(252,163,17,0.12)'">
+                        <i class="fas fa-file-invoice-dollar"></i> Buat Invoice Pelunasan
+                    </button>
+                </div>
                 <button class="btn-preview" onclick="previewInvoice()"><i class="fas fa-eye"></i> Preview</button>
                 <button class="btn-save-inv" onclick="saveInvoice()"><i class="fas fa-save"></i> Simpan</button>
                 <button class="btn-print-inv" onclick="previewInvoice(true)"><i class="fas fa-print"></i> Print / PDF</button>
@@ -1254,7 +1297,7 @@ function loadInvoices() {
     const fd = new FormData(); fd.append('inv_ajax', 'get_all');
     fetch('', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
         invoices = data.map(i => ({
-            id: i.id, no: i.inv_no, client: i.client_name, npwp: i.npwp||'', hvmNpwp: i.hvm_npwp||'', refType: i.client_ref_type, refId: i.client_ref_id,
+            id: i.id, parentId: i.parent_id||null, no: i.inv_no, client: i.client_name, npwp: i.npwp||'', hvmNpwp: i.hvm_npwp||'', refType: i.client_ref_type, refId: i.client_ref_id,
             service: i.service_label, date: i.inv_date, dueDate: i.due_date, subtotal: parseFloat(i.subtotal), ppn: parseFloat(i.ppn||0),
             ppnBearer: i.ppn_bearer||'client', pph: parseFloat(i.pph||0), pphBearer: i.pph_bearer||'hvm', total: parseFloat(i.total), status: i.status, bank: i.bank, rekening: i.rekening, atasNama: i.atas_nama,
             payType: i.pay_type, dp1Pct: parseFloat(i.dp1_pct), sigName: i.sig_name, sigRole: i.sig_role,
@@ -1300,21 +1343,24 @@ function renderTable(data){
     if(!data || data.length===0){ empty.style.display='block'; return; }
     empty.style.display='none';
     data.forEach(inv => {
-        const statusClass = {Lunas:'status-paid',Pending:'status-pending',DP:'status-dp',Overdue:'status-overdue'}[inv.status]||'status-pending';
-        const statusDot = {Lunas:'●',Pending:'○',DP:'◐',Overdue:'✕'}[inv.status]||'○';
+        const statusClass = {Lunas:'status-paid',Pending:'status-pending',DP:'status-dp',Pelunasan:'status-pelunasan',Overdue:'status-overdue'}[inv.status]||'status-pending';
+        const statusIcon = {Lunas:'fa-check-circle',Pending:'fa-clock',DP:'fa-circle-half-stroke',Pelunasan:'fa-hourglass-half',Overdue:'fa-exclamation-circle'}[inv.status]||'fa-clock';
         const tr = document.createElement('tr');
         const displayNo = inv.no && inv.no.startsWith('HVM') ? inv.no : ('#' + inv.no);
+        const isPelunasanPossible = (inv.status === 'DP' || inv.payType === 'DP');
         tr.innerHTML = `
-            <td><span class="inv-number">${esc(displayNo)}</span></td>
+            <td><span class="inv-number">${esc(displayNo)}</span>${inv.parentId ? `<br><span style="font-size:0.65rem;color:#666;"><i class="fas fa-link"></i> Pelunasan</span>` : ''}</td>
             <td><div class="inv-client">${inv.client}<small>${inv.service}</small></div></td>
-            <td><span class="inv-date" style="font-size:0.75rem;color:#555;">${inv.service}</span></td>
+            <td><span class="inv-date" style="font-size:0.75rem;color:#666;">${inv.payType||'Lunas'}</span></td>
             <td class="inv-date">${fmtDate(inv.date)}</td>
             <td class="inv-amount">${fmtRp(inv.total)}</td>
-            <td><span class="status-badge ${statusClass}">${statusDot} ${inv.status}</span></td>
+            <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${inv.status}</span></td>
             <td>
                 <div class="action-btns">
                     <button class="tbl-btn view" title="Preview" onclick="viewInvoice('${inv.id}')"><i class="fas fa-eye"></i></button>
                     <button class="tbl-btn edit" title="Edit" onclick="editInvoice('${inv.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="tbl-btn duplicate" title="Duplikasi Invoice" onclick="duplicateInvoice('${inv.id}')"><i class="fas fa-copy"></i></button>
+                    ${isPelunasanPossible ? `<button class="tbl-btn pelunasan-btn" title="Buat Invoice Pelunasan" onclick="createPelunasanInvoice('${inv.id}')"><i class="fas fa-file-invoice-dollar"></i></button>` : ''}
                     <button class="tbl-btn print" title="Print" onclick="printInvoice('${inv.id}')"><i class="fas fa-print"></i></button>
                     <button class="tbl-btn del" title="Hapus" onclick="deleteInvoice('${inv.id}')"><i class="fas fa-trash-alt"></i></button>
                 </div>
@@ -1502,6 +1548,7 @@ function resetForm(){
     document.querySelectorAll('.payment-toggle').forEach((b,i)=>{b.classList.remove('active');if(i===0)b.classList.add('active');});
     payType='Lunas';
     document.getElementById('dpSection').style.display='none';
+    document.getElementById('pelunasanBtnWrap').style.display='none';
     addItem();
 }
 
@@ -1553,7 +1600,57 @@ function editInvoice(id){
     document.getElementById('itemsBody').innerHTML='';
     inv.items.forEach(item=>addItem(item.name,item.subs,item.qty,item.price));
     recalcTotals();
+    // Show/hide pelunasan button
+    const showPelBtn = (inv.status === 'DP' || inv.payType === 'DP');
+    document.getElementById('pelunasanBtnWrap').style.display = showPelBtn ? 'block' : 'none';
     document.getElementById('invModal').classList.add('active');
+}
+
+function duplicateInvoice(id) {
+    if(!confirm('Duplikasi invoice ini? Invoice baru akan dibuat dengan nomor urut berikutnya.')) return;
+    const fd = new FormData();
+    fd.append('inv_ajax', 'duplicate');
+    fd.append('src_id', id);
+    fd.append('mode', 'copy');
+    fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res=>{
+        if(res.ok) {
+            showPopup('success', `Invoice diduplikasi → ${res.new_no}`);
+            loadInvoices();
+            // Open edit modal for the new invoice after a small delay
+            setTimeout(()=>{
+                const newInv = invoices.find(i=>i.id===res.new_id);
+                if(newInv) editInvoice(res.new_id);
+            }, 600);
+        } else {
+            showPopup('error', 'Gagal menduplikasi invoice.');
+        }
+    });
+}
+
+function createPelunasanInvoice(id) {
+    if(!confirm('Buat invoice PELUNASAN dari invoice DP ini? Invoice baru (pelunasan) akan dibuat dan bisa diedit.')) return;
+    const fd = new FormData();
+    fd.append('inv_ajax', 'duplicate');
+    fd.append('src_id', id);
+    fd.append('mode', 'pelunasan');
+    fetch('', {method:'POST', body:fd}).then(r=>r.json()).then(res=>{
+        if(res.ok) {
+            showPopup('success', `Invoice Pelunasan dibuat → ${res.new_no}`);
+            loadInvoices();
+            setTimeout(()=>{
+                loadInvoices();
+                setTimeout(()=>editInvoice(res.new_id), 400);
+            }, 400);
+        } else {
+            showPopup('error', 'Gagal membuat invoice pelunasan.');
+        }
+    });
+}
+
+function createPelunasanFromModal() {
+    if(!editingId) return;
+    closeModal();
+    createPelunasanInvoice(editingId);
 }
 
 function saveInvoice(){
