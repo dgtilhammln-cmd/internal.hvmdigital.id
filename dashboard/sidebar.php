@@ -66,9 +66,9 @@ if($is_super_admin && isset($conn)) {
         </a>
 
         <?php if($is_super_admin): ?>
-        <a href="/dashboard/settings/" class="nav-item <?= (strpos($current_page, 'settings')) ? 'active' : '' ?>" title="Settings AI">
+        <a href="/dashboard/settings/" class="nav-item <?= (strpos($current_page, 'settings')) ? 'active' : '' ?>" title="Settings">
             <i class="fas fa-cog"></i>
-            <span class="nav-text">Settings AI</span>
+            <span class="nav-text">Settings</span>
         </a>
         <?php endif; ?>
 
