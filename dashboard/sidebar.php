@@ -30,50 +30,70 @@ if($is_super_admin && isset($conn)) {
 
     <!-- Nav List tetap satu kontainer untuk memudahkan transisi -->
     <div class="nav-list">
-        <a href="/dashboard/" class="nav-item <?= (strpos($current_page, 'overview.php')) ? 'active' : '' ?>" title="Overview">
-            <i class="fas fa-th-large"></i>
+        <?php 
+        $is_overview = ($current_page === '/dashboard/' || $current_page === '/dashboard/index.php' || strpos($current_page, 'overview.php') !== false);
+        $is_perf_active = (strpos($current_page, '/performance') !== false);
+        $is_neraca = (strpos($current_page, 'neraca') !== false);
+        $is_perf_overview = ($is_perf_active && !$is_neraca);
+        ?>
+        <a href="/dashboard/" class="nav-item <?= $is_overview ? 'active' : '' ?>" title="Overview">
+            <i class="fas fa-th-large nav-icon"></i>
             <span class="nav-text">Overview</span>
         </a>
 
-        <a href="/dashboard/performance/" class="nav-item <?= (strpos($current_page, 'performance')) ? 'active' : '' ?>" title="Performance">
-            <i class="fas fa-chart-line"></i>
-            <span class="nav-text">Performance</span>
-        </a>
+        <!-- PERFORMANCE DENGAN SUBMENU -->
+        <div class="nav-group <?= $is_perf_active ? 'active-group open' : '' ?>">
+            <a href="/dashboard/performance/" class="nav-item <?= $is_perf_active ? 'active' : '' ?>" title="Performance">
+                <i class="fas fa-chart-line nav-icon"></i>
+                <span class="nav-text">Performance</span>
+                <i class="fas fa-chevron-right nav-arrow"></i>
+            </a>
+            <div class="nav-submenu">
+                <a href="/dashboard/performance/" class="nav-sub-item <?= $is_perf_overview ? 'active' : '' ?>" title="Laba Rugi & Growth">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Laba Rugi</span>
+                </a>
+                <a href="/dashboard/performance/neraca.php" class="nav-sub-item <?= $is_neraca ? 'active' : '' ?>" title="Neraca Keuangan">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>Neraca</span>
+                </a>
+            </div>
+        </div>
 
         <a href="/dashboard/clients/" class="nav-item <?= (strpos($current_page, 'clients')) ? 'active' : '' ?>" title="Clients">
-            <i class="fas fa-users"></i>
+            <i class="fas fa-users nav-icon"></i>
             <span class="nav-text">Clients</span>
         </a>
 
         <a href="/dashboard/prospects/" class="nav-item <?= (strpos($current_page, 'prospects')) ? 'active' : '' ?>" title="Prospects">
-            <i class="fas fa-binoculars"></i>
+            <i class="fas fa-binoculars nav-icon"></i>
             <span class="nav-text">Prospects</span>
         </a>
 
         <a href="/dashboard/payment/" class="nav-item <?= (strpos($current_page, 'payment')) ? 'active' : '' ?>" title="Payment">
-            <i class="fas fa-wallet"></i>
+            <i class="fas fa-wallet nav-icon"></i>
             <span class="nav-text">Payment</span>
         </a>
 
         <a href="/dashboard/invoice/" class="nav-item <?= (strpos($current_page, 'invoice')) ? 'active' : '' ?>" title="Invoice">
-            <i class="fas fa-file-invoice"></i>
+            <i class="fas fa-file-invoice nav-icon"></i>
             <span class="nav-text">Invoice</span>
         </a>
 
         <a href="/dashboard/teams/" class="nav-item <?= (strpos($current_page, 'teams')) ? 'active' : '' ?>" title="Teams">
-            <i class="fas fa-user-friends"></i>
+            <i class="fas fa-user-friends nav-icon"></i>
             <span class="nav-text">Teams</span>
         </a>
 
         <?php if($is_super_admin): ?>
         <a href="/dashboard/settings/" class="nav-item <?= (strpos($current_page, 'settings')) ? 'active' : '' ?>" title="Settings">
-            <i class="fas fa-cog"></i>
+            <i class="fas fa-cog nav-icon"></i>
             <span class="nav-text">Settings</span>
         </a>
         <?php endif; ?>
 
         <a href="/dashboard/logout.php" class="nav-item logout-item" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
+            <i class="fas fa-sign-out-alt nav-icon"></i>
             <span class="nav-text">Logout</span>
         </a>
     </div>

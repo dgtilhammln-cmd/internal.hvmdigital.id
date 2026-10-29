@@ -379,6 +379,16 @@ tfoot .sum-row td { padding:14px 18px; border-top:1px solid rgba(255,255,255,.07
     </div>
     <?php else:?>
 
+    <!-- SUBMENU SWITCHER (Laba Rugi vs Neraca Keuangan) -->
+    <div style="display:inline-flex; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:4px; gap:6px; margin-bottom:24px;">
+        <a href="/dashboard/performance/" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:10px; background:linear-gradient(135deg, rgba(161,255,90,0.15), rgba(78,253,196,0.08)); border:1px solid rgba(161,255,90,0.3); color:#a1ff5a; font-weight:700; font-size:0.85rem; text-decoration:none;">
+            <i class="fa-solid fa-chart-pie"></i> Laba Rugi &amp; Growth
+        </a>
+        <a href="/dashboard/performance/neraca.php" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:10px; background:transparent; color:#888; font-weight:700; font-size:0.85rem; text-decoration:none; transition:0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">
+            <i class="fa-solid fa-scale-balanced"></i> Neraca Keuangan (Balance Sheet)
+        </a>
+    </div>
+
     <!-- FILTER BAR -->
     <div class="top-bar">
         <form method="GET" class="filter-glass" id="filterForm">
